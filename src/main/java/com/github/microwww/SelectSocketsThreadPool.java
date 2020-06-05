@@ -2,6 +2,7 @@ package com.github.microwww;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
@@ -12,7 +13,6 @@ public class SelectSocketsThreadPool extends SelectSockets {
     private static ConcurrentLinkedQueue<ByteBuffer> queue = new ConcurrentLinkedQueue();
 
     private static final Executor pool = Executors.newFixedThreadPool(MAX_THREADS);
-    private ConcurrentHashMap hashMap = new ConcurrentHashMap();
 
     // -------------------------------------------------------------
     public static void main(String[] argv) throws Exception {

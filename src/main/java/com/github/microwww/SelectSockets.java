@@ -3,9 +3,15 @@ package com.github.microwww;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SelectSockets {
 
@@ -13,6 +19,7 @@ public class SelectSockets {
     protected ServerSocket serverSocket;
     protected Selector selector;
     private ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
+    private ConcurrentHashMap<String, List<byte[]>> data = new ConcurrentHashMap();
 
     public Runnable config(String host, int port) throws IOException {
         serverChannel = ServerSocketChannel.open();
@@ -85,7 +92,15 @@ public class SelectSockets {
     protected void parsData(SocketChannel channel, ByteBuffer buffer) throws IOException {
         byte[] bytes = new byte[buffer.remaining()];
         buffer.get(bytes);
-        System.out.println(new String(bytes, "utf8"));
+        List<byte[]> list = Collections.synchronizedList(new LinkedList<>());
+        String key = getKey(channel);
+        list = data.putIfAbsent(key, list);
+        list.add(bytes);
+    }
+
+    public String getKey(SocketChannel channel) throws IOException {
+        InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
+        return address.getHostName() + ":" + address.getPort();
     }
 
     protected void acceptHandler(SocketChannel channel) throws IOException {
@@ -93,8 +108,13 @@ public class SelectSockets {
     }
 
     protected void closeChannel(SelectionKey key) throws IOException {
-        System.out.println("Remote KILLED : " + key.channel());
-        key.channel().close();
+        try {
+            System.out.println("Remote KILLED : " + key.channel());
+            key.channel().close();
+        } finally {
+            SocketChannel channel = (SocketChannel) key.channel();
+            data.remove(getKey(channel));
+        }
     }
 
     public ServerSocket getServerSocket() {
