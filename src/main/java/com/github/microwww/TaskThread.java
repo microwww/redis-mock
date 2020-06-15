@@ -5,7 +5,6 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -13,16 +12,12 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TaskThread {
     private static ConcurrentHashMap<String, TaskThread> tasks = new ConcurrentHashMap();
     private Lock lock = new ReentrantLock();
-    private AtomicBoolean stop = new AtomicBoolean();
-    private final Thread thread;
-
-    public TaskThread(int count, Thread thread) {
-        this.thread = thread;
-    }
+    private final AtomicInteger status = new AtomicInteger(0);
+    private static final int EXIT = -1;
 
     public static void addTask(SocketChannel channel) throws IOException {
         String k = key(channel);
-        TaskThread thread = new TaskThread(1, Thread.currentThread());
+        TaskThread thread = new TaskThread();
         boolean doing = false;
         TaskThread tt = tasks.get(k);
         if (tt != null) {
@@ -36,17 +31,20 @@ public class TaskThread {
     }
 
     private void reader(SocketChannel channel) throws IOException {
-        while (!stop.get()) {
-            lock.lock();
-            try {
-                if (stop.get()) {
-                    break;
+        lock.lock();
+        try {
+            while (true) {
+                synchronized (status) {
+                    if (status.get() == 0) {
+                        status.set(EXIT);
+                        break;
+                    }
+                    status.set(0);
                 }
-                stop.set(true);
                 inLock(channel);
-            } finally {
-                lock.unlock();
             }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -60,6 +58,7 @@ public class TaskThread {
             if (read <= 0) {
                 break;
             }
+            throw new UnsupportedOperationException("实现中......");
         }
     }
 
@@ -69,16 +68,20 @@ public class TaskThread {
      * @return
      */
     public boolean append() {
-        if (lock.tryLock()) {
-            try {
-                stop.set(true);
-                return false;
-            } finally {
-                lock.unlock();
+        synchronized (status) {
+            if (lock.tryLock()) {
+                try {
+                    return false;
+                } finally {
+                    lock.unlock();
+                }
             }
+            if (status.get() == EXIT) {
+                return false;
+            }
+            status.incrementAndGet();
+            return true;
         }
-        stop.set(false);
-        return true;
     }
 
     public static String key(SocketChannel channel) throws IOException {
