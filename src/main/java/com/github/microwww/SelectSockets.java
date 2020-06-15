@@ -3,23 +3,15 @@ package com.github.microwww;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
-import java.net.SocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class SelectSockets {
+public abstract class SelectSockets {
 
     private ServerSocketChannel serverChannel;
     protected ServerSocket serverSocket;
     protected Selector selector;
-    private ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
-    private ConcurrentHashMap<String, List<byte[]>> data = new ConcurrentHashMap();
 
     public Runnable config(String host, int port) throws IOException {
         serverChannel = ServerSocketChannel.open();
@@ -73,29 +65,6 @@ public class SelectSockets {
     }
 
     protected void readableHandler(SelectionKey key) throws IOException {
-        SocketChannel channel = (SocketChannel) key.channel();
-        ByteBuffer buffer = getByteBuffer();
-        while (true) {
-            buffer.clear();
-            int read = channel.read(buffer);
-            if (read == -1) { // 远程正常关闭连接
-                closeChannel(key);
-            }
-            if (read <= 0) {
-                break;
-            }
-            buffer.flip();
-            parsData(channel, buffer.asReadOnlyBuffer());
-        }
-    }
-
-    protected void parsData(SocketChannel channel, ByteBuffer buffer) throws IOException {
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
-        List<byte[]> list = Collections.synchronizedList(new LinkedList<>());
-        String key = getKey(channel);
-        list = data.putIfAbsent(key, list);
-        list.add(bytes);
     }
 
     public String getKey(SocketChannel channel) throws IOException {
@@ -108,13 +77,8 @@ public class SelectSockets {
     }
 
     protected void closeChannel(SelectionKey key) throws IOException {
-        try {
-            System.out.println("Remote KILLED : " + key.channel());
-            key.channel().close();
-        } finally {
-            SocketChannel channel = (SocketChannel) key.channel();
-            data.remove(getKey(channel));
-        }
+        System.out.println("Remote KILLED : " + key.channel());
+        key.channel().close();
     }
 
     public ServerSocket getServerSocket() {
@@ -122,10 +86,6 @@ public class SelectSockets {
             Thread.yield();
         }
         return serverSocket;
-    }
-
-    protected ByteBuffer getByteBuffer() {
-        return byteBuffer;
     }
 
 }
