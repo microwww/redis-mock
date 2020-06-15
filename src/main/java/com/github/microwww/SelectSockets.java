@@ -67,11 +67,6 @@ public abstract class SelectSockets {
     protected void readableHandler(SelectionKey key) throws IOException {
     }
 
-    public String getKey(SocketChannel channel) throws IOException {
-        InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
-        return address.getHostName() + ":" + address.getPort();
-    }
-
     protected void acceptHandler(SocketChannel channel) throws IOException {
         registerChannel(channel, SelectionKey.OP_READ);
     }
