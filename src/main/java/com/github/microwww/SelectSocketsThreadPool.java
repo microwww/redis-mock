@@ -39,11 +39,12 @@ public class SelectSocketsThreadPool extends SelectSockets {
                     return;
                 }
                 tasks.put(k, thread); // 原先已经停止, 开启新的读取
-                thread.scheduling(() -> {
+                thread.scheduling((lock) -> {
                     throw new UnsupportedOperationException("暂未实现");
                 });
-            } catch (IOException e) { // IO 做简单处理
+            } catch (RuntimeException | IOException e) { // IO 做简单处理
                 try {
+                    System.out.println("Error close channel :" + e.getMessage());
                     closeChannel(key);
                 } catch (IOException ex) {
                 }

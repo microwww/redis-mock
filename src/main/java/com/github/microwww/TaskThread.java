@@ -1,20 +1,19 @@
 package com.github.microwww;
 
+import com.github.microwww.util.Assert;
+
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class TaskThread {
     private static final int EXIT = -1;
     private final Lock lock = new ReentrantLock();
     private final AtomicInteger status = new AtomicInteger(1);
+    private AwaitRead awaitRead;
 
     /**
      * invoke read.run()
@@ -23,6 +22,7 @@ public class TaskThread {
      * @throws IOException
      */
     public void scheduling(Reading read) throws IOException {
+        awaitRead = new AwaitRead(Thread.currentThread());
         lock.lock();
         try {
             while (true) {
@@ -33,7 +33,7 @@ public class TaskThread {
                     }
                     status.set(0);
                 }
-                read.read();
+                read.read(awaitRead);
             }
         } catch (Exception ex) { // 出错暂不处理
             throw ex;
@@ -75,6 +75,8 @@ public class TaskThread {
                 return false;
             }
             status.incrementAndGet();
+            Assert.isNotNull(awaitRead, "await-read is NULL");
+            awaitRead.unpark();
             return true;
         }
     }
