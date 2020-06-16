@@ -8,29 +8,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class TaskThread {
-    private static ConcurrentHashMap<String, TaskThread> tasks = new ConcurrentHashMap();
-    private Lock lock = new ReentrantLock();
-    private final AtomicInteger status = new AtomicInteger(0);
     private static final int EXIT = -1;
+    private final Lock lock = new ReentrantLock();
+    private final AtomicInteger status = new AtomicInteger(1);
 
-    public static void addTask(SocketChannel channel) throws IOException {
-        String k = key(channel);
-        TaskThread thread = new TaskThread();
-        boolean doing = false;
-        TaskThread tt = tasks.get(k);
-        if (tt != null) {
-            doing = tt.append();
-        }
-        if (doing) {
-            return;
-        }
-        tasks.put(k, thread); // 原先已经停止, 开启新的读取
-        thread.reader(channel);
-    }
-
-    private void reader(SocketChannel channel) throws IOException {
+    /**
+     * invoke read.run()
+     *
+     * @param read
+     * @throws IOException
+     */
+    public void scheduling(Reading read) throws IOException {
         lock.lock();
         try {
             while (true) {
@@ -41,8 +33,10 @@ public class TaskThread {
                     }
                     status.set(0);
                 }
-                inLock(channel);
+                read.read();
             }
+        } catch (Exception ex) { // 出错暂不处理
+            throw ex;
         } finally {
             lock.unlock();
         }
@@ -83,10 +77,5 @@ public class TaskThread {
             status.incrementAndGet();
             return true;
         }
-    }
-
-    public static String key(SocketChannel channel) throws IOException {
-        InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
-        return address.getHostName() + ":" + address.getPort();
     }
 }
