@@ -9,18 +9,12 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class SelectSocketsThreadPool extends SelectSockets {
-    private static final int MAX_THREADS = 5;
 
-    private static final ConcurrentHashMap<String, TaskThread> tasks = new ConcurrentHashMap();
-    private static final Executor pool = Executors.newFixedThreadPool(MAX_THREADS);
+    private ConcurrentHashMap<String, TaskThread> tasks = new ConcurrentHashMap();
+    private final Executor pool;
 
-    // -------------------------------------------------------------
-    public static void main(String[] argv) throws Exception {
-        SelectSocketsThreadPool sst = new SelectSocketsThreadPool();
-        Runnable run = sst.config("localhost", 10421);
-        pool.execute(run);
-        InetSocketAddress ss = (InetSocketAddress) sst.getServerSocket().getLocalSocketAddress();
-        System.out.println(ss.getHostString() + ":" + ss.getPort());
+    public SelectSocketsThreadPool(Executor pool) {
+        this.pool = pool;
     }
 
     @Override
@@ -40,7 +34,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 }
                 tasks.put(k, thread); // 原先已经停止, 开启新的读取
                 thread.scheduling((lock) -> {
-                    throw new UnsupportedOperationException("暂未实现");
+                    readChannel(channel, lock);
                 });
             } catch (RuntimeException | IOException e) { // IO 做简单处理
                 try {
@@ -50,6 +44,10 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 }
             }
         });
+    }
+
+    protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
+        throw new UnsupportedOperationException("暂未实现");
     }
 
     public static String key(SocketChannel channel) throws IOException {
