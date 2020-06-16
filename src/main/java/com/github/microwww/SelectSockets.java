@@ -42,13 +42,15 @@ public abstract class SelectSockets {
         while (it.hasNext()) {
             SelectionKey key = (SelectionKey) it.next();
             try {
-                if (key.isAcceptable()) {
-                    ServerSocketChannel server = (ServerSocketChannel) key.channel();
-                    SocketChannel channel = server.accept();
-                    this.acceptHandler(channel);
-                }
-                if (key.isReadable()) {
-                    readableHandler(key);
+                if (key.isValid()) { // CancelledKeyException
+                    if (key.isAcceptable()) {
+                        ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                        SocketChannel channel = server.accept();
+                        this.acceptHandler(channel);
+                    }
+                    if (key.isReadable()) {
+                        readableHandler(key);
+                    }
                 }
             } catch (IOException ex) { // 远程强制关闭了一个连接
                 ex.printStackTrace();
