@@ -1,6 +1,9 @@
 package com.github.microwww;
 
 import org.junit.Test;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Protocol;
+import redis.clients.util.RedisInputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -8,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -62,4 +66,41 @@ public class SelectSocketsThreadPoolTest {
         }
     }
 
+    @Test
+    public void testInputStream() throws Exception {
+        Executor pool = Executors.newFixedThreadPool(5, r -> {
+            Thread th = new Thread(r);
+            th.setDaemon(true);
+            return th;
+        });
+        CountDownLatch down = new CountDownLatch(2);
+        StringBuffer bf = new StringBuffer();
+        SelectSocketsThreadPool sst = new SelectSocketsThreadPool(pool) {
+            @Override
+            protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
+                RedisInputStream in = new RedisInputStream(new ChannelInputStream(channel, lock));
+                while (in.available() > 0) {
+                    Object read = Protocol.read(in);
+                    ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+                    bf.append(new String(req[0].isNotNull().getByteArray())); // 命令
+                    down.countDown();
+                }
+            }
+        };
+        Runnable run = sst.config("localhost", 0);
+        pool.execute(run);
+        Thread.yield();
+        InetSocketAddress ss = (InetSocketAddress) sst.getServerSocket().getLocalSocketAddress();
+        pool.execute(() -> {
+            try {
+                Jedis jedis = new Jedis(ss.getHostString(), ss.getPort(), 10000);
+                down.countDown();
+                jedis.ping();
+            } catch (Exception e) {
+            }
+        });
+        down.await();
+
+        assertEquals("PING", bf.toString());
+    }
 }

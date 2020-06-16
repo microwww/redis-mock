@@ -21,6 +21,9 @@ public class SelectSocketsThreadPool extends SelectSockets {
     protected void readableHandler(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         pool.execute(() -> {
+            if (!key.isValid()) {
+                return;
+            }
             try {
                 String k = key(channel);
                 TaskThread thread = new TaskThread();
@@ -38,7 +41,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 });
             } catch (RuntimeException | IOException e) { // IO 做简单处理
                 try {
-                    System.out.println("Error close channel :" + e.getMessage());
+                    System.out.println("Error ! try to close channel : " + e.getMessage());
                     closeChannel(key);
                 } catch (IOException ex) {
                 }
