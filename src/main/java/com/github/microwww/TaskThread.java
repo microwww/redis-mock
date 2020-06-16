@@ -35,7 +35,7 @@ public class TaskThread {
         try {
             while (true) {
                 synchronized (status) {
-                    if (status.get() == 0) {
+                    if (status.get() == 0 || status.get() == EXIT) {
                         status.set(EXIT);
                         break;
                     }
@@ -71,6 +71,7 @@ public class TaskThread {
         synchronized (status) {
             if (lock.tryLock()) {
                 try {
+                    status.set(EXIT);
                     return false;
                 } finally {
                     lock.unlock();
