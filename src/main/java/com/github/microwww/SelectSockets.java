@@ -20,6 +20,7 @@ public abstract class SelectSockets {
         serverChannel.configureBlocking(false);
         serverChannel.register(selector, SelectionKey.OP_ACCEPT);
         return () -> {
+            Thread.currentThread().setName("SELECT-IO");
             while (true) {
                 try {
                     tryRun();
@@ -27,7 +28,6 @@ public abstract class SelectSockets {
                     ex.printStackTrace();
                 } catch (RuntimeException ex) {
                     ex.printStackTrace();
-                    System.exit(1);
                 }
             }
         };
@@ -73,16 +73,18 @@ public abstract class SelectSockets {
         registerChannel(channel, SelectionKey.OP_READ);
     }
 
-    protected void closeChannel(SelectionKey key) throws IOException {
-        // key.cancel();
-        SocketChannel channel = (SocketChannel) key.channel();
+    public void closeChannel(SelectionKey key) throws IOException {
+        this.closeChannel((SocketChannel) key.channel());
+    }
+
+    public void closeChannel(SocketChannel channel) throws IOException {
         try {
             InetSocketAddress add = (InetSocketAddress) channel.getRemoteAddress();
             System.out.println(String.format("Remote KILLED : %s:%d", add.getHostName(), add.getPort()));
-            channel.close();
         } catch (Exception e) {
             System.out.println(String.format("Remote KILLED : %s", channel));
         }
+        channel.close();
     }
 
     public ServerSocket getServerSocket() {
