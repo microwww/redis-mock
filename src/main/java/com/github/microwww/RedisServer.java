@@ -1,98 +1,53 @@
 package com.github.microwww;
 
+import com.github.microwww.util.Assert;
 import redis.clients.jedis.Protocol;
+import redis.clients.util.RedisInputStream;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.Channels;
 import java.nio.channels.SocketChannel;
-import java.util.Iterator;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-public class RedisServer {
+public class RedisServer extends SelectSocketsThreadPool {
+    public static final String UTF8 = "UTF-8";
+
     private static final int PORT = Protocol.DEFAULT_PORT;
     private static final String HOST = Protocol.DEFAULT_HOST;
     private static final int BUF_SIZE = 1024 * 8;
     private static final int TIMEOUT = 1000;
 
-    public static void main(String[] args) {
-        ServerSocketChannel channel = selector(new InetSocketAddress(HOST, 0));
-        InetSocketAddress address = (InetSocketAddress) channel.socket().getLocalSocketAddress();
-        System.out.println("Rdis run " + address.getHostName() + ":" + address.getPort());
+    private static final Executor pool = Executors.newFixedThreadPool(5);
+
+    public RedisServer() {
+        super(pool);
     }
 
-    public static ServerSocketChannel selector(InetSocketAddress address) {
-        try (
-                Selector selector = Selector.open();
-                ServerSocketChannel ssc = ServerSocketChannel.open();
-        ) {
-            ssc.socket().bind(address);
-            ssc.configureBlocking(false);
-            ssc.register(selector, SelectionKey.OP_ACCEPT);
-            Thread th = new Thread(() -> {
-                while (true) {
-                    accept(selector);
-                }
-            });
-            th.setName("ServerSocketChannel");
-            th.setDaemon(false);
-            th.start();
-            return ssc;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void accept(Selector selector) {
-        try {
-            if (selector.select(TIMEOUT) == 0) {
-                return;
+    @Override
+    protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
+        RedisInputStream in = new RedisInputStream(Channels.newInputStream(channel));
+        while (in.available() > 0) {
+            Object read = Protocol.read(in);
+            if(read == null){
+                continue;
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        Iterator<SelectionKey> iter = selector.selectedKeys().iterator();
-        while (iter.hasNext()) {
-            SelectionKey key = iter.next();
-            try {
-                if (key.isAcceptable()) {
-                    handleAccept(key);
-                }
-                if (key.isReadable()) {
-                    handleRead(key);
-                }
-            } catch (Exception e) {
-                e.printStackTrace(); // TODO :: logger
-            } finally {
-                iter.remove();
+            if (read instanceof byte[]) {
+                String commend = new String((byte[]) read, UTF8);
             }
-        }
-    }
-
-    public static void handleAccept(SelectionKey key) throws IOException {
-        ServerSocketChannel ssChannel = (ServerSocketChannel) key.channel();
-        SocketChannel sc = ssChannel.accept();
-        sc.configureBlocking(false);
-        sc.register(key.selector(), SelectionKey.OP_READ, ByteBuffer.allocateDirect(BUF_SIZE));
-    }
-
-    public static void handleRead(SelectionKey key) throws IOException {
-        SocketChannel sc = (SocketChannel) key.channel();
-        ByteBuffer buf = (ByteBuffer) key.attachment();
-        long bytesRead = sc.read(buf);
-        while (bytesRead > 0) {
-            buf.flip();
-            while (buf.hasRemaining()) {
-                System.out.print((char) buf.get());
+            if (read instanceof Collection) {
+                Collection list = (Collection) read;
             }
-            System.out.println();
-            buf.clear();
-            bytesRead = sc.read(buf);
-        }
-        if (bytesRead == -1) {
-            sc.close();
+            if (read instanceof Number) {
+                long val = ((Number) read).longValue();
+            }
+            throw new UnsupportedOperationException("未完待续");
         }
     }
 }
