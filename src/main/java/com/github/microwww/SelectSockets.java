@@ -5,7 +5,6 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.channels.*;
 import java.util.Iterator;
-import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class SelectSockets {
 
@@ -24,9 +23,11 @@ public abstract class SelectSockets {
             while (true) {
                 try {
                     tryRun();
-                } catch (IOException e) {
-                    // TODO :: logger !
-                    e.printStackTrace();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                } catch (RuntimeException ex) {
+                    ex.printStackTrace();
+                    System.exit(1);
                 }
             }
         };
@@ -50,6 +51,7 @@ public abstract class SelectSockets {
                     readableHandler(key);
                 }
             } catch (IOException ex) { // 远程强制关闭了一个连接
+                ex.printStackTrace();
                 closeChannel(key);
             }
             it.remove();
@@ -72,8 +74,15 @@ public abstract class SelectSockets {
     }
 
     protected void closeChannel(SelectionKey key) throws IOException {
-        System.out.println("Remote KILLED : " + key.channel());
-        key.channel().close();
+        // key.cancel();
+        SocketChannel channel = (SocketChannel) key.channel();
+        try {
+            InetSocketAddress add = (InetSocketAddress) channel.getRemoteAddress();
+            System.out.println(String.format("Remote KILLED : %s:%d", add.getHostName(), add.getPort()));
+            channel.close();
+        } catch (Exception e) {
+            System.out.println(String.format("Remote KILLED : %s", channel));
+        }
     }
 
     public ServerSocket getServerSocket() {
