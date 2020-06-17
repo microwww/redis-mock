@@ -1,19 +1,22 @@
 package com.github.microwww.protocal;
 
+import com.github.microwww.protocal.operation.StringOperation;
+import com.github.microwww.protocal.operation.ConnectionOperation;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class ServiceProtocol {
 
-    ServerOperation serverOperation;
-    DatabaseOperation databaseOperation;
+    ConnectionOperation serverOperation;
+    StringOperation databaseOperation;
 
     private static final ServiceProtocol protocol = new ServiceProtocol();
 
     public ServiceProtocol() {
-        databaseOperation = new DatabaseOperation();
-        serverOperation = new ServerOperation();
+        databaseOperation = new StringOperation();
+        serverOperation = new ConnectionOperation();
     }
 
     public static void exec(RedisRequest request) {
