@@ -1,5 +1,7 @@
 package com.github.microwww;
 
+import com.github.microwww.protocal.RedisRequest;
+import com.github.microwww.protocal.ServiceProtocol;
 import com.github.microwww.util.Assert;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisInputStream;
@@ -30,24 +32,18 @@ public class RedisServer extends SelectSocketsThreadPool {
         super(pool);
     }
 
+    public void listener(String host, int port) throws IOException {
+        Runnable config = this.config(host, port);
+        pool.execute(config);
+    }
+
     @Override
     protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
-        RedisInputStream in = new RedisInputStream(Channels.newInputStream(channel));
+        RedisInputStream in = new RedisInputStream(new ChannelInputStream(channel, lock));
         while (in.available() > 0) {
             Object read = Protocol.read(in);
-            if(read == null){
-                continue;
-            }
-            if (read instanceof byte[]) {
-                String commend = new String((byte[]) read, UTF8);
-            }
-            if (read instanceof Collection) {
-                Collection list = (Collection) read;
-            }
-            if (read instanceof Number) {
-                long val = ((Number) read).longValue();
-            }
-            throw new UnsupportedOperationException("未完待续");
+            ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+            ServiceProtocol.exec(new RedisRequest(channel, req));
         }
     }
 }
