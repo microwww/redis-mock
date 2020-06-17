@@ -16,6 +16,10 @@ public final class HashKey implements Serializable {
         this.hash = key;
     }
 
+    public byte[] getKey() {
+        return new BigInteger(hash, 16).toByteArray();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

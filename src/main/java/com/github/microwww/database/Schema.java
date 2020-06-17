@@ -7,12 +7,6 @@ public class Schema {
     private final int size;
     private final RedisDatabase[] redisDatabases;
 
-    private static final Schema def = new Schema();
-
-    public static Schema getDef() {
-        return def;
-    }
-
     public Schema() {
         this(DEFAULT_SCHEMA_SIZE);
     }

@@ -14,7 +14,7 @@ public class DatabaseOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length == 1, "Must only one argument");
         int index = Integer.valueOf(new String(args[0].getByteArray())).intValue();
-        int db = Schema.getDef().getSize();
+        int db = request.getServer().getSchema().getSize();
         if (index >= db || index < 0) {
             RedisOutputProtocol.writerError(request.getOutputStream(), "ERR", "DB index is out of range");
         } else {

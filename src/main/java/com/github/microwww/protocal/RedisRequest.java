@@ -46,6 +46,10 @@ public class RedisRequest {
 
     public RedisDatabase getDatabase() {
         int index = this.getSessions().getDatabase();
-        return Schema.getDef().getRedisDatabases(index);
+        return server.getSchema().getRedisDatabases(index);
+    }
+
+    public RedisServer getServer() {
+        return server;
     }
 }

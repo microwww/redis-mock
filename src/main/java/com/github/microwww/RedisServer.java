@@ -1,5 +1,6 @@
 package com.github.microwww;
 
+import com.github.microwww.database.Schema;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.protocal.RequestSession;
 import com.github.microwww.protocal.ServiceProtocol;
@@ -17,9 +18,16 @@ public class RedisServer extends SelectSocketsThreadPool {
 
     private static final Executor pool = Executors.newFixedThreadPool(5);
     private final Map<SocketChannel, RequestSession> sessions = new ConcurrentHashMap();
+    private Schema schema;
 
     public RedisServer() {
         super(pool);
+    }
+
+    public void configScheme(int size) throws IOException {
+        if (this.schema == null) {
+            this.schema = new Schema(size);
+        }
     }
 
     public void listener(String host, int port) throws IOException {
@@ -45,5 +53,16 @@ public class RedisServer extends SelectSocketsThreadPool {
 
     public RequestSession getSession(SocketChannel channel) {
         return sessions.get(channel);
+    }
+
+    public Schema getSchema() {
+        if (schema == null) {
+            synchronized (this) {
+                if (schema == null) {
+                    schema = new Schema();
+                }
+            }
+        }
+        return schema;
     }
 }
