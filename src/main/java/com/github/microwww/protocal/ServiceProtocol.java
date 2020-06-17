@@ -26,13 +26,22 @@ public class ServiceProtocol {
             Method method = protocol.getClass().getMethod(cmd.toLowerCase(), RedisRequest.class);
             method.invoke(protocol, request);
         } catch (NoSuchMethodException e) {
-            throw new UnsupportedOperationException("Not support this command :" + cmd, e);
+            throw new UnsupportedOperationException("Not support this command : " + cmd, e);
         } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new UnsupportedOperationException("Not allow run this command :" + cmd, e);
+            throw new UnsupportedOperationException("Not allow run this command : " + cmd, e);
         }
     }
 
     public void ping(RedisRequest request) throws IOException {
         serverOperation.ping(request);
     }
+
+    public void select(RedisRequest request) throws IOException {
+        databaseOperation.select(request);
+    }
+
+    public void set(RedisRequest request) throws IOException {
+        databaseOperation.set(request);
+    }
+
 }

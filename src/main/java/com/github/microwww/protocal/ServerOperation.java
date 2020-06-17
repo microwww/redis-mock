@@ -12,6 +12,5 @@ public class ServerOperation {
         Assert.isTrue(request.getArgs().length == 0, "Not need other arguments");
         RedisOutputStream out = request.getOutputStream();
         RedisOutputProtocol.writer(out, Protocol.Keyword.PONG.name());
-        out.flush();
     }
 }

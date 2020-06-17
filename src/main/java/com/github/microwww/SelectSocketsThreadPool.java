@@ -1,7 +1,6 @@
 package com.github.microwww;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
@@ -10,7 +9,7 @@ import java.util.concurrent.Executor;
 
 public class SelectSocketsThreadPool extends SelectSockets {
 
-    private Map<String, TaskThread> tasks = new ConcurrentHashMap();
+    private Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap();
     private final Executor pool;
 
     public SelectSocketsThreadPool(Executor pool) {
@@ -25,7 +24,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 return;
             }
             try {
-                String k = key(channel);
+                SocketChannel k = key(channel);
                 TaskThread thread = new TaskThread();
                 boolean doing = false;
                 TaskThread tt = tasks.get(k);
@@ -54,9 +53,8 @@ public class SelectSocketsThreadPool extends SelectSockets {
         throw new UnsupportedOperationException("暂未实现");
     }
 
-    public static String key(SocketChannel channel) throws IOException {
-        InetSocketAddress address = (InetSocketAddress) channel.getRemoteAddress();
-        return address.getHostName() + ":" + address.getPort();
+    public static SocketChannel key(SocketChannel channel) {
+        return channel;
     }
 
 }

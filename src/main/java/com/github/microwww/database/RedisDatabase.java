@@ -1,6 +1,4 @@
-package com.github.microwww;
-
-import com.github.microwww.database.AbstractValueData;
+package com.github.microwww.database;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -12,5 +10,8 @@ public class RedisDatabase {
     ConcurrentMap<byte[], AbstractValueData<?>> map = new ConcurrentHashMap();
     ReadWriteLock lock = new ReentrantReadWriteLock();
 
+    public void put(byte[] key, byte[] val) {
+        map.put(key, new DataByte(val, AbstractValueData.NEVER_EXPIRE));
+    }
 
 }

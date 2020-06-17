@@ -17,8 +17,12 @@ public class DatabaseTest {
         InetSocketAddress add = (InetSocketAddress) redisServer.getServerSocket().getLocalSocketAddress();
 
         Jedis jd = new Jedis(add.getHostName(), add.getPort());
-        String ping = jd.ping();
-        Assert.assertEquals(ping, Protocol.Keyword.PONG.name());
+        String result = jd.ping();
+        Assert.assertEquals(result, Protocol.Keyword.PONG.name());
+        result = jd.select(1);
+        Assert.assertEquals(result, Protocol.Keyword.OK.name());
+        result = jd.set("test", "daatata");
+        Assert.assertEquals(result, Protocol.Keyword.OK.name());
         jd.close();
     }
 }

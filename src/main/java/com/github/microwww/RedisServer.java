@@ -1,32 +1,22 @@
 package com.github.microwww;
 
 import com.github.microwww.protocal.RedisRequest;
+import com.github.microwww.protocal.RequestSession;
 import com.github.microwww.protocal.ServiceProtocol;
-import com.github.microwww.util.Assert;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisInputStream;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class RedisServer extends SelectSocketsThreadPool {
-    public static final String UTF8 = "UTF-8";
-
-    private static final int PORT = Protocol.DEFAULT_PORT;
-    private static final String HOST = Protocol.DEFAULT_HOST;
-    private static final int BUF_SIZE = 1024 * 8;
-    private static final int TIMEOUT = 1000;
 
     private static final Executor pool = Executors.newFixedThreadPool(5);
+    private final Map<SocketChannel, RequestSession> sessions = new ConcurrentHashMap();
 
     public RedisServer() {
         super(pool);
@@ -43,7 +33,17 @@ public class RedisServer extends SelectSocketsThreadPool {
         while (in.available() > 0) {
             Object read = Protocol.read(in);
             ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
-            ServiceProtocol.exec(new RedisRequest(channel, req));
+            ServiceProtocol.exec(new RedisRequest(this, channel, req));
         }
+    }
+
+    @Override
+    protected void acceptHandler(SocketChannel channel) throws IOException {
+        super.acceptHandler(channel);
+        sessions.put(key(channel), new RequestSession());
+    }
+
+    public RequestSession getSession(SocketChannel channel) {
+        return sessions.get(channel);
     }
 }

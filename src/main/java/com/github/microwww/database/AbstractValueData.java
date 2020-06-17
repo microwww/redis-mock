@@ -1,15 +1,17 @@
 package com.github.microwww.database;
 
 public abstract class AbstractValueData<T> {
-    int exp = -1;
+    public static final int NEVER_EXPIRE = -1;
+
+    int expire = NEVER_EXPIRE;
     T data;
 
-    public int getExp() {
-        return exp;
+    public int getExpire() {
+        return expire;
     }
 
-    public void setExp(int exp) {
-        this.exp = exp;
+    public void setExpire(int expire) {
+        this.expire = expire;
     }
 
     public T getData() {
