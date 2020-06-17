@@ -51,6 +51,10 @@ public class DatabaseOperation {
         HashKey key = new HashKey(args[0].getByteArray());
         RedisDatabase db = request.getDatabase();
         Optional<DataByte> val = db.get(key, DataByte.class);
-        RedisOutputProtocol.writer(request.getOutputStream(), val.get().getData());
+        if (val.isPresent()) {
+            RedisOutputProtocol.writer(request.getOutputStream(), val.get().getData());
+        } else {
+            RedisOutputProtocol.writerNull(request.getOutputStream());
+        }
     }
 }
