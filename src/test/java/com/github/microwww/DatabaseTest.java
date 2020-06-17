@@ -21,8 +21,10 @@ public class DatabaseTest {
         Assert.assertEquals(result, Protocol.Keyword.PONG.name());
         result = jd.select(1);
         Assert.assertEquals(result, Protocol.Keyword.OK.name());
-        result = jd.set("test", "daatata");
-        Assert.assertEquals(result, Protocol.Keyword.OK.name());
+        String val = "daatata";
+        result = jd.set("test", val);
+        result = jd.get("test");
+        Assert.assertEquals(result, val);
         jd.close();
     }
 }
