@@ -1,5 +1,6 @@
 package com.github.microwww.protocal.operation;
 
+import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.util.Assert;
@@ -8,7 +9,7 @@ import redis.clients.util.RedisOutputStream;
 
 import java.io.IOException;
 
-public class ConnectionOperation {
+public class ConnectionOperation extends AbstractOperation {
 
     public void ping(RedisRequest request) throws IOException {
         Assert.isTrue(request.getArgs().length == 0, "Not need other arguments");

@@ -1,9 +1,9 @@
 package com.github.microwww;
 
 import com.github.microwww.database.Schema;
+import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.protocal.RequestSession;
-import com.github.microwww.protocal.ServiceProtocol;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisInputStream;
 
@@ -24,9 +24,9 @@ public class RedisServer extends SelectSocketsThreadPool {
         super(pool);
     }
 
-    public void configScheme(int size) throws IOException {
+    public void configScheme(int size, AbstractOperation... operation) throws IOException {
         if (this.schema == null) {
-            this.schema = new Schema(size);
+            this.schema = new Schema(size, operation);
         }
     }
 
@@ -36,12 +36,20 @@ public class RedisServer extends SelectSocketsThreadPool {
     }
 
     @Override
+    public Runnable config(String host, int port) throws IOException {
+        Runnable run = super.config(host, port);
+        return () -> {
+            run.run();
+        };
+    }
+
+    @Override
     protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
         RedisInputStream in = new RedisInputStream(new ChannelInputStream(channel, lock));
         while (in.available() > 0) {
             Object read = Protocol.read(in);
             ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
-            ServiceProtocol.exec(new RedisRequest(this, channel, req));
+            this.getSchema().exec(new RedisRequest(this, channel, req));
         }
     }
 
@@ -59,7 +67,7 @@ public class RedisServer extends SelectSocketsThreadPool {
         if (schema == null) {
             synchronized (this) {
                 if (schema == null) {
-                    schema = new Schema();
+                    schema = new Schema(Schema.DEFAULT_SCHEMA_SIZE);
                 }
             }
         }

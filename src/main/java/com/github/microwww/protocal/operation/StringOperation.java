@@ -2,6 +2,7 @@ package com.github.microwww.protocal.operation;
 
 import com.github.microwww.ExpectRedisRequest;
 import com.github.microwww.database.*;
+import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.util.Assert;
@@ -10,7 +11,7 @@ import redis.clients.jedis.Protocol;
 import java.io.IOException;
 import java.util.Optional;
 
-public class StringOperation {
+public class StringOperation extends AbstractOperation {
 
     public void select(RedisRequest request) throws IOException {
         ExpectRedisRequest[] args = request.getArgs();
