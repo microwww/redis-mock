@@ -18,4 +18,18 @@ public class RedisOutputProtocol {
         out.writeAsciiCrLf(level + " " + simple);
         out.flush();
     }
+
+    public static void writer(RedisOutputStream out, int val) throws IOException {
+        out.write(Protocol.COLON_BYTE);
+        out.writeIntCrLf(val);
+        out.flush();
+    }
+
+    public static void writer(RedisOutputStream out, byte[] val) throws IOException {
+        out.write(Protocol.DOLLAR_BYTE);
+        out.writeIntCrLf(val.length);
+        out.write(val);
+        out.writeCrLf();
+        out.flush();
+    }
 }

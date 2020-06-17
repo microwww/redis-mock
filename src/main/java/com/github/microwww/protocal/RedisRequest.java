@@ -3,6 +3,8 @@ package com.github.microwww.protocal;
 import com.github.microwww.ChannelOutputStream;
 import com.github.microwww.ExpectRedisRequest;
 import com.github.microwww.RedisServer;
+import com.github.microwww.database.RedisDatabase;
+import com.github.microwww.database.Schema;
 import redis.clients.util.RedisOutputStream;
 
 import java.nio.channels.SocketChannel;
@@ -40,5 +42,10 @@ public class RedisRequest {
 
     public RequestSession getSessions() {
         return server.getSession(channel);
+    }
+
+    public RedisDatabase getDatabase() {
+        int index = this.getSessions().getDatabase();
+        return Schema.getDef().getRedisDatabases(index);
     }
 }

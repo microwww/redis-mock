@@ -44,4 +44,12 @@ public class ServiceProtocol {
         databaseOperation.set(request);
     }
 
+    public void expire(RedisRequest request) throws IOException {
+        databaseOperation.expire(request);
+    }
+
+    public void get(RedisRequest request) throws IOException {
+        databaseOperation.get(request);
+    }
+
 }
