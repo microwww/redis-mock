@@ -2,6 +2,7 @@ package com.github.microwww.protocal;
 
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisOutputStream;
+import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 
@@ -36,6 +37,20 @@ public class RedisOutputProtocol {
         out.writeIntCrLf(val.length);
         out.write(val);
         out.writeCrLf();
+        out.flush();
+    }
+
+    public static void writerMulti(RedisOutputStream out, String... args) throws IOException {
+        out.write(Protocol.ASTERISK_BYTE);
+        out.writeIntCrLf(args.length);
+
+        for (String arg : args) {
+            byte[] val = SafeEncoder.encode(arg);
+            out.write(Protocol.DOLLAR_BYTE);
+            out.writeIntCrLf(val.length);
+            out.write(val);
+            out.writeCrLf();
+        }
         out.flush();
     }
 

@@ -4,7 +4,8 @@ import com.github.microwww.ChannelOutputStream;
 import com.github.microwww.ExpectRedisRequest;
 import com.github.microwww.RedisServer;
 import com.github.microwww.database.RedisDatabase;
-import com.github.microwww.database.Schema;
+import com.github.microwww.util.Assert;
+import com.github.microwww.util.NotNull;
 import redis.clients.util.RedisOutputStream;
 
 import java.nio.channels.SocketChannel;
@@ -32,6 +33,7 @@ public class RedisRequest {
         return command;
     }
 
+    @NotNull
     public ExpectRedisRequest[] getArgs() {
         return args;
     }
@@ -47,6 +49,12 @@ public class RedisRequest {
     public RedisDatabase getDatabase() {
         int index = this.getSessions().getDatabase();
         return server.getSchema().getRedisDatabases(index);
+    }
+
+    public void expectArgumentsCount(int expect) {
+        int count = this.getArgs().length;
+        Assert.isTrue(count == expect,
+                String.format("The number of arguments is not as expected, expect: %d, BUT: %d", expect, count));
     }
 
     public RedisServer getServer() {

@@ -4,6 +4,7 @@ import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.protocal.operation.ConnectionOperation;
+import com.github.microwww.protocal.operation.ServerOperation;
 import com.github.microwww.protocal.operation.StringOperation;
 import com.github.microwww.util.Assert;
 
@@ -17,7 +18,8 @@ public class Schema {
     public static final int DEFAULT_SCHEMA_SIZE = 16;
     private static AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[]{
             new ConnectionOperation(),
-            new StringOperation()
+            new StringOperation(),
+            new ServerOperation()
     };
 
     private final int size;

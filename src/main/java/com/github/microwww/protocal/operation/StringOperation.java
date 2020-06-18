@@ -13,19 +13,6 @@ import java.util.Optional;
 
 public class StringOperation extends AbstractOperation {
 
-    public void select(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
-        Assert.isTrue(args.length == 1, "Must only one argument");
-        int index = Integer.parseInt(new String(args[0].getByteArray()));
-        int db = request.getServer().getSchema().getSize();
-        if (index >= db || index < 0) {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "DB index is out of range");
-        } else {
-            request.getSessions().setDatabase(index);
-            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
-        }
-    }
-
     public void set(RedisRequest request) throws IOException {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length == 2, "Must has tow arguments");
