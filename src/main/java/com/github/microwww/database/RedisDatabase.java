@@ -15,6 +15,14 @@ public class RedisDatabase {
         map.put(key, new DataByte(val, AbstractValueData.NEVER_EXPIRE));
     }
 
+    public <T extends AbstractValueData> T putIfAbsent(HashKey key, T data) {
+        return (T) map.putIfAbsent(key, data);
+    }
+
+    public void put(HashKey key, AbstractValueData data) {
+        map.putIfAbsent(key, data);
+    }
+
     public Optional<DataByte> getBytes(HashKey key) {
         return this.get(key, DataByte.class);
     }

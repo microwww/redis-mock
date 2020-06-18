@@ -4,6 +4,7 @@ import com.github.microwww.RedisServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.UUID;
 
 public class Server {
 
@@ -20,5 +21,13 @@ public class Server {
             }
         }
         return (InetSocketAddress) server.getServerSocket().getLocalSocketAddress();
+    }
+
+    public static String[] random(int count) {
+        String[] res = new String[count];
+        for (int i = 0; i < count; i++) {
+            res[i] = UUID.randomUUID().toString();
+        }
+        return res;
     }
 }

@@ -1,5 +1,8 @@
 package com.github.microwww.database;
 
+import com.github.microwww.util.Assert;
+import com.github.microwww.util.NotNull;
+
 public abstract class AbstractValueData<T> {
     public static final int NEVER_EXPIRE = -1;
 
@@ -26,11 +29,13 @@ public abstract class AbstractValueData<T> {
         this.expire = System.currentTimeMillis() + expire * 1000;
     }
 
+    @NotNull
     public T getData() {
         return data;
     }
 
-    public void setData(T data) {
+    public void setData(@NotNull T data) {
+        Assert.isNotNull(data, "Not null");
         this.data = data;
     }
 
