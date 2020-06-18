@@ -19,7 +19,7 @@ public class StringOperation extends AbstractOperation {
         int index = Integer.parseInt(new String(args[0].getByteArray()));
         int db = request.getServer().getSchema().getSize();
         if (index >= db || index < 0) {
-            RedisOutputProtocol.writerError(request.getOutputStream(), "ERR", "DB index is out of range");
+            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "DB index is out of range");
         } else {
             request.getSessions().setDatabase(index);
             RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());

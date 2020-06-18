@@ -13,9 +13,9 @@ public class RedisOutputProtocol {
         out.flush();
     }
 
-    public static void writerError(RedisOutputStream out, String level, String simple) throws IOException {
+    public static void writerError(RedisOutputStream out, Level level, String simple) throws IOException {
         out.write(Protocol.MINUS_BYTE);
-        out.writeAsciiCrLf(level + " " + simple);
+        out.writeAsciiCrLf(level.name() + " " + simple);
         out.flush();
     }
 
@@ -37,5 +37,9 @@ public class RedisOutputProtocol {
         out.write(val);
         out.writeCrLf();
         out.flush();
+    }
+
+    public enum Level {
+        ERR, WARN, FAIL
     }
 }

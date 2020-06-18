@@ -12,4 +12,8 @@ public abstract class Assert {
             throw new IllegalArgumentException(error);
         }
     }
+
+    public static void notHere(String message, @NotNull Exception e) {
+        throw new RuntimeException(message, e);
+    }
 }
