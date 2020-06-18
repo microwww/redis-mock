@@ -3,9 +3,7 @@ package com.github.microwww.database;
 import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
-import com.github.microwww.protocal.operation.ConnectionOperation;
-import com.github.microwww.protocal.operation.ServerOperation;
-import com.github.microwww.protocal.operation.StringOperation;
+import com.github.microwww.protocal.operation.*;
 import com.github.microwww.util.Assert;
 
 import java.io.IOException;
@@ -18,8 +16,16 @@ public class Schema {
     public static final int DEFAULT_SCHEMA_SIZE = 16;
     private static AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[]{
             new ConnectionOperation(),
+            new HashOperation(),
+            new KeyOperation(),
+            new ListOperation(),
+            new PubSubOperation(),
+            new ScriptOperation(),
+            new ServerOperation(),
+            new SetOperation(),
+            new SortedSetOperation(),
             new StringOperation(),
-            new ServerOperation()
+            new TransactionOperation()
     };
 
     private final int size;

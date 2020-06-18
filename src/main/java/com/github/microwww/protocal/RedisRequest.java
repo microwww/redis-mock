@@ -57,6 +57,18 @@ public class RedisRequest {
                 String.format("The number of arguments is not as expected, expect: %d, BUT: %d", expect, count));
     }
 
+    public void expectArgumentsCountBigger(int expect) {
+        int count = this.getArgs().length;
+        Assert.isTrue(count > expect,
+                String.format("The number of arguments is not as expected, expect: > %d, BUT: = %d", expect, count));
+    }
+
+    public void expectArgumentsCountLitter(int expect) {
+        int count = this.getArgs().length;
+        Assert.isTrue(count < expect,
+                String.format("The number of arguments is not as expected, expect: < %d, BUT: = %d", expect, count));
+    }
+
     public RedisServer getServer() {
         return server;
     }

@@ -1,5 +1,6 @@
 package com.github.microwww;
 
+import com.github.microwww.protocal.operation.Server;
 import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
@@ -14,9 +15,7 @@ public class DatabaseTest {
 
     @Test
     public void testConnection() throws IOException {
-        RedisServer redisServer = new RedisServer();
-        redisServer.listener("localhost", 0);
-        InetSocketAddress add = (InetSocketAddress) redisServer.getServerSocket().getLocalSocketAddress();
+        InetSocketAddress add = Server.startListener();
 
         Jedis jd = new Jedis(add.getHostName(), add.getPort(), 1000);
         String result = jd.ping();
@@ -24,14 +23,14 @@ public class DatabaseTest {
         result = jd.select(1);
         Assert.assertEquals(result, Protocol.Keyword.OK.name());
         String val = "daatata";
-        result = jd.set("test", val);
+        jd.set("test", val);
         result = jd.get("test");
         Assert.assertEquals(result, val);
-        result = jd.select(2);
+        jd.select(2);
         result = jd.get("test");
         Assert.assertNull(result);
         try {
-            result = jd.echo("ee");
+            jd.echo("ee");
         } catch (JedisDataException e) {
             result = jd.ping();
             Assert.assertEquals(result, Protocol.Keyword.PONG.name());
