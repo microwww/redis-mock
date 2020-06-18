@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RedisDatabase {
 
-    ConcurrentMap<HashKey, AbstractValueData<?>> map = new ConcurrentHashMap();
+    ConcurrentMap<HashKey, AbstractValueData<?>> map = new ConcurrentHashMap<>();
     ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public void put(HashKey key, byte[] val) {
@@ -16,11 +16,11 @@ public class RedisDatabase {
     }
 
     public <T extends AbstractValueData> T putIfAbsent(HashKey key, T data) {
+        AbstractValueData<?> dt = map.get(key);
+        if (dt.isExpired()) {
+            map.remove(key, dt);
+        }
         return (T) map.putIfAbsent(key, data);
-    }
-
-    public void put(HashKey key, AbstractValueData data) {
-        map.putIfAbsent(key, data);
     }
 
     public Optional<DataByte> getBytes(HashKey key) {
@@ -40,15 +40,8 @@ public class RedisDatabase {
         return Optional.ofNullable(val);
     }
 
-    public int size() {
-        return map.size();
-    }
-
     public AbstractValueData<?> remove(HashKey key) {
         return map.remove(key);
     }
 
-    public void clear() {
-        map.clear();
-    }
 }
