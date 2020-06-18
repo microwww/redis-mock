@@ -1,5 +1,7 @@
 package com.github.microwww;
 
+import redis.clients.util.SafeEncoder;
+
 import java.util.List;
 
 public class ExpectRedisRequest {
@@ -14,6 +16,10 @@ public class ExpectRedisRequest {
             return (byte[]) origin;
         }
         throw new IllegalArgumentException("Not your expect type : " + origin);
+    }
+
+    public String getByteArray2string() {
+        return SafeEncoder.encode(this.getByteArray());
     }
 
     public Long getLong() {
