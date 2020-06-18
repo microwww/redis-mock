@@ -1,7 +1,9 @@
 package com.github.microwww.protocal.operation;
 
 import com.github.microwww.ExpectRedisRequest;
-import com.github.microwww.database.*;
+import com.github.microwww.database.DataByte;
+import com.github.microwww.database.HashKey;
+import com.github.microwww.database.RedisDatabase;
 import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
@@ -20,19 +22,6 @@ public class StringOperation extends AbstractOperation {
         HashKey key = new HashKey(args[0].getByteArray());
         db.put(key, args[1].getByteArray());
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
-    }
-
-    public void expire(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
-        Assert.isTrue(args.length == 2, "Must has tow arguments");
-        HashKey key = new HashKey(args[0].getByteArray());
-        int exp = Integer.parseInt(new String(args[1].getByteArray()));
-        RedisDatabase db = request.getDatabase();
-        Optional<AbstractValueData<?>> val = db.get(key);
-        val.ifPresent(e -> {//
-            e.setSecondsExpire(exp);
-        });
-        RedisOutputProtocol.writer(request.getOutputStream(), 1);
     }
 
     public void get(RedisRequest request) throws IOException {
