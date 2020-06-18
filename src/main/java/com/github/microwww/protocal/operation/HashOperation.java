@@ -71,7 +71,6 @@ public class HashOperation extends AbstractOperation {
     }
 
     private Optional<DataHash> getMap(RedisRequest request) {
-        request.expectArgumentsCountBigger(0);
         ExpectRedisRequest[] args = request.getArgs();
         String key = args[0].getByteArray2string();
         return request.getDatabase().get(new HashKey(key), DataHash.class);

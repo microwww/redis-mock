@@ -17,7 +17,7 @@ public class RedisDatabase {
 
     public <T extends AbstractValueData> T putIfAbsent(HashKey key, T data) {
         AbstractValueData<?> dt = map.get(key);
-        if (dt.isExpired()) {
+        if (dt !=null && dt.isExpired()) {
             map.remove(key, dt);
         }
         return (T) map.putIfAbsent(key, data);
