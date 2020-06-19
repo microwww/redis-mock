@@ -40,7 +40,7 @@ public class ListOperation extends AbstractOperation {
         DataList list = this.getOrCreateList(request);
         ExpectRedisRequest[] args = request.getArgs();
         for (int i = 1; i < args.length; i++) {
-            list.getData().add(args[i].getByteArray());
+            list.rightAdd(args[i].getByteArray());
         }
         RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
     }
@@ -50,16 +50,11 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCount(1);
         Optional<DataList> opt = this.getList(request);
         if (opt.isPresent()) {
-            List<byte[]> list = opt.get().getData();
-            while (true) {
-                try {
-                    if (!list.isEmpty()) {
-                        byte[] rm = list.remove(list.size() - 1);
-                        RedisOutputProtocol.writer(request.getOutputStream(), rm);
-                        return;
-                    }
-                } catch (IndexOutOfBoundsException i) {// ignore
-                }
+            try {
+                byte[] rm = opt.get().rightPop();
+                RedisOutputProtocol.writer(request.getOutputStream(), rm);
+                return;
+            } catch (IndexOutOfBoundsException i) {// ignore
             }
         }
         RedisOutputProtocol.writerNull(request.getOutputStream());

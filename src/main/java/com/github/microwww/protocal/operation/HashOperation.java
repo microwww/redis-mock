@@ -21,7 +21,7 @@ public class HashOperation extends AbstractOperation {
             ExpectRedisRequest[] args = request.getArgs();
             for (int i = 1; i < args.length; i++) {
                 String hk = args[i].getByteArray2string();
-                byte[] remove = e.getData().remove(new HashKey(hk));
+                byte[] remove = e.remove(new HashKey(hk));
                 if (remove != null) {
                     count++;
                 }
@@ -57,14 +57,14 @@ public class HashOperation extends AbstractOperation {
             if (data == null) {
                 data = def;
             }
-            opt = Optional.of(data == null ? def : data);
+            opt = Optional.of(data);
         }
 
         DataHash data = opt.get();
         String hk = args[1].getByteArray2string();
         byte[] val = args[2].getByteArray();
         byte[] origin = data.getData().get(new HashKey(hk));
-        data.getData().put(new HashKey(hk), val);
+        data.put(new HashKey(hk), val);
 
         // new: 1, over-write: 0
         RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
