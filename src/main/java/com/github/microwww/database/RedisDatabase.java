@@ -3,13 +3,10 @@ package com.github.microwww.database;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RedisDatabase {
 
     ConcurrentMap<HashKey, AbstractValueData<?>> map = new ConcurrentHashMap<>();
-    ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public void put(HashKey key, byte[] val) {
         map.put(key, new ByteData(val, AbstractValueData.NEVER_EXPIRE));
@@ -40,8 +37,29 @@ public class RedisDatabase {
         return Optional.ofNullable(val);
     }
 
+    //DEL
     public AbstractValueData<?> remove(HashKey key) {
         return map.remove(key);
     }
 
+    //DUMP
+    //EXISTS
+    //EXPIRE
+    //EXPIREAT
+    //KEYS
+    //MIGRATE
+    //MOVE
+    //OBJECT
+    //PERSIST
+    //PEXPIRE
+    //PEXPIREAT
+    //PTTL
+    //RANDOMKEY
+    //RENAME
+    //RENAMENX
+    //RESTORE
+    //SORT
+    //TTL
+    //TYPE
+    //SCAN
 }
