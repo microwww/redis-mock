@@ -1,7 +1,7 @@
 package com.github.microwww.protocal.operation;
 
 import com.github.microwww.ExpectRedisRequest;
-import com.github.microwww.database.DataList;
+import com.github.microwww.database.ListData;
 import com.github.microwww.database.HashKey;
 import com.github.microwww.database.RedisDatabase;
 import com.github.microwww.protocal.AbstractOperation;
@@ -20,7 +20,7 @@ public class ListOperation extends AbstractOperation {
     public void lset(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         ExpectRedisRequest[] args = request.getArgs();
-        Optional<DataList> opt = getList(request);
+        Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             String index = args[1].getByteArray2string();
             try {
@@ -37,7 +37,7 @@ public class ListOperation extends AbstractOperation {
     //RPUSH key value [value ...]
     public void rpush(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(1);
-        DataList list = this.getOrCreateList(request);
+        ListData list = this.getOrCreateList(request);
         ExpectRedisRequest[] args = request.getArgs();
         for (int i = 1; i < args.length; i++) {
             list.rightAdd(args[i].getByteArray());
@@ -48,7 +48,7 @@ public class ListOperation extends AbstractOperation {
     //RPOP key
     public void rpop(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        Optional<DataList> opt = this.getList(request);
+        Optional<ListData> opt = this.getList(request);
         if (opt.isPresent()) {
             try {
                 byte[] rm = opt.get().rightPop();
@@ -64,7 +64,7 @@ public class ListOperation extends AbstractOperation {
     public void lindex(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
         ExpectRedisRequest[] args = request.getArgs();
-        Optional<DataList> opt = getList(request);
+        Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             int index = Integer.parseInt(args[1].getByteArray2string());
             List<byte[]> list = opt.get().getData();
@@ -78,20 +78,20 @@ public class ListOperation extends AbstractOperation {
         }
     }
 
-    private Optional<DataList> getList(RedisRequest request) {
+    private Optional<ListData> getList(RedisRequest request) {
         ExpectRedisRequest[] args = request.getArgs();
         HashKey key = new HashKey(args[0].getByteArray2string());
         RedisDatabase db = request.getDatabase();
-        return db.get(key, DataList.class);
+        return db.get(key, ListData.class);
     }
 
     @NotNull
-    private DataList getOrCreateList(RedisRequest request) {
+    private ListData getOrCreateList(RedisRequest request) {
         HashKey key = new HashKey(request.getArgs()[0].getByteArray2string());
-        Optional<DataList> opt = this.getList(request);
+        Optional<ListData> opt = this.getList(request);
         if (!opt.isPresent()) {
-            DataList d = new DataList();
-            DataList origin = request.getDatabase().putIfAbsent(key, d);
+            ListData d = new ListData();
+            ListData origin = request.getDatabase().putIfAbsent(key, d);
             opt = Optional.of(origin == null ? d : origin);
         }
         return opt.get();

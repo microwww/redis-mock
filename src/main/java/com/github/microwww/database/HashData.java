@@ -8,11 +8,11 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class DataHash extends AbstractValueData<Map<HashKey, byte[]>> {
+public class HashData extends AbstractValueData<Map<HashKey, byte[]>> {
 
     private final Map<HashKey, byte[]> origin;
 
-    public DataHash() {
+    public HashData() {
         this.origin = new ConcurrentHashMap<>();
         this.data = Collections.unmodifiableMap(origin);
     }

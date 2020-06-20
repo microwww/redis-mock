@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class DataList extends AbstractValueData<List<byte[]>> {
+public class ListData extends AbstractValueData<List<byte[]>> {
     private final List<byte[]> origin;
 
-    public DataList() {
+    public ListData() {
         this.origin = new CopyOnWriteArrayList<>();
         this.data = Collections.unmodifiableList(this.origin);
     }

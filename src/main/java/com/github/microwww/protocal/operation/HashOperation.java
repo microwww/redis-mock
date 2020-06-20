@@ -1,7 +1,7 @@
 package com.github.microwww.protocal.operation;
 
 import com.github.microwww.ExpectRedisRequest;
-import com.github.microwww.database.DataHash;
+import com.github.microwww.database.HashData;
 import com.github.microwww.database.HashKey;
 import com.github.microwww.protocal.AbstractOperation;
 import com.github.microwww.protocal.RedisOutputProtocol;
@@ -14,10 +14,10 @@ public class HashOperation extends AbstractOperation {
 
     public void hdel(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(1);
-        Optional<DataHash> data = this.getMap(request);
+        Optional<HashData> data = this.getMap(request);
         int count = 0;
         if (data.isPresent()) {
-            DataHash e = data.get();
+            HashData e = data.get();
             ExpectRedisRequest[] args = request.getArgs();
             for (int i = 1; i < args.length; i++) {
                 String hk = args[i].getByteArray2string();
@@ -34,7 +34,7 @@ public class HashOperation extends AbstractOperation {
         request.expectArgumentsCount(2);
         ExpectRedisRequest[] args = request.getArgs();
         String hk = args[1].getByteArray2string();
-        Optional<DataHash> opt = this.getMap(request);
+        Optional<HashData> opt = this.getMap(request);
         if (opt.isPresent()) {
             byte[] dh = opt.get().getData().get(new HashKey(hk));
             if (dh != null) {
@@ -50,17 +50,17 @@ public class HashOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         String key = args[0].getByteArray2string();
 
-        Optional<DataHash> opt = request.getDatabase().get(new HashKey(key), DataHash.class);
+        Optional<HashData> opt = request.getDatabase().get(new HashKey(key), HashData.class);
         if (!opt.isPresent()) {
-            DataHash def = new DataHash();
-            DataHash data = request.getDatabase().putIfAbsent(new HashKey(key), def);
+            HashData def = new HashData();
+            HashData data = request.getDatabase().putIfAbsent(new HashKey(key), def);
             if (data == null) {
                 data = def;
             }
             opt = Optional.of(data);
         }
 
-        DataHash data = opt.get();
+        HashData data = opt.get();
         String hk = args[1].getByteArray2string();
         byte[] val = args[2].getByteArray();
         byte[] origin = data.getData().get(new HashKey(hk));
@@ -70,9 +70,9 @@ public class HashOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
     }
 
-    private Optional<DataHash> getMap(RedisRequest request) {
+    private Optional<HashData> getMap(RedisRequest request) {
         ExpectRedisRequest[] args = request.getArgs();
         String key = args[0].getByteArray2string();
-        return request.getDatabase().get(new HashKey(key), DataHash.class);
+        return request.getDatabase().get(new HashKey(key), HashData.class);
     }
 }

@@ -4,9 +4,9 @@ import com.github.microwww.util.Assert;
 
 import java.util.Comparator;
 
-public class DataByte extends AbstractValueData<byte[]> {
+public class ByteData extends AbstractValueData<byte[]> {
 
-    public DataByte(byte[] data, int exp) {
+    public ByteData(byte[] data, int exp) {
         Assert.isNotNull(data, "byte[] not null");
         this.data = data;
         this.expire = exp;

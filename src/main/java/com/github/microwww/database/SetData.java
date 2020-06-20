@@ -3,11 +3,11 @@ package com.github.microwww.database;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public class DataSet extends AbstractValueData<Set<byte[]>> {
+public class SetData extends AbstractValueData<Set<byte[]>> {
     private final Set<byte[]> origin;
 
-    public DataSet() {
-        this.origin = new ConcurrentSkipListSet<>(DataByte.COMPARATOR);
+    public SetData() {
+        this.origin = new ConcurrentSkipListSet<>(ByteData.COMPARATOR);
         this.data = Collections.unmodifiableSet(this.origin);
     }
 

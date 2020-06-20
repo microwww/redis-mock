@@ -1,7 +1,7 @@
 package com.github.microwww.protocal.operation;
 
 import com.github.microwww.ExpectRedisRequest;
-import com.github.microwww.database.DataByte;
+import com.github.microwww.database.ByteData;
 import com.github.microwww.database.HashKey;
 import com.github.microwww.database.RedisDatabase;
 import com.github.microwww.protocal.AbstractOperation;
@@ -29,7 +29,7 @@ public class StringOperation extends AbstractOperation {
         Assert.isTrue(args.length == 1, "Must only one argument");
         HashKey key = new HashKey(args[0].getByteArray());
         RedisDatabase db = request.getDatabase();
-        Optional<DataByte> val = db.get(key, DataByte.class);
+        Optional<ByteData> val = db.get(key, ByteData.class);
         if (val.isPresent()) {
             RedisOutputProtocol.writer(request.getOutputStream(), val.get().getData());
         } else {

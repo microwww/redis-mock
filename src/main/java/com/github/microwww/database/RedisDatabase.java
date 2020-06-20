@@ -12,10 +12,10 @@ public class RedisDatabase {
     ReadWriteLock lock = new ReentrantReadWriteLock();
 
     public void put(HashKey key, byte[] val) {
-        map.put(key, new DataByte(val, AbstractValueData.NEVER_EXPIRE));
+        map.put(key, new ByteData(val, AbstractValueData.NEVER_EXPIRE));
     }
 
-    public <T extends AbstractValueData> T putIfAbsent(HashKey key, T data) {
+    public <U, T extends AbstractValueData<U>> T putIfAbsent(HashKey key, T data) {
         AbstractValueData<?> dt = map.get(key);
         if (dt !=null && dt.isExpired()) {
             map.remove(key, dt);
@@ -23,11 +23,11 @@ public class RedisDatabase {
         return (T) map.putIfAbsent(key, data);
     }
 
-    public Optional<DataByte> getBytes(HashKey key) {
-        return this.get(key, DataByte.class);
+    public Optional<ByteData> getBytes(HashKey key) {
+        return this.get(key, ByteData.class);
     }
 
-    public <T extends AbstractValueData> Optional<T> get(HashKey key, Class<T> clazz) {
+    public <U, T extends AbstractValueData<U>> Optional<T> get(HashKey key, Class<T> clazz) {
         return this.get(key).map(e -> (T) e);
     }
 
