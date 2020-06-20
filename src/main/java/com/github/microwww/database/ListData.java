@@ -10,8 +10,17 @@ public class ListData extends AbstractValueData<List<byte[]>> {
     private final List<byte[]> origin;
 
     public ListData() {
-        this.origin = new CopyOnWriteArrayList<>();
-        this.data = Collections.unmodifiableList(this.origin);
+        this(NEVER_EXPIRE);
+    }
+
+    public ListData(int exp) {
+        this(new CopyOnWriteArrayList<>(), exp);
+    }
+
+    public ListData(List<byte[]> origin, int exp) {
+        this.origin = origin;
+        this.data = Collections.unmodifiableList(origin);
+        this.expire = exp;
     }
     //BLPOP
     //BRPOP

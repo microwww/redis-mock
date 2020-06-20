@@ -7,8 +7,17 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
     private final Set<byte[]> origin;
 
     public SetData() {
-        this.origin = new ConcurrentSkipListSet<>(ByteData.COMPARATOR);
+        this(NEVER_EXPIRE);
+    }
+
+    public SetData(int exp) {
+        this(new ConcurrentSkipListSet<>(ByteData.COMPARATOR), exp);
+    }
+
+    public SetData(Set<byte[]> origin, int exp) {
+        this.origin = origin;
         this.data = Collections.unmodifiableSet(this.origin);
+        this.expire = exp;
     }
 
     //SADD

@@ -15,8 +15,9 @@ public class ByteData extends AbstractValueData<byte[]> {
     public static final Comparator<byte[]> COMPARATOR = (o1, o2) -> {
         int length = Math.min(o1.length, o2.length);
         for (int i = 0; i < length; i++) {
-            if (o1[i] != o2[i]) {
-                return o1[i] - o2[i];
+            int cm = Byte.compare(o1[i], o2[i]);
+            if (cm != 0) {
+                return cm;
             }
         }
         return o1.length - o2.length;
