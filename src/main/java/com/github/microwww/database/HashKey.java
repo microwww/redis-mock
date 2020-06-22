@@ -12,10 +12,6 @@ public final class HashKey implements Serializable {
         this.hash = new BigInteger(key).toString(16);
     }
 
-    public HashKey(String key) {
-        this.hash = key;
-    }
-
     public byte[] getKey() {
         return new BigInteger(hash, 16).toByteArray();
     }

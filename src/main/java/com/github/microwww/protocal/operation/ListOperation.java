@@ -80,14 +80,14 @@ public class ListOperation extends AbstractOperation {
 
     private Optional<ListData> getList(RedisRequest request) {
         ExpectRedisRequest[] args = request.getArgs();
-        HashKey key = new HashKey(args[0].getByteArray2string());
+        HashKey key = new HashKey(args[0].getByteArray());
         RedisDatabase db = request.getDatabase();
         return db.get(key, ListData.class);
     }
 
     @NotNull
     private ListData getOrCreateList(RedisRequest request) {
-        HashKey key = new HashKey(request.getArgs()[0].getByteArray2string());
+        HashKey key = new HashKey(request.getArgs()[0].getByteArray());
         Optional<ListData> opt = this.getList(request);
         if (!opt.isPresent()) {
             ListData d = new ListData();
