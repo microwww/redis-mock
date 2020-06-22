@@ -11,7 +11,6 @@ import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -52,10 +51,15 @@ public class KeyOperation extends AbstractOperation {
     //DUMP
     //EXISTS
     public void exists(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(1);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
-        RedisOutputProtocol.writer(request.getOutputStream(), opt.map((e) -> 1).orElse(0));
+        request.expectArgumentsCountBigger(0);
+        ExpectRedisRequest[] args = request.getArgs();
+        long count = Arrays.stream(args).map(e -> {
+            HashKey key = e.byteArray2hashKey();
+            return request.getDatabase().get(key);
+        })//
+                .filter(Optional::isPresent) //
+                .count();
+        RedisOutputProtocol.writer(request.getOutputStream(), count);
     }
 
     //EXPIREAT
@@ -209,7 +213,7 @@ public class KeyOperation extends AbstractOperation {
         HashKey key = request.getArgs()[0].byteArray2hashKey();
         HashKey target = request.getArgs()[1].byteArray2hashKey();
         boolean ok = this.rename(request, key, target, false);
-        RedisOutputProtocol.writer(request.getOutputStream(), true ? 1 : 0);
+        RedisOutputProtocol.writer(request.getOutputStream(), ok ? 1 : 0);
     }
 
     //RESTORE
@@ -240,7 +244,7 @@ public class KeyOperation extends AbstractOperation {
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         if (opt.isPresent()) {
             Object data = opt.get().getData();
-            String type = "string ";
+            String type = "string";
             if (data instanceof ByteData) {
             }
             if (data instanceof HashData) {
