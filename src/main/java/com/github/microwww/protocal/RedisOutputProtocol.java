@@ -26,6 +26,12 @@ public class RedisOutputProtocol {
         out.flush();
     }
 
+    public static void writer(RedisOutputStream out, long val) throws IOException {
+        out.write(Protocol.COLON_BYTE);
+        out.writeAsciiCrLf(val + "");
+        out.flush();
+    }
+
     public static void writerNull(RedisOutputStream out) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         out.writeIntCrLf(-1);
@@ -45,6 +51,11 @@ public class RedisOutputProtocol {
         out.writeIntCrLf(args.length);
 
         for (String arg : args) {
+            if (arg == null) {
+                out.write(Protocol.DOLLAR_BYTE);
+                out.writeIntCrLf(-1);
+                continue;
+            }
             byte[] val = SafeEncoder.encode(arg);
             out.write(Protocol.DOLLAR_BYTE);
             out.writeIntCrLf(val.length);

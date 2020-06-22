@@ -1,5 +1,6 @@
 package com.github.microwww;
 
+import com.github.microwww.database.HashKey;
 import redis.clients.util.SafeEncoder;
 
 import java.util.List;
@@ -20,6 +21,18 @@ public class ExpectRedisRequest {
 
     public String getByteArray2string() {
         return SafeEncoder.encode(this.getByteArray());
+    }
+
+    public int byteArray2int() {
+        return Integer.parseInt(SafeEncoder.encode(this.getByteArray()));
+    }
+
+    public long byteArray2long() {
+        return Long.parseLong(SafeEncoder.encode(this.getByteArray()));
+    }
+
+    public HashKey byteArray2hashKey() {
+        return new HashKey(this.getByteArray());
     }
 
     public Long getLong() {

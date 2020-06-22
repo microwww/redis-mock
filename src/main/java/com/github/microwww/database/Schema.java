@@ -1,6 +1,7 @@
 package com.github.microwww.database;
 
 import com.github.microwww.protocal.AbstractOperation;
+import com.github.microwww.protocal.RedisArgumentsException;
 import com.github.microwww.protocal.RedisOutputProtocol;
 import com.github.microwww.protocal.RedisRequest;
 import com.github.microwww.protocal.operation.*;
@@ -71,6 +72,8 @@ public class Schema {
         String cmd = request.getCommand();
         try {
             this.exec(cmd, request);
+        } catch (RedisArgumentsException error) {
+            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {
             e.printStackTrace();
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR,

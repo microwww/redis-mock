@@ -43,6 +43,6 @@ public abstract class AbstractValueData<T> {
         if (expire < 0) {
             return false;
         }
-        return expire < System.currentTimeMillis();
+        return expire <= System.currentTimeMillis();
     }
 }
