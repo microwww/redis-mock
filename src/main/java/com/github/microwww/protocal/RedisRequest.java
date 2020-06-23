@@ -63,6 +63,16 @@ public class RedisRequest {
                 String.format("The number of arguments is not as expected, expect: > %d, BUT: = %d", expect, count));
     }
 
+    /**
+     *  Greater than or equal to
+     * @param expect
+     */
+    public void expectArgumentsCountGE(int expect) {
+        int count = this.getArgs().length;
+        Assert.isTrue(count >= expect,
+                String.format("The number of arguments is not as expected, expect: >= %d, BUT: = %d", expect, count));
+    }
+
     public void expectArgumentsCountLitter(int expect) {
         int count = this.getArgs().length;
         Assert.isTrue(count < expect,
