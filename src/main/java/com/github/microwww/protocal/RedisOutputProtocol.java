@@ -46,17 +46,16 @@ public class RedisOutputProtocol {
         out.flush();
     }
 
-    public static void writerMulti(RedisOutputStream out, String... args) throws IOException {
+    public static void writerMulti(RedisOutputStream out, byte[]... args) throws IOException {
         out.write(Protocol.ASTERISK_BYTE);
         out.writeIntCrLf(args.length);
 
-        for (String arg : args) {
-            if (arg == null) {
+        for (byte[] val : args) {
+            if (val == null) {
                 out.write(Protocol.DOLLAR_BYTE);
                 out.writeIntCrLf(-1);
                 continue;
             }
-            byte[] val = SafeEncoder.encode(arg);
             out.write(Protocol.DOLLAR_BYTE);
             out.writeIntCrLf(val.length);
             out.write(val);

@@ -13,7 +13,7 @@ public class ServerOperation extends AbstractOperation {
         long time = System.currentTimeMillis();
         long seconds = time / 1_000;
         long micro = time % 1_000;
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), seconds + "", micro + "000");
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), (seconds + "").getBytes(), (micro + "000").getBytes());
     }
 
 }

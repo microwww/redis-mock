@@ -79,14 +79,15 @@ public class KeyOperation extends AbstractOperation {
         patten = patten.replaceAll(Pattern.quote("?"), ".");
         Pattern compile = Pattern.compile(patten);
 
-        List<String> list = new ArrayList<>();
+        List<byte[]> list = new ArrayList<>();
         for (HashKey s : request.getDatabase().getUnmodifiableMap().keySet()) {
-            String key = SafeEncoder.encode(s.getKey());
+            byte[] k = s.getKey();
+            String key = SafeEncoder.encode(k);
             if (compile.matcher(key).matches()) {
-                list.add(key);
+                list.add(k);
             }
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new String[list.size()]));
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
     }
 
     //MIGRATE

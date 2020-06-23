@@ -16,11 +16,11 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> {
         this(NEVER_EXPIRE);
     }
 
-    public HashData(int exp) {
+    public HashData(long exp) {
         this(new ConcurrentHashMap<>(), exp);
     }
 
-    public HashData(Map<HashKey, byte[]> origin, int exp) {
+    public HashData(Map<HashKey, byte[]> origin, long exp) {
         this.origin = origin;
         this.data = Collections.unmodifiableMap(origin);
         this.expire = exp;

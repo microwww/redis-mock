@@ -1,5 +1,9 @@
 package com.github.microwww.database;
 
+import com.github.microwww.ExpectRedisRequest;
+import com.github.microwww.util.Assert;
+
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public abstract class StringData {
@@ -61,6 +65,56 @@ public abstract class StringData {
         return mx;
     }
 
+    public static Optional<ByteData> getSet(RedisDatabase db, HashKey key, byte[] value) {
+        return db.sync(() -> {
+            Optional<ByteData> val = db.get(key, ByteData.class); // check type !!!
+            db.put(key, new ByteData(value, AbstractValueData.NEVER_EXPIRE));
+            return val;
+        });
+    }
+
+    public static int multiSet(RedisDatabase database, ExpectRedisRequest[] args, boolean overWrite) {
+        Assert.isTrue(args.length % 2 == 0, "2x");
+        return database.sync(() -> {
+            if (!overWrite) {
+                for (int i = 0; i < args.length; i += 2) {
+                    HashKey key = args[i].byteArray2hashKey();
+                    Optional<AbstractValueData<?>> opt = database.get(key);
+                    if (opt.isPresent()) {
+                        return 0;
+                    }
+                }
+            }
+            for (int i = 0; i < args.length; i += 2) {
+                HashKey key = args[i].byteArray2hashKey();
+                byte[] val = args[i + 1].getByteArray();
+                database.put(key, val);
+            }
+            return args.length / 2;
+        });
+    }
+
+    public static ByteData setRange(RedisDatabase database, HashKey key, int off, byte[] val) {
+        Assert.isTrue(off >= 0, "offset >= 0");
+        Assert.isTrue(Integer.MAX_VALUE - off > val.length, "Over max int !");
+        return database.sync(() -> {
+            Optional<ByteData> opt = database.get(key, ByteData.class);
+            if (opt.isPresent()) {
+                byte[] org = opt.get().getData();
+                if (org.length < off + val.length) {
+                    byte[] bts = new byte[off + val.length];
+                    System.arraycopy(org, 0, bts, 0, org.length);
+                    opt.get().setData(bts);
+                }
+            } else {
+                opt = Optional.of(new ByteData(new byte[off + val.length], AbstractValueData.NEVER_EXPIRE));
+                database.put(key, opt.get());
+            }
+            System.arraycopy(val, 0, opt.get().getData(), off, val.length);
+            return opt.get();
+        });
+    }
+
     public enum ByteOpt {
         AND {
             @Override
@@ -91,19 +145,32 @@ public abstract class StringData {
     }
 
     //DECR
-    public static int decr(RedisDatabase db, HashKey key, int add) {
+    public static int increase(RedisDatabase db, HashKey key, int add) {
         return db.sync(() -> {
-            Optional<ByteData> opt = db.get(key, ByteData.class);
-            if (!opt.isPresent()) {
-                ByteData b = new ByteData(new byte[]{0}, AbstractValueData.NEVER_EXPIRE);
-                ByteData bd = db.putIfAbsent(key, b);
-                opt = Optional.of(bd == null ? b : bd);
-            }
-            ByteData or = opt.get();
+            ByteData or = getOrInitZero(db, key);
             int num = add + Integer.parseInt(new String(or.getData()));
             or.setData((num + "").getBytes());
             return num;
         });
+    }
+
+    public static BigDecimal increase(RedisDatabase db, HashKey key, double add) {
+        return db.sync(() -> {
+            ByteData or = getOrInitZero(db, key);
+            BigDecimal num = new BigDecimal(new String(or.getData())).add(BigDecimal.valueOf(add));
+            or.setData(num.toPlainString().getBytes());
+            return num;
+        });
+    }
+
+    private static ByteData getOrInitZero(RedisDatabase db, HashKey key) {
+        Optional<ByteData> opt = db.get(key, ByteData.class);
+        if (!opt.isPresent()) {
+            ByteData b = new ByteData(new byte[]{0}, AbstractValueData.NEVER_EXPIRE);
+            ByteData bd = db.putIfAbsent(key, b);
+            opt = Optional.of(bd == null ? b : bd);
+        }
+        return opt.get();
     }
 
     //DECRBY

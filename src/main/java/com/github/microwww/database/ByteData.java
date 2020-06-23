@@ -6,7 +6,7 @@ import java.util.Comparator;
 
 public class ByteData extends AbstractValueData<byte[]> {
 
-    public ByteData(byte[] data, int exp) {
+    public ByteData(byte[] data, long exp) {
         Assert.isNotNull(data, "byte[] not null");
         this.data = data;
         this.expire = exp;
