@@ -1,6 +1,5 @@
 package com.github.microwww;
 
-import com.github.microwww.protocal.operation.Server;
 import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
@@ -8,16 +7,13 @@ import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.util.List;
 
-public class DatabaseTest {
+public class DatabaseTest extends AbstractRedisTest {
 
     @Test
     public void testConnection() throws IOException {
-        InetSocketAddress add = Server.startListener();
-
-        Jedis jd = new Jedis(add.getHostName(), add.getPort(), 1000);
+        Jedis jd = jedis;
         String result = jd.ping();
         Assert.assertEquals(result, Protocol.Keyword.PONG.name());
         result = jd.select(1);

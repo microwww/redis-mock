@@ -1,17 +1,19 @@
 package com.github.microwww;
 
 import com.github.microwww.protocal.operation.Server;
-import org.junit.BeforeClass;
+import org.junit.Before;
+import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 public abstract class AbstractRedisTest {
 
-    protected static InetSocketAddress address;
+    protected Jedis jedis;
 
-    @BeforeClass
-    public static void start() throws IOException {
-        address = Server.startListener();
+    @Before
+    public void init() throws IOException {
+        InetSocketAddress address = Server.startListener();
+        jedis = new Jedis(address.getHostName(), address.getPort(), 1000);
     }
 }

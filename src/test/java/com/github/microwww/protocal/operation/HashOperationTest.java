@@ -1,20 +1,19 @@
 package com.github.microwww.protocal.operation;
 
+import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.UUID;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
-public class HashOperationTest {
+public class HashOperationTest extends AbstractRedisTest {
 
     @Test
     public void hget() throws IOException {
-        InetSocketAddress add = Server.startListener();
-        Jedis jd = new Jedis(add.getHostName(), add.getPort(), 1000);
+        Jedis jd = jedis;
         String[] rs = Server.random(3);
         {// get null
             String hget = jd.hget(rs[0], rs[1]);

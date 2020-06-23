@@ -12,7 +12,6 @@ public class ListOperationTest extends AbstractRedisTest {
 
     @Test
     public void testList() {
-        Jedis jedis = new Jedis(address.getHostName(), address.getPort());
         String[] r = Server.random(6);
 
         {
