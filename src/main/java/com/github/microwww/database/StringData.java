@@ -1,10 +1,12 @@
 package com.github.microwww.database;
 
 import com.github.microwww.ExpectRedisRequest;
+import com.github.microwww.protocal.operation.StringOperation;
 import com.github.microwww.util.Assert;
 import com.github.microwww.util.NotNull;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Optional;
 
 public abstract class StringData {
@@ -167,13 +169,9 @@ public abstract class StringData {
     }
 
     private static ByteData getOrInitZero(RedisDatabase db, HashKey key) {
-        Optional<ByteData> opt = db.get(key, ByteData.class);
-        if (!opt.isPresent()) {
-            ByteData b = new ByteData(new byte[]{0}, AbstractValueData.NEVER_EXPIRE);
-            ByteData bd = db.putIfAbsent(key, b);
-            opt = Optional.of(bd == null ? b : bd);
-        }
-        return opt.get();
+        return db.getOrCreate(key, () -> {
+            return new ByteData(new byte[]{'0'}, AbstractValueData.NEVER_EXPIRE);
+        });
     }
 
     //DECRBY
@@ -190,24 +188,31 @@ public abstract class StringData {
         }).orElse(0);
     }
 
+    public static final byte[] ZERO = new byte[]{};
+
     //GETRANGE
-    public static Optional<String> subString(RedisDatabase db, HashKey key, int from, int includeTo) {
+    public static byte[] subString(RedisDatabase db, HashKey key, int from, int includeTo) {
         Optional<ByteData> opt = db.get(key, ByteData.class);
-        return opt.map(e -> {
-            if (from < includeTo) {
-                return "";
-            }
+        if (opt.isPresent()) {
+            ByteData e = opt.get();
             int start = from;
-            String s = new String(e.getData());
+            int len = e.getData().length;
             if (start < 0) {
-                start += s.length();
+                start += len;
             }
             int end = includeTo;
             if (end < 0) {
-                end += s.length();
+                end += len;
             }
-            return s.substring(Math.min(start, s.length()), Math.min(end + 1, s.length()));
-        });
+            if (start > end) {
+                return ZERO;
+            }
+            if (start >= len) {
+                return ZERO;
+            }
+            return Arrays.copyOfRange(e.getData(), start, Math.min(len, end + 1));
+        }
+        return ZERO;
     }
 
     //GETSET
@@ -219,6 +224,29 @@ public abstract class StringData {
     //MSETNX
     //PSETEX
     //SET
+    public static boolean set(RedisDatabase db, StringOperation.SetParams spm, HashKey key, ByteData val) {
+        return db.sync(() -> {
+            Optional<AbstractValueData<?>> opt = db.get(key);
+            if (opt.isPresent()) {
+                if (spm.isXx()) { // exist to set
+                    db.put(key, val);
+                    return true;
+                }
+            } else {
+                if (spm.isNx()) { // not exist to set
+                    db.put(key, val);
+                    return true;
+                }
+            }
+            if (!spm.isNx() && !spm.isXx()) { // not set NX|XX
+                db.put(key, val);
+                return true;
+            }
+            return false;
+        });
+    }
+
+    //SETBIT
 
     /**
      * @param db
@@ -227,7 +255,6 @@ public abstract class StringData {
      * @param b
      * @return true : 1, false : 0
      */
-    //SETBIT
     public static boolean setBit(RedisDatabase db, HashKey key, int offset, boolean b) {
         int size = (offset >>> 3) + 1; // offset / 8
         ByteData str = db.getOrCreate(key, () -> {//

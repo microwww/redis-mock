@@ -111,8 +111,8 @@ public class StringOperation extends AbstractOperation {
         HashKey key = args[0].byteArray2hashKey();
         int start = args[1].byteArray2int();
         int end = args[2].byteArray2int();
-        Optional<String> val = StringData.subString(request.getDatabase(), key, start, end);
-        RedisOutputProtocol.writer(request.getOutputStream(), val.orElse("").getBytes());
+        byte[] val = StringData.subString(request.getDatabase(), key, start, end);
+        RedisOutputProtocol.writer(request.getOutputStream(), val);
     }
 
     //GETSET
@@ -131,7 +131,7 @@ public class StringOperation extends AbstractOperation {
 
     //INCR
     public void incr(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(2);
+        request.expectArgumentsCount(1);
         ExpectRedisRequest[] args = request.getArgs();
         HashKey key = args[0].byteArray2hashKey();
         int val = StringData.increase(request.getDatabase(), key, 1);
@@ -187,7 +187,7 @@ public class StringOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length % 2 == 0, "key value, key value, key value");
         int count = StringData.multiSet(request.getDatabase(), args, false);
-        RedisOutputProtocol.writer(request.getOutputStream(), count > 0 ? 1 : 0);
+        RedisOutputProtocol.writer(request.getOutputStream(), count);
     }
 
     //PSETEX
@@ -196,19 +196,39 @@ public class StringOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
-        long ex = args[2].byteArray2long();
-        db.put(key, new ByteData(args[1].getByteArray(), System.currentTimeMillis() + ex));
+        long ex = args[1].byteArray2long();
+        db.put(key, new ByteData(args[2].getByteArray(), System.currentTimeMillis() + ex));
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
     }
 
     //SET
     public void set(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(2);
+        request.expectArgumentsCountGE(2);
         ExpectRedisRequest[] args = request.getArgs();
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
-        db.put(key, args[1].getByteArray());
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        byte[] val = args[1].getByteArray();
+        SetParams spm = new SetParams();
+        for (int i = 2; i < args.length; i++) {
+            String op = args[i].getByteArray2string();
+            Params pm = Params.valueOf(op.toUpperCase());
+            i = pm.next(spm, args, i);
+        }
+        long time = AbstractValueData.NEVER_EXPIRE;
+        long now = System.currentTimeMillis();
+        if (spm.ex != null) {
+            time = now + spm.ex * 1000L;
+        }
+        if (spm.px != null) {
+            time = now + spm.px;
+        }
+
+        boolean set = StringData.set(db, spm, key, new ByteData(val, time));
+        if (set) {
+            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        } else {
+            RedisOutputProtocol.writerNull(request.getOutputStream());
+        }
     }
 
     //SETBIT
@@ -229,8 +249,8 @@ public class StringOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
-        long ex = args[2].byteArray2long();
-        db.put(key, new ByteData(args[1].getByteArray(), System.currentTimeMillis() + ex * 1000));
+        long ex = args[1].byteArray2long();
+        db.put(key, new ByteData(args[2].getByteArray(), System.currentTimeMillis() + ex * 1000));
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
     }
 
@@ -240,8 +260,8 @@ public class StringOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
-        db.putIfAbsent(key, new ByteData(args[1].getByteArray(), AbstractValueData.NEVER_EXPIRE));
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        ByteData bt = db.putIfAbsent(key, new ByteData(args[1].getByteArray(), AbstractValueData.NEVER_EXPIRE));
+        RedisOutputProtocol.writer(request.getOutputStream(), bt == null ? 1 : 0);
     }
 
     //SETRANGE
@@ -264,5 +284,77 @@ public class StringOperation extends AbstractOperation {
         int len = db.get(key, ByteData.class)
                 .map(e -> e.getData().length).orElse(0);
         RedisOutputProtocol.writer(request.getOutputStream(), len);
+    }
+
+    public static class SetParams {
+        private Integer ex;
+        private Long px;
+        private boolean nx;
+        private boolean xx;
+
+        public Integer getEx() {
+            return ex;
+        }
+
+        public void setEx(Integer ex) {
+            this.ex = ex;
+        }
+
+        public Long getPx() {
+            return px;
+        }
+
+        public void setPx(Long px) {
+            this.px = px;
+        }
+
+        public boolean isNx() {
+            return nx;
+        }
+
+        public void setNx(boolean nx) {
+            this.nx = nx;
+        }
+
+        public boolean isXx() {
+            return xx;
+        }
+
+        public void setXx(boolean xx) {
+            this.xx = xx;
+        }
+    }
+
+    public enum Params {
+        EX {
+            @Override
+            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+                params.ex = args[i + 1].byteArray2int();
+                return i + 1;
+            }
+        },
+        PX {
+            @Override
+            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+                params.px = args[i + 1].byteArray2long();
+                return i + 1;
+            }
+        },
+        NX {
+            @Override
+            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+                params.nx = true;
+                return i;
+            }
+        },
+        XX {
+            @Override
+            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+                params.xx = true;
+                return i;
+            }
+        };
+
+        public abstract int next(SetParams params, ExpectRedisRequest[] args, int i);
     }
 }
