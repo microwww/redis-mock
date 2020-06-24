@@ -2,6 +2,7 @@ package com.github.microwww.database;
 
 import com.github.microwww.ExpectRedisRequest;
 import com.github.microwww.util.Assert;
+import com.github.microwww.util.NotNull;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -9,18 +10,18 @@ import java.util.Optional;
 public abstract class StringData {
 
     //APPEND
+    @NotNull
     public static ByteData append(RedisDatabase db, HashKey key, byte[] bytes) {
         return db.sync(() -> {
-            ByteData v = new ByteData(bytes, AbstractValueData.NEVER_EXPIRE);
-            ByteData val = db.putIfAbsent(key, v);
-            if (val != null) {
-                byte[] d1 = v.getData();
-                byte[] n = new byte[d1.length + bytes.length];
-                System.arraycopy(d1, 0, n, 0, d1.length);
-                System.arraycopy(bytes, 0, n, d1.length, bytes.length);
-                val.setData(n);
-            }
-            return val;
+            ByteData v = db.getOrCreate(key, () -> {// new one
+                return new ByteData(new byte[]{}, AbstractValueData.NEVER_EXPIRE);
+            });
+            byte[] origin = v.getData();
+            byte[] target = new byte[origin.length + bytes.length];
+            System.arraycopy(origin, 0, target, 0, origin.length);
+            System.arraycopy(bytes, 0, target, origin.length, bytes.length);
+            v.setData(target);
+            return v;
         });
     }
 
@@ -41,6 +42,9 @@ public abstract class StringData {
                 ByteData dta = db.get(key[i], ByteData.class).orElse(init);
                 res = bitOperation(res, dta.getData(), opt);
             }
+            if (opt.equals(ByteOpt.NOT)) {// 忽略第二个参数
+                res = bitOperation(res, new byte[]{}, opt);
+            }
             ByteData target = new ByteData(res, AbstractValueData.NEVER_EXPIRE);
             db.put(dest, target);
             return target;
@@ -49,7 +53,6 @@ public abstract class StringData {
 
     public static byte[] bitOperation(byte[] data, byte[] bytes, StringData.ByteOpt opt) {
         int max = Math.max(data.length, bytes.length);
-        int min = Math.min(data.length, bytes.length);
         byte[] mx = new byte[max];
         for (int i = 0; i < max; i++) {
             byte f = 0;
@@ -119,25 +122,25 @@ public abstract class StringData {
         AND {
             @Override
             public byte apply(byte a, byte b) {
-                return 0;
+                return (byte) (a & b);
             }
         },
         OR {
             @Override
             public byte apply(byte a, byte b) {
-                return 0;
+                return (byte) (a | b);
             }
         },
         XOR {
             @Override
             public byte apply(byte a, byte b) {
-                return 0;
+                return (byte) (a ^ b);
             }
         },
         NOT {
             @Override
-            public byte apply(byte a, byte b) {
-                return 0;
+            public byte apply(byte o, byte ignore) {
+                return (byte) (~o);
             }
         };
 
@@ -206,6 +209,7 @@ public abstract class StringData {
             return s.substring(Math.min(start, s.length()), Math.min(end + 1, s.length()));
         });
     }
+
     //GETSET
     //INCR
     //INCRBY
@@ -215,7 +219,36 @@ public abstract class StringData {
     //MSETNX
     //PSETEX
     //SET
+
+    /**
+     * @param db
+     * @param key
+     * @param offset
+     * @param b
+     * @return true : 1, false : 0
+     */
     //SETBIT
+    public static boolean setBit(RedisDatabase db, HashKey key, int offset, boolean b) {
+        int size = (offset >>> 3) + 1; // offset / 8
+        ByteData str = db.getOrCreate(key, () -> {//
+            return new ByteData(new byte[size], AbstractValueData.NEVER_EXPIRE);
+        });
+        byte[] od = str.getData();
+        if (od.length < size) {
+            byte[] ov = new byte[size];
+            System.arraycopy(od, 0, ov, 0, od.length);
+            str.setData(od);
+        }
+        BitArray st = new BitArray(str.getData());
+        boolean origin = st.get(offset);
+        if (b) {
+            st.set(offset);
+        } else {
+            st.clean(offset);
+        }
+        str.setData(st.toArray());
+        return origin;
+    }
     //SETEX
     //SETNX
     //SETRANGE

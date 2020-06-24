@@ -41,6 +41,16 @@ public class RedisDatabase {
         return this.get(key).map(e -> (T) e);
     }
 
+    public synchronized <U, T extends AbstractValueData<U>> T getOrCreate(HashKey key, Supplier<T> fun) {
+        Optional<T> opt = (Optional<T>) this.get(key);
+        if (!opt.isPresent()) {
+            T v = fun.get();
+            T t = this.putIfAbsent(key, v);
+            opt = Optional.of(t == null ? v : t);
+        }
+        return opt.get();
+    }
+
     public synchronized Optional<AbstractValueData<?>> setExpire(HashKey key, long expire) {
         Assert.isTrue(expire >= 0, "Time >= 0");
         Optional<AbstractValueData<?>> val = this.get(key);

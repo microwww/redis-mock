@@ -212,6 +212,17 @@ public class StringOperation extends AbstractOperation {
     }
 
     //SETBIT
+    public void setbit(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        ExpectRedisRequest[] args = request.getArgs();
+        RedisDatabase db = request.getDatabase();
+        HashKey key = new HashKey(args[0].getByteArray());
+        int off = args[1].byteArray2int();
+        int val = args[2].byteArray2int();
+        boolean count = StringData.setBit(db, key, off, val != 0);
+        RedisOutputProtocol.writer(request.getOutputStream(), count ? 1 : 0);
+    }
+
     //SETEX
     public void setex(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);

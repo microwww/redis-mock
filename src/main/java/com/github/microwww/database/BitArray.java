@@ -36,17 +36,17 @@ public class BitArray {
         return this.data[position];
     }
 
-    public int count(boolean one, int from, int to) {
+    public int count(boolean one, int from, int includeTo) {
         int count = 0;
         if (from < 0) {
             from = this.bitLength() + from;
         }
-        if (to < 0) {
-            to = this.bitLength() + to;
+        if (includeTo <= 0) {
+            includeTo = this.bitLength() + includeTo;
         }
-        int max = Math.min(this.bitLength(), to);
+        int max = Math.min(this.bitLength(), includeTo + 1);
         for (int i = from; i < max; i++) {
-            boolean o = get(from);
+            boolean o = get(i);
             if (o == one) {
                 count++;
             }
