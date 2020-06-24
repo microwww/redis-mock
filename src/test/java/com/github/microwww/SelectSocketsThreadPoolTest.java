@@ -1,5 +1,9 @@
 package com.github.microwww;
 
+import com.github.microwww.redis.AwaitRead;
+import com.github.microwww.redis.ChannelInputStream;
+import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.SelectSocketsThreadPool;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;

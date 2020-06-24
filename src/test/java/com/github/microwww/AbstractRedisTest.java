@@ -1,6 +1,6 @@
 package com.github.microwww;
 
-import com.github.microwww.protocal.operation.Server;
+import com.github.microwww.redis.protocal.operation.Server;
 import org.junit.Before;
 import redis.clients.jedis.Jedis;
 
