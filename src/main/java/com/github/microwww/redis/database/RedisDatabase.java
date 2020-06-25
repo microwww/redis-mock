@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-public class RedisDatabase {
+public class RedisDatabase implements DataLock {
 
     ConcurrentMap<HashKey, AbstractValueData<?>> map = new ConcurrentHashMap<>();
 
@@ -27,10 +27,6 @@ public class RedisDatabase {
             map.remove(key, dt);
         }
         return (T) map.putIfAbsent(key, data);
-    }
-
-    public synchronized <T> T sync(Supplier<T> fun) {
-        return fun.get();
     }
 
     public Optional<ByteData> getBytes(HashKey key) {

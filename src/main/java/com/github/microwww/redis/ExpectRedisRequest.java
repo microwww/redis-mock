@@ -3,6 +3,7 @@ package com.github.microwww.redis;
 import com.github.microwww.redis.database.HashKey;
 import redis.clients.util.SafeEncoder;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public class ExpectRedisRequest {
@@ -29,6 +30,10 @@ public class ExpectRedisRequest {
 
     public long byteArray2long() {
         return Long.parseLong(SafeEncoder.encode(this.getByteArray()));
+    }
+
+    public BigDecimal byteArray2decimal() {
+        return new BigDecimal(SafeEncoder.encode(this.getByteArray()));
     }
 
     public HashKey byteArray2hashKey() {

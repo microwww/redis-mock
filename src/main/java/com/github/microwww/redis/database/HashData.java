@@ -1,6 +1,6 @@
 package com.github.microwww.redis.database;
 
-import redis.clients.util.SafeEncoder;
+import com.github.microwww.redis.ExpectRedisRequest;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -8,7 +8,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class HashData extends AbstractValueData<Map<HashKey, byte[]>> {
+public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements DataLock {
 
     private final Map<HashKey, byte[]> origin;
 
@@ -36,35 +36,54 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> {
     //HGETALL
 
     //HINCRBY
-    public synchronized byte[] incrBy(HashKey key, long inc) {
-        byte[] bytes = origin.get(key);
-        String s = new BigInteger(SafeEncoder.encode(bytes)).add(BigInteger.valueOf(inc)).toString();
-        byte[] encode = SafeEncoder.encode(s);
-        origin.put(key, encode);
-        return encode;
+    public synchronized byte[] incrBy(HashKey key, int inc) {
+        byte[] bt = origin.get(key);
+        BigInteger bi;
+        if (bt == null) {
+            bi = BigInteger.ZERO;
+        } else {
+            bi = new BigInteger(new String(bt));
+        }
+        bi = bi.add(BigInteger.valueOf(inc));
+        byte[] val = bi.toString().getBytes();
+        origin.put(key, val);
+        return val;
     }
 
     //HINCRBYFLOAT
-    public synchronized byte[] incrByFloat(HashKey key, double inc) {
-        byte[] bytes = origin.get(key);
-        String s = new BigDecimal(SafeEncoder.encode(bytes)).add(BigDecimal.valueOf(inc)).toPlainString();
-        byte[] encode = SafeEncoder.encode(s);
-        origin.put(key, encode);
-        return encode;
+    public synchronized byte[] incrByFloat(HashKey key, BigDecimal inc) {
+        byte[] bt = origin.get(key);
+        BigDecimal bi;
+        if (bt == null) {
+            bi = BigDecimal.ZERO;
+        } else {
+            bi = new BigDecimal(new String(bt));
+        }
+        bi = bi.add(inc);
+        byte[] bytes = bi.toPlainString().getBytes();
+        origin.put(key, bytes);
+        return bytes;
     }
 
     //HKEYS
     //HLEN
     //HMGET
     //HMSET
+    public synchronized int multiSet(ExpectRedisRequest[] kvs, int offset) {
+        for (int i = offset; i < kvs.length; i += 2) {
+            this.origin.put(kvs[i].byteArray2hashKey(), kvs[i + 1].getByteArray());
+        }
+        return kvs.length - offset / 2;
+    }
+
     //HSET
-    public synchronized void put(HashKey key, byte[] bytes) {
-        origin.put(key, bytes);
+    public synchronized byte[] put(HashKey key, byte[] bytes) {
+        return origin.put(key, bytes);
     }
 
     //HSETNX
-    public synchronized void putIfAbsent(HashKey key, byte[] bytes) {
-        origin.putIfAbsent(key, bytes);
+    public synchronized byte[] putIfAbsent(HashKey key, byte[] bytes) {
+        return origin.putIfAbsent(key, bytes);
     }
     //HVALS
     //HSCAN

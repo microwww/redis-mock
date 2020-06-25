@@ -6,15 +6,19 @@ import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.util.Assert;
+import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 
 public class HashOperation extends AbstractOperation {
 
+    //HDEL
     public void hdel(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(1);
-        Optional<HashData> data = this.getMap(request);
+        Optional<HashData> data = this.getHashData(request);
         int count = 0;
         if (data.isPresent()) {
             HashData e = data.get();
@@ -30,11 +34,28 @@ public class HashOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), count);
     }
 
+    //HEXISTS
+    public void hexists(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(2);
+        ExpectRedisRequest[] args = request.getArgs();
+        HashKey hk = args[1].byteArray2hashKey();
+        Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
+        if (opt.isPresent()) {
+            boolean exist = opt.get().containsKey(hk);
+            if (exist) {
+                RedisOutputProtocol.writer(request.getOutputStream(), 1);
+                return;
+            }
+        }
+        RedisOutputProtocol.writer(request.getOutputStream(), 0);
+    }
+
+    //HGET
     public void hget(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
         ExpectRedisRequest[] args = request.getArgs();
         byte[] hk = args[1].getByteArray();
-        Optional<HashData> opt = this.getMap(request);
+        Optional<HashData> opt = this.getHashData(request);
         if (opt.isPresent()) {
             byte[] dh = opt.get().getData().get(new HashKey(hk));
             if (dh != null) {
@@ -45,34 +66,149 @@ public class HashOperation extends AbstractOperation {
         RedisOutputProtocol.writerNull(request.getOutputStream());
     }
 
+    //HGETALL
+    public void hgetall(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
+        if (opt.isPresent()) {
+            // Map<HashKey, byte[]> map = new HashMap<>(opt.get());
+            List<byte[]> list = new ArrayList<>();
+            opt.get().forEach((k, v) -> {
+                list.add(k.getKey());
+                list.add(v);
+            });
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        } else {
+            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{}); //  null ?
+        }
+    }
+
+    //HINCRBY
+    public void hincrby(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey hk = request.getArgs()[1].byteArray2hashKey();
+        int inc = request.getArgs()[2].byteArray2int();
+        HashData oc = this.getOrCreate(request);
+        byte[] bytes = oc.incrBy(hk, inc);
+        RedisOutputProtocol.writer(request.getOutputStream(), bytes);
+    }
+
+    //HINCRBYFLOAT
+    public void hincrbyfloat(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey hk = request.getArgs()[1].byteArray2hashKey();
+        BigDecimal inc = request.getArgs()[2].byteArray2decimal();
+        HashData oc = this.getOrCreate(request);
+        byte[] bytes = oc.incrByFloat(hk, inc);
+        RedisOutputProtocol.writer(request.getOutputStream(), bytes);
+    }
+
+    //HKEYS
+    public void hkeys(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        Optional<Map<HashKey, byte[]>> map = this.getHashMap(request);
+        if (map.isPresent()) {
+            byte[][] ks = map.get().keySet().stream().map(HashKey::getKey).toArray(byte[][]::new);
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
+        } else {
+            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+        }
+    }
+
+    //HLEN
+    public void hlen(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        Optional<Map<HashKey, byte[]>> map = this.getHashMap(request);
+        int count = map.map(e -> e.size()).orElse(0);
+        RedisOutputProtocol.writer(request.getOutputStream(), count);
+    }
+
+    //HMGET
+    public void hmget(RedisRequest request) throws IOException {
+        request.expectArgumentsCountGE(2);
+        Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
+        if (opt.isPresent()) {
+            List<byte[]> list = new ArrayList<>();
+            for (ExpectRedisRequest arg : request.getArgs()) {
+                byte[] bytes = opt.get().get(arg.byteArray2hashKey());
+                list.add(bytes);
+            }
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        } else {
+            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{}); //  null ?
+        }
+    }
+
+    //HMSET
+    public void hmset(RedisRequest request) throws IOException {
+        request.expectArgumentsCountGE(3);
+        Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
+        HashData oc = this.getOrCreate(request);
+        ExpectRedisRequest[] args = request.getArgs();
+        Assert.isTrue(args.length % 2 == 1, "k, k-v, k-v, k-v, ...");
+        oc.multiSet(args, 1);
+        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name()); //  null ?
+    }
+
+    //HSET
     public void hset(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         ExpectRedisRequest[] args = request.getArgs();
-        byte[] key = args[0].getByteArray();
 
-        Optional<HashData> opt = request.getDatabase().get(new HashKey(key), HashData.class);
-        if (!opt.isPresent()) {
-            HashData def = new HashData();
-            HashData data = request.getDatabase().putIfAbsent(new HashKey(key), def);
-            if (data == null) {
-                data = def;
-            }
-            opt = Optional.of(data);
-        }
-
-        HashData data = opt.get();
+        HashData data = this.getOrCreate(request);
         byte[] hk = args[1].getByteArray();
         byte[] val = args[2].getByteArray();
-        byte[] origin = data.getData().get(new HashKey(hk));
-        data.put(new HashKey(hk), val);
+
+        byte[] origin = data.put(new HashKey(hk), val);
 
         // new: 1, over-write: 0
         RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
     }
 
-    private Optional<HashData> getMap(RedisRequest request) {
+    //HSETNX
+    public void hsetnx(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
         ExpectRedisRequest[] args = request.getArgs();
-        byte[] key = args[0].getByteArray();
-        return request.getDatabase().get(new HashKey(key), HashData.class);
+
+        HashData data = this.getOrCreate(request);
+        byte[] hk = args[1].getByteArray();
+        byte[] val = args[2].getByteArray();
+
+        byte[] origin = data.putIfAbsent(new HashKey(hk), val);
+
+        RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
+    }
+
+    //HVALS
+    public void hvals(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        Optional<Map<HashKey, byte[]>> map = this.getHashMap(request);
+        if (map.isPresent()) {
+            byte[][] ks = map.get().values().stream().toArray(byte[][]::new);
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
+        } else {
+            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+        }
+    }
+    //HSCAN
+
+    private Optional<Map<HashKey, byte[]>> getHashMap(RedisRequest request) {
+        return getHashData(request).map(e -> e.getData());
+    }
+
+    private Optional<HashData> getHashData(RedisRequest request) {
+        ExpectRedisRequest[] args = request.getArgs();
+        HashKey key = args[0].byteArray2hashKey();
+        return request.getDatabase().get(key, HashData.class);
+    }
+
+    private HashData getOrCreate(RedisRequest request) {
+        ExpectRedisRequest[] args = request.getArgs();
+        HashKey key = args[0].byteArray2hashKey();
+        return request.getDatabase().getOrCreate(key, () -> {//
+            return new HashData();
+        });
     }
 }
