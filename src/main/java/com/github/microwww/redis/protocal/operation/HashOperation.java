@@ -8,6 +8,7 @@ import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.util.Assert;
 import redis.clients.jedis.Protocol;
+import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -79,7 +80,7 @@ public class HashOperation extends AbstractOperation {
             });
             RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
         } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{}); //  null ?
+            RedisOutputProtocol.writerMulti(request.getOutputStream()); //  null ?
         }
     }
 
@@ -91,7 +92,7 @@ public class HashOperation extends AbstractOperation {
         int inc = request.getArgs()[2].byteArray2int();
         HashData oc = this.getOrCreate(request);
         byte[] bytes = oc.incrBy(hk, inc);
-        RedisOutputProtocol.writer(request.getOutputStream(), bytes);
+        RedisOutputProtocol.writer(request.getOutputStream(), Long.parseLong(SafeEncoder.encode(bytes)));
     }
 
     //HINCRBYFLOAT
@@ -113,7 +114,7 @@ public class HashOperation extends AbstractOperation {
             byte[][] ks = map.get().keySet().stream().map(HashKey::getKey).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
         } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+            RedisOutputProtocol.writerMulti(request.getOutputStream());
         }
     }
 
@@ -131,13 +132,15 @@ public class HashOperation extends AbstractOperation {
         Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
         if (opt.isPresent()) {
             List<byte[]> list = new ArrayList<>();
-            for (ExpectRedisRequest arg : request.getArgs()) {
+            ExpectRedisRequest[] args = request.getArgs();
+            for (int i = 1; i < args.length; i++) {
+                ExpectRedisRequest arg = args[i];
                 byte[] bytes = opt.get().get(arg.byteArray2hashKey());
                 list.add(bytes);
             }
             RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
         } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{}); //  null ?
+            RedisOutputProtocol.writerMulti(request.getOutputStream()); //  null ?
         }
     }
 
@@ -189,7 +192,7 @@ public class HashOperation extends AbstractOperation {
             byte[][] ks = map.get().values().stream().toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
         } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+            RedisOutputProtocol.writerMulti(request.getOutputStream());
         }
     }
     //HSCAN

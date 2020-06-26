@@ -14,6 +14,6 @@ public abstract class AbstractRedisTest {
     @Before
     public void init() throws IOException {
         InetSocketAddress address = Server.startListener();
-        jedis = new Jedis(address.getHostName(), address.getPort(), 1000);
+        jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
     }
 }

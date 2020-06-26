@@ -1,5 +1,7 @@
 package com.github.microwww.redis.database;
 
+import redis.clients.util.SafeEncoder;
+
 import java.io.Serializable;
 import java.math.BigInteger;
 
@@ -31,5 +33,10 @@ public final class HashKey implements Serializable {
     @Override
     public int hashCode() {
         return hash.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "HashKey: " + SafeEncoder.encode(this.getKey());
     }
 }
