@@ -64,8 +64,12 @@ public class ListData extends AbstractValueData<List<byte[]>> {
 
     //LLEN
     //LPOP
-    public synchronized byte[] leftPop() {
-        return origin.remove(0);
+    public synchronized Optional<byte[]> leftPop() {
+        byte[] rm = null;
+        if (origin.isEmpty()) {
+            rm = origin.remove(0);
+        }
+        return Optional.ofNullable(rm);
     }
 
     //LPUSH
@@ -156,8 +160,12 @@ public class ListData extends AbstractValueData<List<byte[]>> {
     }
 
     //RPOP
-    public synchronized byte[] rightPop() {
-        return origin.remove(origin.size() - 1);
+    public synchronized Optional<byte[]> rightPop() {
+        byte[] or = null;
+        if (!this.origin.isEmpty()) {
+            or = origin.remove(origin.size() - 1);
+        }
+        return Optional.ofNullable(or);
     }
 
     //RPOPLPUSH
