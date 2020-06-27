@@ -1,12 +1,12 @@
 package com.github.microwww.redis.database;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Function;
 
-public class ListData extends AbstractValueData<List<byte[]>> {
+public class ListData extends AbstractValueData<List<byte[]>> implements DataLock {
+    private List<CountDownLatch> latches = new LinkedList<>();
     private final List<byte[]> origin;
 
     public ListData() {
@@ -22,7 +22,21 @@ public class ListData extends AbstractValueData<List<byte[]>> {
         this.data = Collections.unmodifiableList(origin);
         this.expire = exp;
     }
+
     //BLPOP
+    public synchronized Optional<byte[]> blockPop(CountDownLatch latch, Function<ListData, Optional<byte[]>> fun) {
+        if (origin.isEmpty()) {
+            if (!this.latches.contains(latch)) {
+                this.latches.add(latch);
+            }
+            return Optional.empty();
+        }
+        return fun.apply(this);
+    }
+
+    public void removeCountDownLatch(CountDownLatch latch) {
+        this.latches.remove(latch);
+    }
     //BRPOP
     //BRPOPLPUSH
 
@@ -41,6 +55,7 @@ public class ListData extends AbstractValueData<List<byte[]>> {
         int index = this.indexOf(pivot);
         if (index >= 0) {
             this.origin.add(index + offset, value);
+            this.latch();
             return true;
         }
         return false;
@@ -66,7 +81,7 @@ public class ListData extends AbstractValueData<List<byte[]>> {
     //LPOP
     public synchronized Optional<byte[]> leftPop() {
         byte[] rm = null;
-        if (origin.isEmpty()) {
+        if (!origin.isEmpty()) {
             rm = origin.remove(0);
         }
         return Optional.ofNullable(rm);
@@ -77,6 +92,7 @@ public class ListData extends AbstractValueData<List<byte[]>> {
         for (byte[] a : bytes) {
             origin.add(0, a);
         }
+        this.latch();
     }
 
     //LPUSHX
@@ -96,7 +112,7 @@ public class ListData extends AbstractValueData<List<byte[]>> {
         return byt;
     }
 
-    public synchronized int index(int index) {
+    private synchronized int index(int index) {
         if (index < 0) {
             return this.origin.size() + index;
         }
@@ -148,15 +164,20 @@ public class ListData extends AbstractValueData<List<byte[]>> {
     //LTRIM
     public synchronized void trim(int start, int includeStop) {
         int from = index(start);
-        int to = index(includeStop) + 1;
+        int to = index(includeStop);
         int max = this.origin.size();
         if (from >= max || from > to) {
             this.origin.clear();
             return;
         }
-        List<byte[]> bytes = this.origin.subList(from, Math.min(max, to));
-        this.origin.clear();
-        this.origin.addAll(bytes);
+        for (int i = this.origin.size() - 1; i >= 0; i--) {
+            if (i < from) {
+                this.origin.remove(i);
+            }
+            if (i > to) {
+                this.origin.remove(i);
+            }
+        }
     }
 
     //RPOP
@@ -172,6 +193,16 @@ public class ListData extends AbstractValueData<List<byte[]>> {
     //RPUSH
     public synchronized void rightAdd(byte[]... bytes) {
         this.origin.addAll(Arrays.asList(bytes));
+        this.latch();
     }
     //RPUSHX
+
+    private synchronized void latch() {
+        if (!latches.isEmpty()) {
+            try {
+                latches.remove(0).countDown();
+            } catch (Exception e) { // ignore
+            }
+        }
+    }
 }

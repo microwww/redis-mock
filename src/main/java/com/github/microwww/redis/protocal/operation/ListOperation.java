@@ -11,9 +11,13 @@ import com.github.microwww.redis.util.NotNull;
 import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 public class ListOperation extends AbstractOperation {
 
@@ -62,7 +66,57 @@ public class ListOperation extends AbstractOperation {
     }
 
     //BLPOP
+    public void blpop(RedisRequest request) throws IOException {
+        byte[][] list = this.block(request, e -> e.leftPop());
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
+    }
+
     //BRPOP
+    public void brpop(RedisRequest request) throws IOException {
+        byte[][] list = this.block(request, e -> e.rightPop());
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
+    }
+
+    public byte[][] block(RedisRequest request, Function<ListData, Optional<byte[]>> fun) throws IOException {
+        request.expectArgumentsCountGE(2);
+        ExpectRedisRequest[] args = request.getArgs();
+        CountDownLatch latch = new CountDownLatch(1);
+        List<Optional<byte[]>> res = new ArrayList<>();
+        boolean exist = false;
+        long timeoutSeconds = request.getArgs()[args.length - 1].byteArray2long();
+        long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
+        while (true) { // TODO: time not
+            long lost = stopTime - System.currentTimeMillis();
+            if (lost <= 0) {
+                break;
+            }
+            for (int i = 1; i < args.length - 1; i++) {
+                HashKey key = args[i].byteArray2hashKey();
+                ListData list = request.getDatabase().getOrCreate(key, ListData::new);
+                Optional<byte[]> bytes = list.blockPop(latch, fun);
+                res.add(bytes);
+                if (bytes.isPresent()) {
+                    exist = true;
+                }
+            }
+            if (!exist) {
+                try {
+                    latch.await(lost, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    Thread.interrupted();
+                }
+            }
+        }
+        for (int i = 1; i < args.length - 1; i++) {
+            HashKey key = args[i].byteArray2hashKey();
+            request.getDatabase().getOrCreate(key, ListData::new).removeCountDownLatch(latch);
+        }
+        return res.stream() //
+                .filter(Optional::isPresent) //
+                .map(Optional::get) //
+                .toArray(byte[][]::new);
+    }
+
     //BRPOPLPUSH
     //LINDEX key index
     public void lindex(RedisRequest request) throws IOException {
@@ -71,12 +125,8 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             int index = Integer.parseInt(args[1].getByteArray2string());
-            List<byte[]> list = opt.get().getData();
-            if (index < 0) { // TODO:: 如果被删除 !!!
-                index = list.size() + index;
-            }
-            byte[] bt = list.get(index);
-            RedisOutputProtocol.writer(request.getOutputStream(), bt);
+            byte[][] bt = opt.get().range(index, index);
+            RedisOutputProtocol.writer(request.getOutputStream(), bt.length == 0 ? null : bt[0]);
         } else {
             RedisOutputProtocol.writerNull(request.getOutputStream());
         }
@@ -89,13 +139,12 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             boolean before = false;
-            HashKey hk = args[1].byteArray2hashKey();
-            String key = args[2].getByteArray2string();
+            String key = args[1].getByteArray2string();
             if (key.equalsIgnoreCase("before")) {
                 before = true;
             }
-            byte[] pivot = args[3].getByteArray();
-            byte[] val = args[4].getByteArray();
+            byte[] pivot = args[2].getByteArray();
+            byte[] val = args[3].getByteArray();
             boolean insert = opt.get().findAndOffsetInsert(pivot, before ? 0 : 1, val);
             int len = -1;
             if (insert) {
@@ -150,7 +199,7 @@ public class ListOperation extends AbstractOperation {
                     .toArray(byte[][]::new);
             opt.get().leftAdd(bytes);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), opt.get().getData().size());
+        RedisOutputProtocol.writer(request.getOutputStream(), opt.map(e -> e.getData().size()).orElse(0));
     }
 
     //LRANGE
@@ -184,7 +233,7 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = getList(request);
         ExpectRedisRequest[] args = request.getArgs();
         opt.ifPresent(e -> {
-            e.trim(args[0].byteArray2int(), args[1].byteArray2int());
+            e.trim(args[1].byteArray2int(), args[2].byteArray2int());
         });
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
     }
@@ -210,7 +259,7 @@ public class ListOperation extends AbstractOperation {
     //RPUSH
     //RPUSHX
     public void rpushx(RedisRequest request) throws IOException {
-        request.expectArgumentsCountBigger(2);
+        request.expectArgumentsCount(2);
         Optional<ListData> opt = this.getList(request);
         ExpectRedisRequest[] args = request.getArgs();
         if (opt.isPresent()) {
