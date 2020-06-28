@@ -11,10 +11,6 @@ public class Member {
     private final BigDecimal score;
     private HashKey key;
 
-    public static Member forCompare(BigDecimal score) {
-        return new Member(score);
-    }
-
     public Member(byte[] member, BigDecimal score) {
         Assert.allNotNull("All not null", member, score);
         this.member = member;
@@ -109,4 +105,12 @@ public class Member {
         }
         return c;
     };
+
+    public static Member MAX(BigDecimal score) {
+        return new Member(score);
+    }
+
+    public static Member MIN(BigDecimal score) {
+        return new Member(new byte[0], score);
+    }
 }

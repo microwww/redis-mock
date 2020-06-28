@@ -21,7 +21,7 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     }
 
     //ZADD
-    public synchronized int add(Member... member) {
+    public synchronized int addOrReplace(Member... member) {
         int count = 0;
         for (Member m : member) {
             Member og = this.addElement(m);
@@ -32,7 +32,7 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
         return count;
     }
 
-    public synchronized Member addElement(Member member) {
+    private synchronized Member addElement(Member member) {
         Assert.isNotNull(member.getMember(), "member.byte[] not null");
         origin.add(member);
         Member put = unique.put(member.getKey(), member);
@@ -46,84 +46,40 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     //ZCOUNT
     //ZINCRBY
     public synchronized Member inc(byte[] member, BigDecimal inc) {
-        Optional<Member> mb = this.find(member);
-        Member m;
-        if (mb.isPresent()) {
-            Member o = mb.get();
-            this.origin.remove(o);
-            m = new Member(member, inc.add(o.getScore()));
+        Member mem = unique.get(new HashKey(member));
+        if (mem != null) {
+            mem = new Member(member, inc.add(mem.getScore()));
         } else {
-            m = new Member(member, inc);
+            mem = new Member(member, inc);
         }
-        this.origin.add(m);
-        return m;
-    }
-
-    public synchronized Optional<Member> find(byte[] member) {
-        Iterator<Member> it = origin.iterator();
-        while (it.hasNext()) {
-            Member next = it.next();
-            if (Arrays.equals(next.getMember(), member)) {
-                return Optional.of(next);
-            }
-        }
-        return Optional.empty();
+        this.addElement(mem);
+        return mem;
     }
 
     //ZRANGE
-    public synchronized List<Member> range(int from, int to) {
+    public synchronized List<Member> range(int from, int includeTo) {
         Iterator<Member> its = origin.iterator();
-        return this.range(its, from, to);
+        int max = this.origin.size();
+        if (from < 0) {
+            from = max + from;
+        }
+        if (includeTo < 0) {
+            includeTo += max;
+        }
+        return this.range(its, from, includeTo);
     }
 
-    public synchronized List<Member> range(Iterator<Member> its, int from, int to) {
+    public synchronized List<Member> range(Iterator<Member> its, int from, int includeTo) {
         // Iterator<Member> its = origin.iterator();
         List<Member> list = new ArrayList<>();
-        for (int i = from; its.hasNext() && i < to; i++) {
+        for (int i = from; its.hasNext() && i <= includeTo; i++) {
             list.add(its.next());
         }
         return list;
     }
 
-    /**
-     * min_score.score <= member <= max_score.score
-     *
-     * @param minScore
-     * @param maxScore
-     * @return
-     */
     //ZRANGEBYSCORE
-    public synchronized List<Member> rangeByScore(BigDecimal minScore, BigDecimal maxScore, int off, int count) {
-        Member mb = new Member("".getBytes(), minScore);
-        Iterator<Member> its = origin.tailSet(mb).iterator();
-        return this.rangeByScore(its, minScore, maxScore, off, count);
-    }
-
-    public synchronized List<Member> rangeByScore(Iterator<Member> its, BigDecimal minScore, BigDecimal maxScore, int off, int count) {
-        List<Member> list = new ArrayList<>();
-        int max = off + count;
-        for (int i = off; its.hasNext() && i < max; i++) {
-            Member next = its.next();
-            if (next.scoreGE(minScore)) {
-                list.add(next);
-                if (next.scoreLT(maxScore)) {
-                    break;
-                }
-            }
-        }
-        return list;
-    }
-
-    /**
-     * from 0
-     *
-     * @param member
-     * @return
-     */
     //ZRANK
-    public int rank(byte[] member) {
-        return this.rank(origin.iterator(), member);
-    }
 
     public synchronized int rank(Iterator<Member> its, byte[] member) {
         // Iterator<Member> its = origin.iterator();
@@ -137,19 +93,48 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     }
 
     //ZREM
-    public Optional<Member> remove(byte[] o) {
-        Iterator<Member> its = this.origin.iterator();
-        while (its.hasNext()) {
-            Member e = its.next();
-            if (Arrays.equals(e.getMember(), o)) {
-                its.remove();
-                return Optional.of(e);
+    public synchronized int removeAll(List<HashKey> list) {
+        int count = 0;
+        for (HashKey m : list) {
+            Member member = this.unique.remove(m);
+            if (member != null) {
+                this.origin.remove(member);
+                count++;
             }
         }
-        return Optional.empty();
+        return count;
     }
 
     //ZREMRANGEBYRANK
+    public synchronized int remRangeByRank(int start, int includeStop) {
+        Iterator<Member> it = this.origin.iterator();
+        if (this.origin.isEmpty()) {
+            return 0;
+        }
+        while (start < 0) {
+            start += this.origin.size();
+        }
+        while (includeStop < 0) {
+            includeStop += this.origin.size();
+        }
+        if (start > includeStop) {
+            return 0;
+        }
+        int count = 0;
+        for (int i = 0; it.hasNext(); i++) {
+            it.next();
+            if (i >= start) {
+                if (i <= includeStop) {
+                    it.remove();
+                    count++;
+                } else {
+                    break;
+                }
+            }
+        }
+        return count;
+    }
+
     //ZREMRANGEBYSCORE
     //ZREVRANGE
     public synchronized List<Member> revRange(int from, int to) {
@@ -158,17 +143,15 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     }
 
     //ZREVRANGEBYSCORE
-    public synchronized List<Member> revRangeByScore(BigDecimal minScore, BigDecimal maxScore, int off, int count) {
-        Member mb = new Member("".getBytes(), minScore);
-        Iterator<Member> its = origin.descendingSet().tailSet(mb).iterator();
-        return this.rangeByScore(its, minScore, maxScore, off, count);
-    }
-
     //ZREVRANK
     public int revRank(byte[] member) {
         return this.rank(origin.descendingSet().iterator(), member);
     }
+
     //ZSCORE
+    public Optional<Member> member(HashKey key) {
+        return Optional.ofNullable(this.unique.get(key));
+    }
     //ZUNIONSTORE
     //ZINTERSTORE
     //ZSCAN
