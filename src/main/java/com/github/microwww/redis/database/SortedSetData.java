@@ -1,82 +1,57 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.util.Assert;
+
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public class SortedSetData extends AbstractValueData<Set<SortedSetData.Member>> {
-    private final ConcurrentSkipListSet<SortedSetData.Member> origin;
-
-    public static class Member implements Comparable {
-        private final byte[] member;
-        private final double score;
-
-        public Member(byte[] member, double score) {
-            this.member = member;
-            this.score = score;
-        }
-
-        public byte[] getMember() {
-            byte[] bt = new byte[this.member.length];
-            System.arraycopy(this.member, 0, bt, 0, bt.length);
-            return bt;
-        }
-
-        public double getScore() {
-            return score;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            return this.compareTo(o) == 0;
-        }
-
-        @Override
-        public int hashCode() {
-            return Arrays.hashCode(member);
-        }
-
-        @Override
-        public int compareTo(Object o) {
-            if (!(o instanceof Member)) {
-                throw new UnsupportedOperationException();
-            }
-            Member o1 = this;
-            Member o2 = (Member) o;
-            int c = Double.compare(o1.score, o2.score);
-            if (c == 0) {
-                return ByteData.COMPARATOR.compare(o1.member, o2.member);
-            }
-            return c;
-        }
-    }
+public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
+    private final ConcurrentSkipListSet<Member> origin;
+    private final HashMap<HashKey, Member> unique = new HashMap<>();
 
     public SortedSetData() {
         this(NEVER_EXPIRE);
     }
 
     public SortedSetData(int exp) {
-        this.origin = new ConcurrentSkipListSet<>();
-        this.data = Collections.unmodifiableSet(this.origin);
+        this.origin = new ConcurrentSkipListSet<>(Member.COMPARATOR);
+        this.data = Collections.unmodifiableSortedSet(this.origin);
         this.expire = exp;
     }
 
     //ZADD
-    public synchronized boolean add(Member member) {
-        return origin.add(member);
+    public synchronized int add(Member... member) {
+        int count = 0;
+        for (Member m : member) {
+            Member og = this.addElement(m);
+            if (og == null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public synchronized Member addElement(Member member) {
+        Assert.isNotNull(member.getMember(), "member.byte[] not null");
+        origin.add(member);
+        Member put = unique.put(member.getKey(), member);
+        if (put != null) {
+            origin.remove(put);
+        }
+        return put;
     }
 
     //ZCARD
     //ZCOUNT
     //ZINCRBY
-    public synchronized Member inc(byte[] member, double inc) {
+    public synchronized Member inc(byte[] member, BigDecimal inc) {
         Optional<Member> mb = this.find(member);
         Member m;
         if (mb.isPresent()) {
             Member o = mb.get();
             this.origin.remove(o);
-            m = new Member(member, inc + o.score);
+            m = new Member(member, inc.add(o.getScore()));
         } else {
             m = new Member(member, inc);
         }
@@ -88,7 +63,7 @@ public class SortedSetData extends AbstractValueData<Set<SortedSetData.Member>> 
         Iterator<Member> it = origin.iterator();
         while (it.hasNext()) {
             Member next = it.next();
-            if (Arrays.equals(next.member, member)) {
+            if (Arrays.equals(next.getMember(), member)) {
                 return Optional.of(next);
             }
         }
@@ -118,20 +93,20 @@ public class SortedSetData extends AbstractValueData<Set<SortedSetData.Member>> 
      * @return
      */
     //ZRANGEBYSCORE
-    public synchronized List<Member> rangeByScore(double minScore, double maxScore, int off, int count) {
+    public synchronized List<Member> rangeByScore(BigDecimal minScore, BigDecimal maxScore, int off, int count) {
         Member mb = new Member("".getBytes(), minScore);
         Iterator<Member> its = origin.tailSet(mb).iterator();
         return this.rangeByScore(its, minScore, maxScore, off, count);
     }
 
-    public synchronized List<Member> rangeByScore(Iterator<Member> its, double minScore, double maxScore, int off, int count) {
+    public synchronized List<Member> rangeByScore(Iterator<Member> its, BigDecimal minScore, BigDecimal maxScore, int off, int count) {
         List<Member> list = new ArrayList<>();
         int max = off + count;
         for (int i = off; its.hasNext() && i < max; i++) {
             Member next = its.next();
-            if (next.score >= minScore) {
+            if (next.scoreGE(minScore)) {
                 list.add(next);
-                if (next.score < maxScore) {
+                if (next.scoreLT(maxScore)) {
                     break;
                 }
             }
@@ -183,7 +158,7 @@ public class SortedSetData extends AbstractValueData<Set<SortedSetData.Member>> 
     }
 
     //ZREVRANGEBYSCORE
-    public synchronized List<Member> revRangeByScore(double minScore, double maxScore, int off, int count) {
+    public synchronized List<Member> revRangeByScore(BigDecimal minScore, BigDecimal maxScore, int off, int count) {
         Member mb = new Member("".getBytes(), minScore);
         Iterator<Member> its = origin.descendingSet().tailSet(mb).iterator();
         return this.rangeByScore(its, minScore, maxScore, off, count);
