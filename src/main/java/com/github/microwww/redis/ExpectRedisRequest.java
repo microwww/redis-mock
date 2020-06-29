@@ -95,4 +95,12 @@ public class ExpectRedisRequest {
         }
         return res;
     }
+
+    @Override
+    public String toString() {
+        if (origin instanceof byte[]) {
+            return SafeEncoder.encode((byte[]) origin);
+        }
+        return "origin:" + origin;
+    }
 }

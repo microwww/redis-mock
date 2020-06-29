@@ -101,7 +101,7 @@ public class Member {
                 c = m1[i] - m2[i];
                 if (c != 0) return c;
             }
-            return l1 - l2;
+            return Integer.compare(l1, l2);
         }
         return c;
     };

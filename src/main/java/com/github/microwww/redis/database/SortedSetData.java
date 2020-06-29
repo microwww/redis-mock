@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public class SortedSetData extends AbstractValueData<SortedSet<Member>> implements DataLock {
+public class SortedSetData extends AbstractValueData<NavigableSet<Member>> implements DataLock {
     private final ConcurrentSkipListSet<Member> origin;
     private final HashMap<HashKey, Member> unique = new HashMap<>();
 
@@ -19,15 +19,15 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> implemen
 
     public SortedSetData(int exp) {
         this.origin = new ConcurrentSkipListSet<>(Member.COMPARATOR);
-        this.data = Collections.unmodifiableSortedSet(this.origin);
+        this.data = Collections.unmodifiableNavigableSet(this.origin);
         this.expire = exp;
     }
 
-    public SortedSet<Member> getData(boolean desc) {
+    public SortedSet<Member> getSubSetData(boolean desc, Member from, Member to) {
         if (desc) {
-            return Collections.unmodifiableSortedSet(this.origin.descendingSet());
+            return this.origin.descendingSet().subSet(to, from);
         } else {
-            return this.data;
+            return this.data.subSet(from, to);
         }
     }
 
@@ -167,7 +167,7 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> implemen
     public synchronized int remRangeByScore(SortedSetOperation.Interval min, SortedSetOperation.Interval max) {
         List<HashKey> rms = this.origin.subSet(Member.MIN(min.val), Member.MAX(max.val))
                 .stream()
-                .filter(e -> min.filterEqual(e)).filter(e -> min.filterEqual(e))
+                .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e))
                 .map(Member::getKey).collect(Collectors.toList());
         this.removeAll(rms);
         return rms.size();
@@ -233,6 +233,9 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> implemen
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toArray(SortedSetData[]::new);
+        if (ssd.length == 0) {
+            return 0;
+        }
         int[] wt = us.getWeights();
         Map<HashKey, List<Member>> map = ssd[0].getData().stream().collect(Collectors.groupingBy(Member::getKey));
         int size = recursiveLock(ssd, 0, () -> {

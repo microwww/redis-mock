@@ -104,6 +104,7 @@ public class SortedSetOperation extends AbstractOperation {
         if (ss.isPresent()) {
             Interval min = new Interval(args[1].getByteArray());
             Interval max = new Interval(args[2].getByteArray());
+            Assert.isTrue(max.val.compareTo(min.val) >= 0, "param: min <= max !");
             RangeByScore spm = new RangeByScore();
             for (int i = 3; i < args.length; i++) {
                 String op = args[i].getByteArray2string();
@@ -112,7 +113,7 @@ public class SortedSetOperation extends AbstractOperation {
             }
             AtomicInteger count = new AtomicInteger(0);
             long stop = spm.getCount() + spm.getOffset();
-            ss.get().getData(desc).subSet(Member.MIN(min.val), Member.MAX(max.val))
+            ss.get().getSubSetData(desc, Member.MIN(min.val), Member.MAX(max.val))
                     .stream()
                     .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e))
                     .forEach(e -> {
@@ -143,8 +144,13 @@ public class SortedSetOperation extends AbstractOperation {
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
             if (member.isPresent()) {
-                int i = ss.get().getData(desc).headSet(member.get()).size();
+                NavigableSet<Member> members = ss.get().getData();
+                if (desc) {
+                    members = members.descendingSet();
+                }
+                int i = members.headSet(member.get()).size();
                 RedisOutputProtocol.writer(request.getOutputStream(), i);
+                return;
             }
         }
         RedisOutputProtocol.writerNull(request.getOutputStream());
@@ -232,6 +238,7 @@ public class SortedSetOperation extends AbstractOperation {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
             if (member.isPresent()) {
                 RedisOutputProtocol.writer(request.getOutputStream(), member.get().getScore().toPlainString());
+                return;
             }
         }
         RedisOutputProtocol.writerNull(request.getOutputStream());
@@ -248,10 +255,10 @@ public class SortedSetOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         int i = 1;
         int num = args[i++].byteArray2int();
-        Assert.isTrue(num + i >= args.length, "numkeys count error");
+        Assert.isTrue(num + i <= args.length, "num-keys count error");
         HashKey[] hks = new HashKey[num];
-        for (; i < num; i++) {
-            hks[i - 2] = args[i].byteArray2hashKey();
+        for (int j = 0; j < num; j++, i++) {
+            hks[j] = args[i].byteArray2hashKey();
         }
         UnionStore us = new UnionStore(hks);
         for (; i < args.length; i++) {
@@ -360,6 +367,8 @@ public class SortedSetOperation extends AbstractOperation {
 
         public UnionStore(HashKey[] hashKeys) {
             this.hashKeys = hashKeys;
+            this.weights = new int[this.getHashKeys().length];
+            Arrays.fill(this.weights, 1);
         }
 
         public HashKey[] getHashKeys() {
@@ -367,7 +376,6 @@ public class SortedSetOperation extends AbstractOperation {
         }
 
         public int[] getWeights() {
-
             return weights;
         }
 
@@ -400,7 +408,8 @@ public class SortedSetOperation extends AbstractOperation {
         AGGREGATE {
             @Override
             public int next(UnionStore params, ExpectRedisRequest[] args, int i) {
-                Aggregate.valueOf(args[i + 1].getByteArray2string().toUpperCase());
+                Aggregate agg = Aggregate.valueOf(args[i + 1].getByteArray2string().toUpperCase());
+                params.setType(agg);
                 return i + 1;
             }
         };
