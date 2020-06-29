@@ -70,22 +70,37 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> implemen
     //ZRANGE
     public synchronized List<Member> range(int from, int includeTo) {
         Iterator<Member> its = origin.iterator();
-        int max = this.origin.size();
-        if (from < 0) {
-            from = max + from;
-        }
-        if (includeTo < 0) {
-            includeTo += max;
-        }
         return this.range(its, from, includeTo);
     }
 
+    private int dynIndex(int i) {
+        int max = this.origin.size();
+        if (max == 0) {
+            return 0;
+        }
+        while (i < 0) {
+            i += max;
+        }
+        return i;
+    }
+
     public synchronized List<Member> range(Iterator<Member> its, int from, int includeTo) {
-        // Iterator<Member> its = origin.iterator();
+        from = dynIndex(from);
+        includeTo = dynIndex(includeTo);
+        if (from > includeTo) {
+            return Collections.emptyList();
+        }
+        if (from >= this.origin.size()) {
+            return Collections.emptyList();
+        }
         List<Member> list = new ArrayList<>();
-        for (int i = 0; its.hasNext() && i <= includeTo; i++) {
+        for (int i = 0; its.hasNext(); i++) {
+            Member next = its.next();
+            if (i > includeTo) {
+                break;
+            }
             if (i >= from) {
-                list.add(its.next());
+                list.add(next);
             }
         }
         return list;

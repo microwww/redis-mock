@@ -12,6 +12,7 @@ import redis.clients.util.SafeEncoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 
@@ -23,10 +24,10 @@ public class SortedSetOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         SortedSetData ss = getOrCreate(request);
         Member[] ms = new Member[args.length / 2];
-        for (int i = 1; i < args.length; i += 2) {
+        for (int i = 1, j = 0; i < args.length; i += 2, j++) {
             BigDecimal dec = args[i].byteArray2decimal();
-            byte[] ba = args[i].getByteArray();
-            ms[i - 1] = new Member(ba, dec);
+            byte[] ba = args[i + 1].getByteArray();
+            ms[j] = new Member(ba, dec);
         }
         int count = ss.addOrReplace(ms);
         RedisOutputProtocol.writer(request.getOutputStream(), count);
@@ -109,13 +110,21 @@ public class SortedSetOperation extends AbstractOperation {
                 RangeByScoreParams pm = RangeByScoreParams.valueOf(op.toUpperCase());
                 i = pm.next(spm, args, i);
             }
+            AtomicInteger count = new AtomicInteger(0);
+            long stop = spm.getCount() + spm.getOffset();
             ss.get().getData(desc).subSet(Member.MIN(min.val), Member.MAX(max.val))
                     .stream()
                     .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e))
                     .forEach(e -> {
-                        list.add(e.getMember());
-                        if (spm.withScores) {
-                            list.add(e.getScore().toPlainString().getBytes());
+                        int i = count.getAndIncrement();
+                        if (i >= stop) {
+                            return;
+                        }
+                        if (i >= spm.offset) {
+                            list.add(e.getMember());
+                            if (spm.withScores) {
+                                list.add(e.getScore().toPlainString().getBytes());
+                            }
                         }
                     });
         }
@@ -134,7 +143,7 @@ public class SortedSetOperation extends AbstractOperation {
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
             if (member.isPresent()) {
-                int i = ss.get().getData(desc).headSet(Member.MIN(member.get().getScore())).size();
+                int i = ss.get().getData(desc).headSet(member.get()).size();
                 RedisOutputProtocol.writer(request.getOutputStream(), i);
             }
         }
@@ -286,7 +295,7 @@ public class SortedSetOperation extends AbstractOperation {
 
         public boolean filterEqual(Member e) {
             if (this.open) {// open , remove equal
-                return !this.val.equals(e.getScore());
+                return this.val.compareTo(e.getScore()) != 0;
             }
             return true;
         }
@@ -310,6 +319,7 @@ public class SortedSetOperation extends AbstractOperation {
         }
 
         public void setOffset(int offset) {
+            Assert.isTrue(offset >= 0, "Offset >= 0");
             this.offset = offset;
         }
 
@@ -318,6 +328,7 @@ public class SortedSetOperation extends AbstractOperation {
         }
 
         public void setCount(int count) {
+            Assert.isTrue(count > 0, "count > 0");
             this.count = count;
         }
     }

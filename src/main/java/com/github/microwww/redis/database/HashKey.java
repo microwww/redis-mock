@@ -11,10 +11,17 @@ public final class HashKey implements Serializable {
     public final String hash;
 
     public HashKey(byte[] key) {
-        this.hash = new BigInteger(key).toString(16);
+        if (key.length == 0) {
+            this.hash = "";
+        } else {
+            this.hash = new BigInteger(key).toString(16);
+        }
     }
 
     public byte[] getKey() {
+        if (hash.length() == 0) {
+            return new byte[0];
+        }
         return new BigInteger(hash, 16).toByteArray();
     }
 
