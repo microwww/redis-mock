@@ -1,12 +1,15 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.protocal.operation.SortedSetOperation;
 import com.github.microwww.redis.util.Assert;
 
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
-public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
+public class SortedSetData extends AbstractValueData<SortedSet<Member>> implements DataLock {
     private final ConcurrentSkipListSet<Member> origin;
     private final HashMap<HashKey, Member> unique = new HashMap<>();
 
@@ -18,6 +21,14 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
         this.origin = new ConcurrentSkipListSet<>(Member.COMPARATOR);
         this.data = Collections.unmodifiableSortedSet(this.origin);
         this.expire = exp;
+    }
+
+    public SortedSet<Member> getData(boolean desc) {
+        if (desc) {
+            return Collections.unmodifiableSortedSet(this.origin.descendingSet());
+        } else {
+            return this.data;
+        }
     }
 
     //ZADD
@@ -72,8 +83,10 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     public synchronized List<Member> range(Iterator<Member> its, int from, int includeTo) {
         // Iterator<Member> its = origin.iterator();
         List<Member> list = new ArrayList<>();
-        for (int i = from; its.hasNext() && i <= includeTo; i++) {
-            list.add(its.next());
+        for (int i = 0; its.hasNext() && i <= includeTo; i++) {
+            if (i >= from) {
+                list.add(its.next());
+            }
         }
         return list;
     }
@@ -136,6 +149,15 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     }
 
     //ZREMRANGEBYSCORE
+    public synchronized int remRangeByScore(SortedSetOperation.Interval min, SortedSetOperation.Interval max) {
+        List<HashKey> rms = this.origin.subSet(Member.MIN(min.val), Member.MAX(max.val))
+                .stream()
+                .filter(e -> min.filterEqual(e)).filter(e -> min.filterEqual(e))
+                .map(Member::getKey).collect(Collectors.toList());
+        this.removeAll(rms);
+        return rms.size();
+    }
+
     //ZREVRANGE
     public synchronized List<Member> revRange(int from, int to) {
         Iterator<Member> its = origin.descendingSet().iterator();
@@ -152,7 +174,76 @@ public class SortedSetData extends AbstractValueData<SortedSet<Member>> {
     public Optional<Member> member(HashKey key) {
         return Optional.ofNullable(this.unique.get(key));
     }
+
     //ZUNIONSTORE
+    // over write
+    public synchronized int unionStore(RedisDatabase rd, SortedSetOperation.UnionStore us) {
+        SortedSetData[] ssd = Arrays.stream(us.getHashKeys()).map(e -> rd.get(e))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toArray(SortedSetData[]::new);
+        int[] wt = us.getWeights();
+        int size = recursiveLock(ssd, 0, () -> {
+            Map<HashKey, BigDecimal> map = new HashMap<>();
+            for (int i = 0; i < ssd.length; i++) {
+                SortedSetData s = ssd[i];
+                BigDecimal w = BigDecimal.valueOf(wt[i]);
+                s.origin.forEach(e -> {
+                    BigDecimal og = map.get(e.getKey());
+                    og = us.getType().apply(og, e.getScore().multiply(w));
+                    map.put(e.getKey(), og);
+                });
+            }
+            map.forEach((k, v) -> { // over write
+                this.addElement(new Member(k.getKey(), v));
+            });
+            return this.origin.size();
+        });
+        return size;
+    }
+
+    public synchronized <T> T recursiveLock(SortedSetData[] ssd, int index, Supplier<T> fun) {
+        if (index < ssd.length) {
+            return ssd[index].sync(() -> {// recursive
+                return recursiveLock(ssd, index + 1, fun);
+            });
+        }
+        return fun.get();
+    }
+
     //ZINTERSTORE
+    // over write !
+    public synchronized int interStore(RedisDatabase rd, SortedSetOperation.UnionStore us) {
+        SortedSetData[] ssd = Arrays.stream(us.getHashKeys()).map(e -> rd.get(e))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toArray(SortedSetData[]::new);
+        int[] wt = us.getWeights();
+        Map<HashKey, List<Member>> map = ssd[0].getData().stream().collect(Collectors.groupingBy(Member::getKey));
+        int size = recursiveLock(ssd, 0, () -> {
+            for (int i = 1; i < ssd.length; i++) {
+                SortedSetData s = ssd[i];
+                s.getData().forEach(e -> {
+                    List<Member> m = map.get(e.getKey());
+                    if (m != null) {
+                        m.add(e);
+                    }
+                });
+            }
+            map.forEach((k, vs) -> {
+                if (vs.size() != wt.length) {
+                    return;
+                }
+                BigDecimal val = null;
+                for (int i = 0; i < vs.size(); i++) {
+                    BigDecimal score = vs.get(i).getScore().multiply(BigDecimal.valueOf(wt[i]));
+                    val = us.getType().apply(val, score);
+                }
+                this.addElement(new Member(k.getKey(), val));// over write !
+            });
+            return this.origin.size();
+        });
+        return size;
+    }
     //ZSCAN
 }

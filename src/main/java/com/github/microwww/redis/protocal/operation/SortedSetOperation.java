@@ -5,12 +5,15 @@ import com.github.microwww.redis.database.*;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 
 public class SortedSetOperation extends AbstractOperation {
 
@@ -49,17 +52,10 @@ public class SortedSetOperation extends AbstractOperation {
             long count = ss.get().getData() //
                     .subSet(Member.MIN(min.val), Member.MAX(max.val)) //
                     .stream() //
-                    .filter(e -> filterEqual(e, min)).filter(e -> filterEqual(e, max)).count();
+                    .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e)).count();
             size = (int) count;
         }
         RedisOutputProtocol.writer(request.getOutputStream(), size);
-    }
-
-    private static boolean filterEqual(Member e, Interval min) {
-        if (min.open) {// open , remove equal
-            return !min.val.equals(e.getScore());
-        }
-        return true;
     }
 
     //ZINCRBY
@@ -96,6 +92,10 @@ public class SortedSetOperation extends AbstractOperation {
 
     //ZRANGEBYSCORE
     public void zrangebyscore(RedisRequest request) throws IOException {
+        this.rangeByScore(request, false);
+    }
+
+    private void rangeByScore(RedisRequest request, boolean desc) throws IOException {
         request.expectArgumentsCountGE(3);
         ExpectRedisRequest[] args = request.getArgs();
         Optional<SortedSetData> ss = getData(request);
@@ -109,9 +109,9 @@ public class SortedSetOperation extends AbstractOperation {
                 RangeByScoreParams pm = RangeByScoreParams.valueOf(op.toUpperCase());
                 i = pm.next(spm, args, i);
             }
-            ss.get().getData().subSet(Member.MIN(min.val), Member.MAX(max.val))
+            ss.get().getData(desc).subSet(Member.MIN(min.val), Member.MAX(max.val))
                     .stream()
-                    .filter(e -> filterEqual(e, min)).filter(e -> filterEqual(e, max))
+                    .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e))
                     .forEach(e -> {
                         list.add(e.getMember());
                         if (spm.withScores) {
@@ -124,13 +124,17 @@ public class SortedSetOperation extends AbstractOperation {
 
     //ZRANK, rank from 0
     public void zrank(RedisRequest request) throws IOException {
+        this.rank(request, false);
+    }
+
+    private void rank(RedisRequest request, boolean desc) throws IOException {
         request.expectArgumentsCount(2);
         ExpectRedisRequest[] args = request.getArgs();
         Optional<SortedSetData> ss = getData(request);
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
             if (member.isPresent()) {
-                int i = ss.get().getData().headSet(Member.MIN(member.get().getScore())).size();
+                int i = ss.get().getData(desc).headSet(Member.MIN(member.get().getScore())).size();
                 RedisOutputProtocol.writer(request.getOutputStream(), i);
             }
         }
@@ -164,13 +168,96 @@ public class SortedSetOperation extends AbstractOperation {
         }
         RedisOutputProtocol.writer(request.getOutputStream(), count);
     }
+
     //ZREMRANGEBYSCORE
+    public void zremrangebyscore(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        ExpectRedisRequest[] args = request.getArgs();
+        Optional<SortedSetData> ss = getData(request);
+        int count = 0;
+        if (ss.isPresent()) {
+            Interval min = new Interval(args[1].getByteArray());
+            Interval max = new Interval(args[2].getByteArray());
+            count = ss.get().remRangeByScore(min, max);
+        }
+        RedisOutputProtocol.writer(request.getOutputStream(), count);
+    }
+
     //ZREVRANGE
+    public void zrevrange(RedisRequest request) throws IOException {
+        request.expectArgumentsCountGE(3);
+        ExpectRedisRequest[] args = request.getArgs();
+        Optional<SortedSetData> ss = getData(request);
+        List<byte[]> list = new ArrayList<>();
+        if (ss.isPresent()) {
+            int start = args[1].byteArray2int();
+            int stop = args[2].byteArray2int();
+            List<Member> mem = ss.get().revRange(start, stop);
+            boolean withScores = args.length == 4;
+            for (Member m : mem) {
+                list.add(m.getMember());
+                if (withScores) {
+                    list.add(m.getScore().toPlainString().getBytes());
+                }
+            }
+        }
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+    }
+
     //ZREVRANGEBYSCORE
+    public void zrevrangebyscore(RedisRequest request) throws IOException {
+        this.rangeByScore(request, true);
+    }
+
     //ZREVRANK
+    public void zrevrank(RedisRequest request) throws IOException {
+        this.rank(request, true);
+    }
+
     //ZSCORE
+    public void zscore(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(2);
+        ExpectRedisRequest[] args = request.getArgs();
+        Optional<SortedSetData> ss = getData(request);
+        if (ss.isPresent()) {
+            Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
+            if (member.isPresent()) {
+                RedisOutputProtocol.writer(request.getOutputStream(), member.get().getScore().toPlainString());
+            }
+        }
+        RedisOutputProtocol.writerNull(request.getOutputStream());
+    }
+
     //ZUNIONSTORE
+    public void zunionstore(RedisRequest request) throws IOException {
+        SortedSetData target = this.getOrCreate(request);
+        this.storeFromSortedSet(request, (db, param) -> target.unionStore(request.getDatabase(), param));
+    }
+
+    public void storeFromSortedSet(RedisRequest request, BiFunction<RedisDatabase, UnionStore, Integer> fun) throws IOException {
+        request.expectArgumentsCountGE(3);
+        ExpectRedisRequest[] args = request.getArgs();
+        int i = 1;
+        int num = args[i++].byteArray2int();
+        Assert.isTrue(num + i >= args.length, "numkeys count error");
+        HashKey[] hks = new HashKey[num];
+        for (; i < num; i++) {
+            hks[i - 2] = args[i].byteArray2hashKey();
+        }
+        UnionStore us = new UnionStore(hks);
+        for (; i < args.length; i++) {
+            String op = args[i].getByteArray2string();
+            i = UnionStoreParam.valueOf(op.toUpperCase()).next(us, args, i);
+        }
+        int count = fun.apply(request.getDatabase(), us); // 并或交集
+        RedisOutputProtocol.writer(request.getOutputStream(), count);
+    }
+
     //ZINTERSTORE
+    public void zinterstore(RedisRequest request) throws IOException {
+        SortedSetData target = this.getOrCreate(request);
+        this.storeFromSortedSet(request, (db, param) -> target.interStore(request.getDatabase(), param));
+    }
     //ZSCAN
 
     @NotNull
@@ -195,6 +282,13 @@ public class SortedSetOperation extends AbstractOperation {
                 code = code.substring(1);
             }
             val = new BigDecimal(code);
+        }
+
+        public boolean filterEqual(Member e) {
+            if (this.open) {// open , remove equal
+                return !this.val.equals(e.getScore());
+            }
+            return true;
         }
     }
 
@@ -246,5 +340,93 @@ public class SortedSetOperation extends AbstractOperation {
         };
 
         public abstract int next(RangeByScore params, ExpectRedisRequest[] args, int i);
+    }
+
+    public static class UnionStore {
+        private final HashKey[] hashKeys;
+        private int[] weights;
+        private Aggregate type = Aggregate.SUM;
+
+        public UnionStore(HashKey[] hashKeys) {
+            this.hashKeys = hashKeys;
+        }
+
+        public HashKey[] getHashKeys() {
+            return hashKeys;
+        }
+
+        public int[] getWeights() {
+
+            return weights;
+        }
+
+        public void setWeights(int[] weights) {
+            this.weights = weights;
+        }
+
+        public Aggregate getType() {
+            return type;
+        }
+
+        public void setType(Aggregate type) {
+            this.type = type;
+        }
+    }
+
+    public enum UnionStoreParam {
+        WEIGHTS {
+            @Override
+            public int next(UnionStore params, ExpectRedisRequest[] args, int i) {
+                Assert.isTrue(args.length > i + params.getHashKeys().length, "WEIGHTS  count error");
+                int[] w = new int[params.getHashKeys().length];
+                for (int j = 0; j < params.getHashKeys().length; j++, i++) {
+                    w[j] = args[i + j + 1].byteArray2int();
+                }
+                params.setWeights(w);
+                return i + w.length;
+            }
+        },
+        AGGREGATE {
+            @Override
+            public int next(UnionStore params, ExpectRedisRequest[] args, int i) {
+                Aggregate.valueOf(args[i + 1].getByteArray2string().toUpperCase());
+                return i + 1;
+            }
+        };
+
+        public abstract int next(UnionStore params, ExpectRedisRequest[] args, int i);
+    }
+
+    public enum Aggregate implements BinaryOperator<BigDecimal> {
+        SUM {
+            @Override
+            public BigDecimal apply(BigDecimal d1, BigDecimal d2) {
+                Assert.isNotNull(d2, "Not null");
+                if (d1 == null) {
+                    return d2;
+                }
+                return d1.add(d2);
+            }
+        },
+        MIN {
+            @Override
+            public BigDecimal apply(BigDecimal d1, BigDecimal d2) {
+                Assert.isNotNull(d2, "Not null");
+                if (d1 == null) {
+                    return d2;
+                }
+                return d1.compareTo(d2) > 0 ? d2 : d1;
+            }
+        },
+        MAX {
+            @Override
+            public BigDecimal apply(BigDecimal d1, BigDecimal d2) {
+                Assert.isNotNull(d2, "Not null");
+                if (d1 == null) {
+                    return d2;
+                }
+                return d1.compareTo(d2) > 0 ? d1 : d2;
+            }
+        };
     }
 }
