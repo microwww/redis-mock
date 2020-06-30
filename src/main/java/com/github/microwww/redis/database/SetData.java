@@ -3,18 +3,18 @@ package com.github.microwww.redis.database;
 import java.util.*;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-public class SetData extends AbstractValueData<Set<byte[]>> {
-    private final Set<byte[]> origin;
+public class SetData extends AbstractValueData<Set<Bytes>> {
+    private final Set<Bytes> origin;
 
     public SetData() {
         this(NEVER_EXPIRE);
     }
 
     public SetData(int exp) {
-        this(new ConcurrentSkipListSet<>(ByteData.COMPARATOR), exp);
+        this(new ConcurrentSkipListSet<>(), exp);
     }
 
-    public SetData(Set<byte[]> origin, int exp) {
+    public SetData(Set<Bytes> origin, int exp) {
         this.origin = origin;
         this.data = Collections.unmodifiableSet(this.origin);
         this.expire = exp;
@@ -24,7 +24,7 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
     public synchronized int add(byte[]... bytes) {
         int i = 0;
         for (byte[] a : bytes) {
-            boolean success = origin.add(a);
+            boolean success = origin.add(new Bytes(a));
             if (success) {
                 i++;
             }
@@ -34,8 +34,8 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
 
     //SCARD
     //SDIFF
-    public Set<byte[]> diff(RedisDatabase db, HashKey[] ms, int off) {
-        Set<byte[]> collect = new TreeSet<>(ByteData.COMPARATOR);
+    public Set<Bytes> diff(RedisDatabase db, HashKey[] ms, int off) {
+        Set<Bytes> collect = new HashSet<>();
         collect.addAll(this.getData());
         for (int i = off; i < ms.length; i++) {
             Optional<SetData> sd = db.get(ms[i], SetData.class);
@@ -47,8 +47,8 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
     }
 
     //SDIFFSTORE
-    public Set<byte[]> diffStore(RedisDatabase db, HashKey[] ms) {
-        Set<byte[]> diff = this.diff(db, ms, 2);
+    public Set<Bytes> diffStore(RedisDatabase db, HashKey[] ms) {
+        Set<Bytes> diff = this.diff(db, ms, 2);
         SetData setData = new SetData();
         setData.origin.addAll(diff);
         db.put(ms[0], setData);
@@ -65,17 +65,17 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
     }
 
     //SPOP
-    public synchronized Optional<byte[]> pop() {
-        Optional<byte[]> bytes = this.randMember();
+    public synchronized Optional<Bytes> pop() {
+        Optional<Bytes> bytes = this.randMember();
         bytes.ifPresent(this.origin::remove);
         return bytes;
     }
 
     //SRANDMEMBER
-    public synchronized Optional<byte[]> randMember() {
-        Iterator<byte[]> it = origin.iterator();
+    public synchronized Optional<Bytes> randMember() {
+        Iterator<Bytes> it = origin.iterator();
         if (it.hasNext()) {
-            byte[] e = it.next();
+            Bytes e = it.next();
             return Optional.of(e);
         }
         return Optional.empty();

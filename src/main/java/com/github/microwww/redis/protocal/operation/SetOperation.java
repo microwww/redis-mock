@@ -1,6 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.SetData;
 import com.github.microwww.redis.protocal.AbstractOperation;
@@ -51,12 +52,13 @@ public class SetOperation extends AbstractOperation {
             ms[i] = args[i].byteArray2hashKey();
         }
 
-        Set<byte[]> set = ss.map(e -> {
-            Set<byte[]> diff = e.diff(request.getDatabase(), ms, 1);
+        Set<Bytes> set = ss.map(e -> {
+            Set<Bytes> diff = e.diff(request.getDatabase(), ms, 1);
             return diff;
         }).orElse(Collections.EMPTY_SET);
+        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
 
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), set.toArray(new byte[set.size()][]));
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
 
     //SDIFFSTORE
@@ -69,12 +71,13 @@ public class SetOperation extends AbstractOperation {
         }
 
         Optional<SetData> ss = request.getDatabase().get(ms[1], SetData.class);
-        Set<byte[]> set = ss.map(e -> {
-            Set<byte[]> diff = e.diffStore(request.getDatabase(), ms);
+        Set<Bytes> set = ss.map(e -> {
+            Set<Bytes> diff = e.diffStore(request.getDatabase(), ms);
             return diff;
         }).orElse(Collections.EMPTY_SET);
+        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
 
-        RedisOutputProtocol.writer(request.getOutputStream(), set.size());
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
 
     //SINTER

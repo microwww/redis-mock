@@ -20,6 +20,6 @@ public class ByteData extends AbstractValueData<byte[]> {
                 return cm;
             }
         }
-        return o1.length - o2.length;
+        return Integer.compare(o1.length, o2.length);
     };
 }
