@@ -21,13 +21,40 @@ public class SetData extends AbstractValueData<Set<byte[]>> {
     }
 
     //SADD
-    public synchronized boolean add(byte[] bytes) {
-        return origin.add(bytes);
+    public synchronized int add(byte[]... bytes) {
+        int i = 0;
+        for (byte[] a : bytes) {
+            boolean success = origin.add(a);
+            if (success) {
+                i++;
+            }
+        }
+        return i;
     }
 
     //SCARD
     //SDIFF
+    public Set<byte[]> diff(RedisDatabase db, HashKey[] ms, int off) {
+        Set<byte[]> collect = new TreeSet<>(ByteData.COMPARATOR);
+        collect.addAll(this.getData());
+        for (int i = off; i < ms.length; i++) {
+            Optional<SetData> sd = db.get(ms[i], SetData.class);
+            sd.ifPresent(ee -> { //
+                collect.removeAll(ee.getData());
+            });
+        }
+        return collect;
+    }
+
     //SDIFFSTORE
+    public Set<byte[]> diffStore(RedisDatabase db, HashKey[] ms) {
+        Set<byte[]> diff = this.diff(db, ms, 2);
+        SetData setData = new SetData();
+        setData.origin.addAll(diff);
+        db.put(ms[0], setData);
+        return diff;
+    }
+
     //SINTER
     //SINTERSTORE
     //SISMEMBER
