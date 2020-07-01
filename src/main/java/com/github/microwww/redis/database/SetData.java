@@ -36,26 +36,35 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
 
     //SCARD
     //SDIFF
-    //SDIFFSTORE
-    public synchronized Set<Bytes> diffStore(RedisDatabase db, HashKey[] ms) {
+    public synchronized Set<Bytes> diff(RedisDatabase db, HashKey[] ms) {
+        Set<Bytes> origin = new HashSet<>(this.origin);
         for (int i = 0; i < ms.length; i++) {
             Optional<SetData> sd = db.get(ms[i], SetData.class);
             sd.ifPresent(ee -> { //
-                this.origin.removeAll(ee.getData());
+                origin.removeAll(ee.getData());
             });
         }
-        return this.getData();
+        return origin;
+    }
+
+    //SDIFFSTORE
+    public synchronized SetData diffStore(RedisDatabase db, HashKey dest, HashKey[] ms) {
+        Set<Bytes> diff = this.diff(db, ms);
+        SetData target = new SetData();
+        db.put(dest, target);
+        target.origin.addAll(diff);
+        return target;
     }
 
     //SINTER
-    //SINTERSTORE
+    //SINTERSTORESINTERSTORE
     public synchronized Set<Bytes> interStore(RedisDatabase db, HashKey[] ms) {
         Optional<SetData> first = db.get(ms[0], SetData.class);
-        if (first.isPresent()) {
+        if (!first.isPresent()) {
             return Collections.emptySet();
         }
         Map<Bytes, List<Bytes>> collect = first.get().getData().stream().collect(Collectors.groupingBy(Function.identity()));
-        for (int i = 0; i < ms.length; i++) {
+        for (int i = 1; i < ms.length; i++) {
             Optional<SetData> sd = db.get(ms[i], SetData.class);
             if (!sd.isPresent()) {
                 return Collections.emptySet();
@@ -101,34 +110,30 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     }
 
     //SPOP
-    public synchronized Optional<Bytes> pop() {
-        Optional<Bytes> bytes = this.randMember();
-        bytes.ifPresent(this.origin::remove);
+    public synchronized List<Bytes> pop(int count) {
+        List<Bytes> bytes = this.randMember(count);
+        this.origin.removeAll(bytes);
         return bytes;
     }
 
+    /**
+     * @param len
+     * @return Don't repeat
+     */
     //SRANDMEMBER
-    public synchronized Optional<Bytes> randMember() {
-        int exchange = (int) (Math.random() * this.origin.size());
-        Iterator<Bytes> it = origin.iterator();
-        for (int i = 0; it.hasNext(); i++) {
-            Bytes next = it.next();
-            if (i == exchange) {
-                return Optional.of(next);
-            }
-        }
-        return Optional.empty();
-    }
-
-    public List<Bytes> exchange(int len) {
+    public List<Bytes> randMember(int len) {
         List<Bytes> list = new ArrayList<>(this.origin);
-        for (int i = 0; i < len; i++) {
+        for (int i = 0; i < len && i < list.size(); i++) {
             int exchange = (int) (Math.random() * list.size());
             list.set(i, list.set(exchange, list.get(i)));
         }
         return list.subList(0, len);
     }
 
+    /**
+     * @param len
+     * @return There is duplicate data
+     */
     public List<Bytes> random(int len) {
         List<Bytes> list = new ArrayList<>(this.origin);
         List<Bytes> res = new ArrayList<>();
