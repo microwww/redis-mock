@@ -204,7 +204,7 @@ public class StringOperationTest extends AbstractRedisTest {
         } catch (Exception e) {
         }
         long len = jedis.msetnx(k1, k1, k2, k2);
-        Assert.assertEquals(2, len);
+        Assert.assertEquals(1, len);
         String val = jedis.get(k1);
         Assert.assertEquals(k1, val);
         len = jedis.msetnx(k1, k1, k3, k1);

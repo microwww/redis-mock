@@ -134,7 +134,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         Long ttl = jedis.ttl(key1);
         assertEquals(ttl, ex / 1000, 1.0);
         Long t2 = jedis.pttl(key1);
-        assertTrue(ttl * 1000 < t2);
+        assertEquals(ttl * 1000, t2, 500);
 
         jedis.pexpire(key1, 0L);
         String val = jedis.get(key1);

@@ -187,7 +187,7 @@ public class StringOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length % 2 == 0, "key value, key value, key value");
         int count = StringData.multiSet(request.getDatabase(), args, false);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        RedisOutputProtocol.writer(request.getOutputStream(), count > 0 ? 1 : 0);
     }
 
     //PSETEX
