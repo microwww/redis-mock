@@ -5,6 +5,7 @@ import org.junit.Test;
 import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -65,7 +66,9 @@ public class KeyOperationTest extends AbstractRedisTest {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
         long time = 1000;
-        jedis.expireAt(key1, System.currentTimeMillis() / 1000 + time);
+        List<String> ts = jedis.time();
+        long current = Long.parseLong(ts.get(0))*1000 + (Long.parseLong(ts.get(1)) / 1000);
+        jedis.expireAt(key1, current / 1000 + time);
         Long t = jedis.ttl(key1);
         assertEquals(time, t, 1.0);
     }
@@ -143,7 +146,9 @@ public class KeyOperationTest extends AbstractRedisTest {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
         long time = 100 * 1000;
-        jedis.pexpireAt(key1, System.currentTimeMillis() + time);
+        List<String> ts = jedis.time();
+        long current = Long.parseLong(ts.get(0))*1000 + (Long.parseLong(ts.get(1)) / 1000);
+        jedis.pexpireAt(key1, current + time);
         Long t = jedis.pttl(key1);
         assertEquals(time, t, 1000.0);
 

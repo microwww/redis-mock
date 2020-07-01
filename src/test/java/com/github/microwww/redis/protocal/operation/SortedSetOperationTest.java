@@ -250,15 +250,15 @@ public class SortedSetOperationTest extends AbstractRedisTest {
         }
         jedis.zadd(r[0], map);
         {
-            Set<String> range = jedis.zrevrangeByScore(r[0], 1, 4);
+            Set<String> range = jedis.zrevrangeByScore(r[0], 4, 1);
             assertEquals(4, range.size());
         }
         {
-            Set<String> range = jedis.zrevrangeByScore(r[0], "(1", "(4");
+            Set<String> range = jedis.zrevrangeByScore(r[0], "(4", "(1");
             assertEquals(2, range.size());
         }
         {
-            Set<String> range = jedis.zrevrangeByScore(r[0], 100, 400);
+            Set<String> range = jedis.zrevrangeByScore(r[0], 400, 100);
             assertEquals(0, range.size());
         }
     }

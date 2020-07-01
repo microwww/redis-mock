@@ -102,9 +102,8 @@ public class SortedSetOperation extends AbstractOperation {
         Optional<SortedSetData> ss = getData(request);
         List<byte[]> list = new ArrayList<>();
         if (ss.isPresent()) {
-            Interval min = new Interval(args[1].getByteArray());
-            Interval max = new Interval(args[2].getByteArray());
-            Assert.isTrue(max.val.compareTo(min.val) >= 0, "param: min <= max !");
+            Interval start = new Interval(args[1].getByteArray());
+            Interval stop = new Interval(args[2].getByteArray());
             RangeByScore spm = new RangeByScore();
             for (int i = 3; i < args.length; i++) {
                 String op = args[i].getByteArray2string();
@@ -112,13 +111,13 @@ public class SortedSetOperation extends AbstractOperation {
                 i = pm.next(spm, args, i);
             }
             AtomicInteger count = new AtomicInteger(0);
-            long stop = spm.getCount() + spm.getOffset();
-            ss.get().getSubSetData(desc, Member.MIN(min.val), Member.MAX(max.val))
+            long end = spm.getCount() + spm.getOffset();
+            ss.get().getSubSetData(desc, start, stop)
                     .stream()
-                    .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e))
+                    .filter(e -> start.filterEqual(e)).filter(e -> stop.filterEqual(e))
                     .forEach(e -> {
                         int i = count.getAndIncrement();
-                        if (i >= stop) {
+                        if (i >= end) {
                             return;
                         }
                         if (i >= spm.offset) {

@@ -23,11 +23,17 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
         this.expire = exp;
     }
 
-    public SortedSet<Member> getSubSetData(boolean desc, Member from, Member to) {
+    public SortedSet<Member> getSubSetData(boolean desc, SortedSetOperation.Interval start, SortedSetOperation.Interval stop) {
         if (desc) {
-            return this.origin.descendingSet().subSet(to, from);
+            if (start.val.compareTo(stop.val) < 0) {
+                return Collections.emptySortedSet();
+            }
+            return this.origin.descendingSet().subSet(Member.MAX(start.val), Member.MIN(stop.val));
         } else {
-            return this.data.subSet(from, to);
+            if (start.val.compareTo(stop.val) > 0) {
+                return Collections.emptySortedSet();
+            }
+            return this.data.subSet(Member.MIN(start.val), Member.MAX(stop.val));
         }
     }
 
