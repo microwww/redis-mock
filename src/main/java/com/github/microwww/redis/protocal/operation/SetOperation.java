@@ -14,7 +14,7 @@ import java.util.*;
 public class SetOperation extends AbstractOperation {
 
     //SADD
-    public void zadd(RedisRequest request) throws IOException {
+    public void sadd(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
         ExpectRedisRequest[] args = request.getArgs();
         HashKey hk = args[0].byteArray2hashKey();
@@ -50,11 +50,11 @@ public class SetOperation extends AbstractOperation {
             ms[i] = args[i].byteArray2hashKey();
         }
 
-        Set<Bytes> set = ss.map(e -> {
+        byte[][] res = ss.map(e -> { //
             Set<Bytes> diff = e.diff(request.getDatabase(), ms, 1);
-            return diff;
-        }).orElse(Collections.EMPTY_SET);
-        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+            return diff.stream().map(Bytes::getBytes)
+                    .toArray(byte[][]::new);
+        }).orElse(new byte[0][]);
 
         RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
@@ -69,11 +69,10 @@ public class SetOperation extends AbstractOperation {
         }
 
         Optional<SetData> ss = request.getDatabase().get(ms[1], SetData.class);
-        Set<Bytes> set = ss.map(e -> {
+        byte[][] res = ss.map(e -> {
             Set<Bytes> diff = e.diffStore(request.getDatabase(), ms);
-            return diff;
-        }).orElse(Collections.EMPTY_SET);
-        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+            return diff.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+        }).orElse(new byte[0][]);
 
         RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
@@ -89,11 +88,10 @@ public class SetOperation extends AbstractOperation {
             ms[i] = args[i].byteArray2hashKey();
         }
 
-        Set<Bytes> set = ss.map(e -> {
+        byte[][] res = ss.map(e -> {
             Set<Bytes> diff = e.inter(request.getDatabase(), ms, 1);
-            return diff;
-        }).orElse(Collections.EMPTY_SET);
-        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+            return diff.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+        }).orElse(new byte[0][]);
 
         RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
@@ -109,11 +107,10 @@ public class SetOperation extends AbstractOperation {
             ms[i] = args[i].byteArray2hashKey();
         }
 
-        Set<Bytes> set = ss.map(e -> {
+        byte[][] res = ss.map(e -> {
             Set<Bytes> diff = e.interStore(request.getDatabase(), ms);
-            return diff;
-        }).orElse(Collections.EMPTY_SET);
-        byte[][] res = set.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+            return diff.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+        }).orElse(new byte[0][]);
 
         RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
     }
@@ -175,7 +172,7 @@ public class SetOperation extends AbstractOperation {
         Optional<SetData> data = request.getDatabase().get(source, SetData.class);
         Optional<Bytes> bytes = data.flatMap(SetData::pop);
 
-        RedisOutputProtocol.writer(request.getOutputStream(), bytes.isPresent() ? bytes.get().getBytes() : null);
+        RedisOutputProtocol.writer(request.getOutputStream(), bytes.map(Bytes::getBytes).orElse(null));
     }
 
     //SRANDMEMBER
@@ -190,13 +187,13 @@ public class SetOperation extends AbstractOperation {
             if (args.length > 1) {
                 count = args[1].byteArray2int();
             }
-            if (count == 0) {
+            List<Bytes> list = Collections.emptyList();
+            if (count > 0) {
+                list = e.exchange(count);
             } else if (count < 0) {
-                return e.random(0 - count);
-            } else {
-                return e.exchange(count);
+                list = e.random(-count);
             }
-            return new ArrayList<Bytes>();
+            return list;
         }).orElse(Collections.emptyList());
 
         byte[][] bytes = res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
