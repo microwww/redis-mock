@@ -179,7 +179,9 @@ public class HashOperationTest extends AbstractRedisTest {
         String val = hk;
         {
             List<String> ex = jedis.hmget(key, hk, hk + "0");
-            assertEquals(0, ex.size());
+            assertEquals(2, ex.size());
+            assertNull(ex.get(0));
+            assertNull(ex.get(1));
         }
         {
             jedis.hset(key, hk, val);

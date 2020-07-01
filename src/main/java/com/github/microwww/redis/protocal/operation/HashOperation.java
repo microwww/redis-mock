@@ -129,19 +129,15 @@ public class HashOperation extends AbstractOperation {
     //HMGET
     public void hmget(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
+        ExpectRedisRequest[] args = request.getArgs();
         Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
-        if (opt.isPresent()) {
-            List<byte[]> list = new ArrayList<>();
-            ExpectRedisRequest[] args = request.getArgs();
-            for (int i = 1; i < args.length; i++) {
-                ExpectRedisRequest arg = args[i];
-                byte[] bytes = opt.get().get(arg.byteArray2hashKey());
-                list.add(bytes);
+        byte[][] res = Arrays.stream(args, 1, args.length).map(e -> e.byteArray2hashKey()).map(e -> {
+            if(opt.isPresent()){
+                return opt.get().get(e);
             }
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
-        } else {
-            RedisOutputProtocol.writerMulti(request.getOutputStream()); //  null ?
-        }
+            return null;
+        }).toArray(byte[][]::new);
+        RedisOutputProtocol.writerMulti(request.getOutputStream(), res); //  null ?
     }
 
     //HMSET
