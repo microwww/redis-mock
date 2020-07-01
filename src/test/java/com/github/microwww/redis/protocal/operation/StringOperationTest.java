@@ -282,7 +282,7 @@ public class StringOperationTest extends AbstractRedisTest {
         {
             long nx = jedis.setrange(k1, 2, "234");
             assertEquals(5, nx);
-            assertEquals("\000\000234", jedis.get(k1));
+            assertEquals(new String(new byte[]{0, 0, '2', '3', '4'}), jedis.get(k1));
         }
         {
             long nx = jedis.setrange(k1, 0, "1234567");

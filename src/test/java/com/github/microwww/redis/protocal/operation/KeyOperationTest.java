@@ -2,9 +2,9 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
+import redis.clients.jedis.ScanResult;
 import redis.clients.jedis.exceptions.JedisDataException;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -247,5 +247,23 @@ public class KeyOperationTest extends AbstractRedisTest {
 
         type = jedis.type(key1 + "0");
         assertEquals("none", type);
+    }
+
+    @Test(timeout = 3000)
+    public void testScan() {
+        String[] r = Server.random(25);
+        jedis.select(7);
+        for (int i = 0; i < r.length; i++) {
+            jedis.set(r[i], i + "", "nx", "ex", 10);
+        }
+        String cursor = "0";
+        while (true) {
+            ScanResult<String> scan = jedis.scan(cursor);
+            cursor = scan.getStringCursor();
+            System.out.println(cursor);
+            if ("0".equalsIgnoreCase(cursor)) {
+                break;
+            }
+        }
     }
 }

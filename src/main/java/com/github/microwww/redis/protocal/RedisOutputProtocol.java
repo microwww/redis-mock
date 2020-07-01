@@ -1,5 +1,6 @@
 package com.github.microwww.redis.protocal;
 
+import com.github.microwww.redis.database.Bytes;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisOutputStream;
 
@@ -37,6 +38,10 @@ public class RedisOutputProtocol {
         out.flush();
     }
 
+    public static void writer(RedisOutputStream out, Bytes val) throws IOException {
+        writer(out, val.getBytes());
+    }
+
     public static void writer(RedisOutputStream out, byte[] val) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         if (val == null) {
@@ -47,6 +52,17 @@ public class RedisOutputProtocol {
             out.writeCrLf();
         }
         out.flush();
+    }
+
+
+    public static void writerNested(RedisOutputStream out, byte[] start, byte[][] args) throws IOException {
+        out.write(Protocol.ASTERISK_BYTE);
+        out.writeIntCrLf(2);
+        out.write(Protocol.DOLLAR_BYTE);
+        out.writeIntCrLf(start.length);
+        out.write(start);
+        out.writeCrLf();
+        writerMulti(out, args);
     }
 
     public static void writerMulti(RedisOutputStream out, byte[]... args) throws IOException {

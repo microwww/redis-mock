@@ -12,6 +12,7 @@ import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 public class KeyOperation extends AbstractOperation {
@@ -75,9 +76,7 @@ public class KeyOperation extends AbstractOperation {
     public void keys(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
         String patten = request.getArgs()[0].getByteArray2string();
-        patten = patten.replaceAll(Pattern.quote("*"), ".*");
-        patten = patten.replaceAll(Pattern.quote("?"), ".");
-        Pattern compile = Pattern.compile(patten);
+        Pattern compile = ScanParams.toPattern(patten);
 
         List<byte[]> list = new ArrayList<>();
         for (HashKey s : request.getDatabase().getUnmodifiableMap().keySet()) {
@@ -269,6 +268,37 @@ public class KeyOperation extends AbstractOperation {
     }
 
     //SCAN
+    public void scan(RedisRequest request) throws IOException {
+        scan(request, 1, () -> {
+            return request.getDatabase().getUnmodifiableMap().keySet().iterator();
+        });
+    }
+
+    public static void scan(RedisRequest request, int offset, Supplier<Iterator<? extends Bytes>> fun) throws IOException {
+        request.expectArgumentsCount(1);
+        ExpectRedisRequest[] args = request.getArgs();
+        int cursor = args[0].byteArray2int();
+
+        ScanParams spm = new ScanParams();
+        for (int i = offset; i < args.length; i++) {
+            String op = args[i].getByteArray2string();
+            Scan pm = Scan.valueOf(op.toUpperCase());
+            i = pm.next(spm, args, i);
+        }
+        Iterator<? extends Bytes> iterator = fun.get(); // request.getDatabase().getUnmodifiableMap().keySet().iterator();
+        List<byte[]> list = new ArrayList(spm.count);
+        for (int i = 0; i < cursor && iterator.hasNext(); i++) { // skip
+            iterator.next();
+        }
+        int i = cursor;
+        for (int j = 0; j < spm.count && iterator.hasNext(); i++, j++) {
+            list.add(iterator.next().getBytes());
+        }
+        cursor = iterator.hasNext() ? i : 0;
+        byte[][] arrays = list.toArray(new byte[list.size()][]);
+
+        RedisOutputProtocol.writerNested(request.getOutputStream(), (cursor + "").getBytes(), arrays);
+    }
 
     public static class Sort {
 
@@ -302,5 +332,53 @@ public class KeyOperation extends AbstractOperation {
             return count;
         }
 
+    }
+
+    public static class ScanParams {
+        private Pattern pattern = Pattern.compile(".*");
+        private int count = 10;
+
+        public Pattern getPattern() {
+            return pattern;
+        }
+
+        public void setPattern(Pattern pattern) {
+            this.pattern = pattern;
+        }
+
+        public static Pattern toPattern(String pattern) {
+            String patten = pattern.replaceAll(Pattern.quote("*"), ".*");
+            patten = patten.replaceAll(Pattern.quote("?"), ".");
+            return Pattern.compile(patten);
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public ScanParams setCount(int count) {
+            Assert.isTrue(count > 0, "Count > 0");
+            this.count = count;
+            return this;
+        }
+    }
+
+    public enum Scan {
+        MATCH {
+            @Override
+            public int next(ScanParams params, ExpectRedisRequest[] args, int i) {
+                params.pattern = ScanParams.toPattern(args[i + 1].getByteArray2string());
+                return i + 1;
+            }
+        },
+        COUNT {
+            @Override
+            public int next(ScanParams params, ExpectRedisRequest[] args, int i) {
+                params.count = args[i + 1].byteArray2int();
+                return i + 1;
+            }
+        };
+
+        public abstract int next(ScanParams params, ExpectRedisRequest[] args, int i);
     }
 }
