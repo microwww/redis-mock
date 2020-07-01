@@ -5,41 +5,15 @@ import redis.clients.util.SafeEncoder;
 import java.io.Serializable;
 import java.math.BigInteger;
 
-public final class HashKey implements Serializable {
+public final class HashKey extends Bytes {
     private static final long serialVersionUID = 0;
 
-    public final String hash;
-
-    public HashKey(byte[] key) {
-        if (key.length == 0) {
-            this.hash = "";
-        } else {
-            this.hash = new BigInteger(key).toString(16);
-        }
+    public HashKey(byte[] bytes) {
+        super(bytes);
     }
 
     public byte[] getKey() {
-        if (hash.length() == 0) {
-            return new byte[0];
-        }
-        return new BigInteger(hash, 16).toByteArray();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        HashKey keyData = (HashKey) o;
-        return hash.equals(keyData.hash);
-    }
-
-    @Override
-    public int hashCode() {
-        return hash.hashCode();
+        return super.getBytes();
     }
 
     @Override
