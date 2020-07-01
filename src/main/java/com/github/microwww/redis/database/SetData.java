@@ -23,10 +23,10 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     }
 
     //SADD
-    public synchronized int add(byte[]... bytes) {
+    public synchronized int add(Bytes... bytes) {
         int i = 0;
-        for (byte[] a : bytes) {
-            boolean success = origin.add(new Bytes(a));
+        for (Bytes a : bytes) {
+            boolean success = origin.add(a);
             if (success) {
                 i++;
             }
@@ -36,31 +36,26 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
 
     //SCARD
     //SDIFF
-    public synchronized Set<Bytes> diff(RedisDatabase db, HashKey[] ms, int off) {
-        Set<Bytes> collect = new HashSet<>();
-        collect.addAll(this.getData());
-        for (int i = off; i < ms.length; i++) {
-            Optional<SetData> sd = db.get(ms[i], SetData.class);
-            sd.ifPresent(ee -> { //
-                collect.removeAll(ee.getData());
-            });
-        }
-        return collect;
-    }
-
     //SDIFFSTORE
     public synchronized Set<Bytes> diffStore(RedisDatabase db, HashKey[] ms) {
-        Set<Bytes> diff = this.diff(db, ms, 2);
-        SetData setData = new SetData();
-        setData.origin.addAll(diff);
-        db.put(ms[0], setData);
-        return diff;
+        for (int i = 0; i < ms.length; i++) {
+            Optional<SetData> sd = db.get(ms[i], SetData.class);
+            sd.ifPresent(ee -> { //
+                this.origin.removeAll(ee.getData());
+            });
+        }
+        return this.getData();
     }
 
     //SINTER
-    public synchronized Set<Bytes> inter(RedisDatabase db, HashKey[] ms, int off) {
-        Map<Bytes, List<Bytes>> collect = this.getData().stream().collect(Collectors.groupingBy(Function.identity()));
-        for (int i = off; i < ms.length; i++) {
+    //SINTERSTORE
+    public synchronized Set<Bytes> interStore(RedisDatabase db, HashKey[] ms) {
+        Optional<SetData> first = db.get(ms[0], SetData.class);
+        if (first.isPresent()) {
+            return Collections.emptySet();
+        }
+        Map<Bytes, List<Bytes>> collect = first.get().getData().stream().collect(Collectors.groupingBy(Function.identity()));
+        for (int i = 0; i < ms.length; i++) {
             Optional<SetData> sd = db.get(ms[i], SetData.class);
             if (!sd.isPresent()) {
                 return Collections.emptySet();
@@ -72,16 +67,12 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
                 }
             });
         }
-        return collect.values().stream().filter(e -> e.size() == ms.length - off).map(e -> e.get(0)).collect(Collectors.toSet());
-    }
-
-    //SINTERSTORE
-    public synchronized Set<Bytes> interStore(RedisDatabase db, HashKey[] ms) {
-        Set<Bytes> inter = this.inter(db, ms, 2);
-        SetData data = new SetData();
-        data.origin.addAll(inter);
-        db.put(ms[0], data);
-        return data.getData();
+        collect.forEach((k, v) -> {
+            if (v.size() == ms.length) {
+                this.origin.add(k);
+            }
+        });
+        return this.getData();
     }
 
     //SISMEMBER
@@ -98,7 +89,7 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
         return remove;
     }
 
-    public synchronized int remove(Bytes... os) {
+    public synchronized int removeAll(Bytes... os) {
         int count = 0;
         for (Bytes o : os) {
             boolean rm = origin.remove(o);
@@ -147,8 +138,17 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
         }
         return res;
     }
+
     //SREM
     //SUNION
     //SUNIONSTORE
+    public synchronized Set<Bytes> union(RedisDatabase db, HashKey[] keys) {
+        for (int i = 0; i < keys.length; i++) {
+            db.get(keys[i], SetData.class).ifPresent(e -> {
+                this.origin.addAll(e.getData());
+            });
+        }
+        return this.getData();
+    }
     //SSCAN
 }
