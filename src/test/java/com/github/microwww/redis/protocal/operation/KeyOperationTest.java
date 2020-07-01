@@ -14,7 +14,7 @@ import static org.junit.Assert.*;
 public class KeyOperationTest extends AbstractRedisTest {
 
     @Test
-    public void del() throws IOException {
+    public void del() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
         String key2 = UUID.randomUUID().toString();
@@ -24,7 +24,7 @@ public class KeyOperationTest extends AbstractRedisTest {
     }
 
     @Test
-    public void testExpire() throws IOException {
+    public void testExpire() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
         int ex = (int) (10 + Math.random() * 100000);
@@ -67,7 +67,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         jedis.set(key1, key1);
         long time = 1000;
         List<String> ts = jedis.time();
-        long current = Long.parseLong(ts.get(0))*1000 + (Long.parseLong(ts.get(1)) / 1000);
+        long current = Long.parseLong(ts.get(0)) * 1000 + (Long.parseLong(ts.get(1)) / 1000);
         jedis.expireAt(key1, current / 1000 + time);
         Long t = jedis.ttl(key1);
         assertEquals(time, t, 1.0);
@@ -85,7 +85,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         jedis.set(key1 + "2" + key1, key1);
         Set<String> keys = jedis.keys("*");
         assertTrue(keys.size() >= 4);
-        keys.contains(key1);
+        assertTrue(keys.contains(key1));
 
         keys = jedis.keys(key1 + "*");
         assertEquals(keys.size(), 4);
@@ -132,9 +132,10 @@ public class KeyOperationTest extends AbstractRedisTest {
         long ex = (long) (10 + Math.random() * 100000);
         jedis.pexpire(key1, ex);
         Long ttl = jedis.ttl(key1);
-        assertEquals(ttl, ex / 1000, 1.0);
+        assertEquals(ttl, (int) (ex / 1000), 1.0);
         Long t2 = jedis.pttl(key1);
-        assertEquals(ttl * 1000, t2, 500);
+        // This test depends on the computer configuration
+        assertEquals(ttl * 1000, t2, 1000);
 
         jedis.pexpire(key1, 0L);
         String val = jedis.get(key1);
@@ -147,7 +148,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         jedis.set(key1, key1);
         long time = 100 * 1000;
         List<String> ts = jedis.time();
-        long current = Long.parseLong(ts.get(0))*1000 + (Long.parseLong(ts.get(1)) / 1000);
+        long current = Long.parseLong(ts.get(0)) * 1000 + (Long.parseLong(ts.get(1)) / 1000);
         jedis.pexpireAt(key1, current + time);
         Long t = jedis.pttl(key1);
         assertEquals(time, t, 1000.0);
@@ -184,6 +185,7 @@ public class KeyOperationTest extends AbstractRedisTest {
             jedis.rename(key1, key2);
             fail();
         } catch (JedisDataException ex) {
+            assertNotNull(ex);
         }
         {
             jedis.set(key1, key1);
@@ -209,6 +211,7 @@ public class KeyOperationTest extends AbstractRedisTest {
             jedis.rename(key1, key2);
             fail();
         } catch (JedisDataException ex) {
+            assertNotNull(ex);
         }
         {
             jedis.set(key1, key1);
