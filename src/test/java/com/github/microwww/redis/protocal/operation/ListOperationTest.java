@@ -26,6 +26,7 @@ public class ListOperationTest extends AbstractRedisTest {
                 jedis.lset(r[0], 0, r[1]);
                 fail();
             } catch (JedisDataException e) {
+                assertNotNull(e);
             }
         }
         {
@@ -71,13 +72,14 @@ public class ListOperationTest extends AbstractRedisTest {
     public void blpop() throws InterruptedException, IOException {
         String[] r = Server.random(8);
         InetSocketAddress address = Server.startListener();
-        BlockingQueue<List<String>> queue = new LinkedBlockingQueue();
+        BlockingQueue<List<String>> queue = new LinkedBlockingQueue<>();
         new Thread(() -> {
             try {
                 Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
                 List<String> pop = jedis.blpop(1000, r[0], r[1], r[3]);
                 queue.put(pop);
             } catch (Exception ex) {
+                assertNotNull(ex);
             }
         }).start();
         new Thread(() -> {
@@ -187,6 +189,7 @@ public class ListOperationTest extends AbstractRedisTest {
         assertEquals("OK", ok);
         assertEquals(5, jedis.llen(r[0]).intValue());
         ok = jedis.ltrim(r[0], 1, 2);
+        assertEquals("OK", ok);
         assertEquals(2, jedis.llen(r[0]).intValue());
         assertEquals(r[3], jedis.lpop(r[0]));
         assertEquals(r[4], jedis.lpop(r[0]));
