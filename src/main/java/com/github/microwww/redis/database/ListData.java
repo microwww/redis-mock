@@ -23,6 +23,11 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
         this.expire = exp;
     }
 
+    @Override
+    public String getType() {
+        return "list";
+    }
+
     //BLPOP
     public synchronized Optional<byte[]> blockPop(CountDownLatch latch, Function<ListData, Optional<byte[]>> fun) {
         if (origin.isEmpty()) {

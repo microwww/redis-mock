@@ -234,9 +234,8 @@ public class KeyOperationTest extends AbstractRedisTest {
 
     @Test
     public void testType() {
-        //Jedis jd = new Jedis("192.168.2.18");
-        //jd.auth("123456");
-        String key1 = UUID.randomUUID().toString();
+        String[] r = Server.random(10);
+        String key1 = r[0];
         jedis.set(key1, "");
         String type = jedis.type(key1);
         assertEquals("string", type);
@@ -244,6 +243,21 @@ public class KeyOperationTest extends AbstractRedisTest {
         type = jedis.type(key1);
         assertEquals("string", type);
 
+        jedis.lpush(r[1], r[1]);
+        type = jedis.type(r[1]);
+        assertEquals("list", type);
+
+        jedis.hset(r[2], r[1], r[1]);
+        type = jedis.type(r[2]);
+        assertEquals("hash", type);
+
+        jedis.sadd(r[3], r[1]);
+        type = jedis.type(r[3]);
+        assertEquals("set", type);
+
+        jedis.zadd(r[4], 0, r[1]);
+        type = jedis.type(r[4]);
+        assertEquals("zset", type);
 
         type = jedis.type(key1 + "0");
         assertEquals("none", type);

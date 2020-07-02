@@ -39,6 +39,10 @@ public abstract class AbstractValueData<T> {
         this.data = data;
     }
 
+    public String getType() {
+        return "string";
+    }
+
     public boolean isExpired() {
         if (expire < 0) {
             return false;

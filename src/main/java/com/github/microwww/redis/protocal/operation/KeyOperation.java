@@ -238,29 +238,8 @@ public class KeyOperation extends AbstractOperation {
         request.expectArgumentsCount(1);
         HashKey key = request.getArgs()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
-        if (opt.isPresent()) {
-            Object data = opt.get().getData();
-            String type = "string";
-            if (data instanceof ByteData) {
-            }
-            if (data instanceof HashData) {
-                type = "hash";
-            }
-            if (data instanceof ListData) {
-                type = "list";
-            }
-            if (data instanceof SetData) {
-                type = "set";
-            }
-            if (data instanceof SortedSetData) {
-                type = "zset";
-            }
-            if (data instanceof StringData) {
-            }
-            RedisOutputProtocol.writer(request.getOutputStream(), type);
-        } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), "none");
-        }
+        String type = opt.map(e -> e.getType()).orElse("none");
+        RedisOutputProtocol.writer(request.getOutputStream(), type);
     }
 
     //SCAN

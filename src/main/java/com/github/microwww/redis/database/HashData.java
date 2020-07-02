@@ -26,6 +26,11 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements
         this.expire = exp;
     }
 
+    @Override
+    public String getType() {
+        return "hash";
+    }
+
     //HDEL
     public synchronized byte[] remove(HashKey key) {
         return origin.remove(key);

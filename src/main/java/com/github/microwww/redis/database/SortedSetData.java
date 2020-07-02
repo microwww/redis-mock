@@ -37,6 +37,11 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
         }
     }
 
+    @Override
+    public String getType() {
+        return "zset";
+    }
+
     //ZADD
     public synchronized int addOrReplace(Member... member) {
         int count = 0;

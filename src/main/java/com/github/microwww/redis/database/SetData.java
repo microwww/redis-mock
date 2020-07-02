@@ -22,6 +22,11 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
         this.expire = exp;
     }
 
+    @Override
+    public String getType() {
+        return "set";
+    }
+
     //SADD
     public synchronized int add(Bytes... bytes) {
         int i = 0;
