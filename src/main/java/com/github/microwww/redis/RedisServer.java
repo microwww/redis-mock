@@ -1,6 +1,8 @@
 package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Schema;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.RequestSession;
@@ -8,6 +10,8 @@ import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisInputStream;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,16 +19,17 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class RedisServer extends SelectSocketsThreadPool {
+    public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
     private static final Executor pool = Executors.newFixedThreadPool(5);
-    private final Map<SocketChannel, RequestSession> sessions = new ConcurrentHashMap();
+    private final Map<SocketChannel, RequestSession> sessions = new ConcurrentHashMap<>();
     private Schema schema;
 
     public RedisServer() {
         super(pool);
     }
 
-    public void configScheme(int size, AbstractOperation... operation) throws IOException {
+    public void configScheme(int size, AbstractOperation... operation) {
         if (this.schema == null) {
             this.schema = new Schema(size, operation);
         }
@@ -32,6 +37,12 @@ public class RedisServer extends SelectSocketsThreadPool {
 
     public void listener(String host, int port) throws IOException {
         Runnable config = this.config(host, port);
+
+        if (Thread.getDefaultUncaughtExceptionHandler() == null) {
+            Thread.setDefaultUncaughtExceptionHandler((t, e) -> {//
+                log.error("Thread runtime error {}", e);
+            });
+        }
         pool.execute(config);
     }
 
@@ -39,6 +50,9 @@ public class RedisServer extends SelectSocketsThreadPool {
     public Runnable config(String host, int port) throws IOException {
         Runnable run = super.config(host, port);
         return () -> {
+            InetSocketAddress address = (InetSocketAddress) this.serverSocket.getLocalSocketAddress();
+            log.info("Redis server start @ {}:{}", address.getHostName(), "" + address.getPort());
+            // RUN and block !
             run.run();
         };
     }
