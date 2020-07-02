@@ -5,13 +5,15 @@ import redis.clients.util.SafeEncoder;
 import java.io.Serializable;
 import java.util.Arrays;
 
-public class Bytes implements Serializable, Comparable {
+public class Bytes implements Serializable, Comparable<Bytes> {
     private static final long serialVersionUID = 0;
 
     private final byte[] bytes;
+    public final int length;
 
     public Bytes(byte[] bytes) {
         this.bytes = bytes;
+        this.length = bytes.length;
     }
 
     public byte[] getBytes() {
@@ -56,11 +58,7 @@ public class Bytes implements Serializable, Comparable {
     }
 
     @Override
-    public int compareTo(Object o) {
-        if (!(o instanceof Bytes)) {
-            throw new IllegalArgumentException("Un compare object !");
-        }
-        Bytes o2 = (Bytes) o;
-        return ByteData.COMPARATOR.compare(this.bytes, o2.bytes);
+    public int compareTo(Bytes o) {
+        return ByteData.COMPARATOR.compare(this.bytes, o.bytes);
     }
 }
