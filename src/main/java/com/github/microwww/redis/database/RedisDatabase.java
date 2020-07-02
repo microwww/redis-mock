@@ -17,7 +17,7 @@ public class RedisDatabase implements DataLock {
         map.put(key, new ByteData(val, AbstractValueData.NEVER_EXPIRE));
     }
 
-    public AbstractValueData put(HashKey key, AbstractValueData data) {
+    public AbstractValueData<?> put(HashKey key, AbstractValueData<?> data) {
         return map.put(key, data);
     }
 
@@ -75,6 +75,10 @@ public class RedisDatabase implements DataLock {
     //DEL
     public synchronized AbstractValueData<?> remove(HashKey key) {
         return map.remove(key);
+    }
+
+    public void clear() {
+        this.map.clear();
     }
 
     //DUMP

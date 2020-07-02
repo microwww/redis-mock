@@ -115,6 +115,12 @@ public class Schema {
         RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "unsupported operation now");
     }
 
+    public synchronized void clearDatabase() {
+        for (RedisDatabase db : this.redisDatabases) {
+            db.clear();
+        }
+    }
+
     public static class Invoker {
         public final Object instance;
         public final Method method;
