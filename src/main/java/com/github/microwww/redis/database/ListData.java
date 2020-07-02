@@ -4,10 +4,11 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class ListData extends AbstractValueData<List<byte[]>> implements DataLock {
+public class ListData extends AbstractValueData<List<Bytes>> implements DataLock {
     private List<CountDownLatch> latches = new LinkedList<>();
-    private final List<byte[]> origin;
+    private final List<Bytes> origin;
 
     public ListData() {
         this(NEVER_EXPIRE);
@@ -17,7 +18,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
         this(new CopyOnWriteArrayList<>(), exp);
     }
 
-    public ListData(List<byte[]> origin, int exp) {
+    public ListData(List<Bytes> origin, int exp) {
         this.origin = origin;
         this.data = Collections.unmodifiableList(origin);
         this.expire = exp;
@@ -29,7 +30,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     }
 
     //BLPOP
-    public synchronized Optional<byte[]> blockPop(CountDownLatch latch, Function<ListData, Optional<byte[]>> fun) {
+    public synchronized Optional<Bytes> blockPop(CountDownLatch latch, Function<ListData, Optional<Bytes>> fun) {
         if (origin.isEmpty()) {
             if (!this.latches.contains(latch)) {
                 this.latches.add(latch);
@@ -46,7 +47,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     //BRPOPLPUSH
 
     //LINDEX
-    public synchronized Optional<byte[]> getByIndex(int index) {
+    public synchronized Optional<Bytes> getByIndex(int index) {
         int max = origin.size();
         index = index(index);
         if (index >= max) {
@@ -59,7 +60,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     public synchronized boolean findAndOffsetInsert(byte[] pivot, int offset, byte[] value) {
         int index = this.indexOf(pivot);
         if (index >= 0) {
-            this.origin.add(index + offset, value);
+            this.origin.add(index + offset, new Bytes(value));
             this.latch();
             return true;
         }
@@ -69,8 +70,8 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     public synchronized int indexOf(byte[] val) {
         int index = -1;
         for (int i = 0; i < this.origin.size(); i++) {
-            byte[] bytes = this.origin.get(i);
-            if (Arrays.equals(bytes, val)) {
+            Bytes bytes = this.origin.get(i);
+            if (Bytes.eq(bytes, val)) {
                 index = i;
                 break;
             }
@@ -78,14 +79,14 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
         return index;
     }
 
-    public synchronized byte[] remove(int index) {
+    public synchronized Bytes remove(int index) {
         return origin.remove(index);
     }
 
     //LLEN
     //LPOP
-    public synchronized Optional<byte[]> leftPop() {
-        byte[] rm = null;
+    public synchronized Optional<Bytes> leftPop() {
+        Bytes rm = null;
         if (!origin.isEmpty()) {
             rm = origin.remove(0);
         }
@@ -95,7 +96,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     //LPUSH
     public synchronized void leftAdd(byte[]... bytes) {
         for (byte[] a : bytes) {
-            origin.add(0, a);
+            origin.add(0, new Bytes(a));
         }
         this.latch();
     }
@@ -112,7 +113,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
         int end = Math.min(max, to);
         byte[][] byt = new byte[end - from][];
         for (int i = 0; i < byt.length; i++) {
-            byt[i] = this.origin.get(from + i);
+            byt[i] = this.origin.get(from + i).getBytes();
         }
         return byt;
     }
@@ -130,7 +131,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
         if (count > 0) {
             int size = this.origin.size();
             for (int i = 0; i < size; i++) {
-                if (Arrays.equals(val, this.origin.get(i))) {
+                if (Bytes.eq(this.origin.get(i), val)) {
                     this.origin.remove(i);
                     count--;
                     if (count <= 0) {
@@ -148,7 +149,7 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
                 count = size;
             }
             for (int i = size - 1; i >= 0; i--) {
-                if (Arrays.equals(val, this.origin.get(i))) {
+                if (Bytes.eq(this.origin.get(i), val)) {
                     this.origin.remove(i);
                     count--;
                     ct++;
@@ -162,8 +163,8 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     }
 
     //LSET
-    public synchronized byte[] set(int index, byte[] element) {
-        return origin.set(index, element);
+    public synchronized Bytes set(int index, byte[] element) {
+        return origin.set(index, new Bytes(element));
     }
 
     //LTRIM
@@ -186,8 +187,8 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     }
 
     //RPOP
-    public synchronized Optional<byte[]> rightPop() {
-        byte[] or = null;
+    public synchronized Optional<Bytes> rightPop() {
+        Bytes or = null;
         if (!this.origin.isEmpty()) {
             or = origin.remove(origin.size() - 1);
         }
@@ -195,9 +196,19 @@ public class ListData extends AbstractValueData<List<byte[]>> implements DataLoc
     }
 
     //RPOPLPUSH
+    public synchronized Optional<Bytes> pop2push(RedisDatabase db, HashKey target) {
+        return this.rightPop().map(e -> {
+            ListData dest = db.getOrCreate(target, ListData::new);
+            return dest.sync(() -> {
+                dest.leftAdd(e.getBytes());
+                return e;
+            });
+        });
+    }
+
     //RPUSH
     public synchronized void rightAdd(byte[]... bytes) {
-        this.origin.addAll(Arrays.asList(bytes));
+        this.origin.addAll(Arrays.stream(bytes).map(Bytes::new).collect(Collectors.toList()));
         this.latch();
     }
     //RPUSHX

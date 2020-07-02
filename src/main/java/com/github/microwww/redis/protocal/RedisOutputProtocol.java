@@ -39,7 +39,7 @@ public class RedisOutputProtocol {
     }
 
     public static void writer(RedisOutputStream out, Bytes val) throws IOException {
-        writer(out, val.getBytes());
+        writer(out, val == null ? null : val.getBytes());
     }
 
     public static void writer(RedisOutputStream out, byte[] val) throws IOException {

@@ -1,6 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
@@ -29,7 +30,7 @@ public class ListOperation extends AbstractOperation {
         if (opt.isPresent()) {
             String index = args[1].getByteArray2string();
             try {
-                opt.get().getData().set(Integer.parseInt(index), args[2].getByteArray());
+                opt.get().getData().set(Integer.parseInt(index), args[2].toBytes());
                 RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
             } catch (ArrayIndexOutOfBoundsException e) {
                 RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Array Index Out Of Bounds");
@@ -56,7 +57,7 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = this.getList(request);
         if (opt.isPresent()) {
             try {
-                Optional<byte[]> rm = opt.get().rightPop();
+                Optional<Bytes> rm = opt.get().rightPop();
                 RedisOutputProtocol.writer(request.getOutputStream(), rm.orElse(null));
                 return;
             } catch (IndexOutOfBoundsException i) {// ignore
@@ -77,7 +78,7 @@ public class ListOperation extends AbstractOperation {
         RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
     }
 
-    public byte[][] block(RedisRequest request, Function<ListData, Optional<byte[]>> fun) throws IOException {
+    public byte[][] block(RedisRequest request, Function<ListData, Optional<Bytes>> fun) throws IOException {
         request.expectArgumentsCountGE(2);
         ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
@@ -93,8 +94,8 @@ public class ListOperation extends AbstractOperation {
             for (int i = 1; i < args.length - 1; i++) {
                 HashKey key = args[i].byteArray2hashKey();
                 ListData list = request.getDatabase().getOrCreate(key, ListData::new);
-                Optional<byte[]> bytes = list.blockPop(latch, fun);
-                res.add(bytes);
+                Optional<Bytes> bytes = list.blockPop(latch, fun);
+                res.add(bytes.map(Bytes::getBytes));
                 if (bytes.isPresent()) {
                     exist = true;
                 }
@@ -168,9 +169,9 @@ public class ListOperation extends AbstractOperation {
     public void lpop(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
         Optional<ListData> opt = getList(request);
-        byte[] data = null;
+        Bytes data = null;
         if (opt.isPresent()) {
-            Optional<byte[]> bytes = opt.get().leftPop();
+            Optional<Bytes> bytes = opt.get().leftPop();
             data = bytes.orElse(null);
         }
         RedisOutputProtocol.writer(request.getOutputStream(), data);
@@ -242,17 +243,11 @@ public class ListOperation extends AbstractOperation {
     //RPOPLPUSH
     public void rpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
+        HashKey target = request.getArgs()[1].byteArray2hashKey();
         Optional<ListData> opt = this.getList(request);
-        byte[] data = null;
-        if (opt.isPresent()) {
-            ListData source = opt.get();
-            ListData destination = this.getOrCreateList(request, 1);
-            Optional<byte[]> bytes = source.rightPop();
-            if (bytes.isPresent()) {
-                data = bytes.get();
-                destination.leftAdd(data);
-            }
-        }
+        Bytes data = opt.flatMap(e -> { // doing
+            return e.pop2push(request.getDatabase(), target);
+        }).orElse(null);
         RedisOutputProtocol.writer(request.getOutputStream(), data);
     }
 

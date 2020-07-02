@@ -31,6 +31,17 @@ public class Bytes implements Serializable, Comparable {
         return Long.parseLong(this.toString());
     }
 
+    public static boolean eq(Bytes bytes, byte[] o) {
+        if (bytes == null) {
+            return o == null;
+        }
+        return bytes.eq(o);
+    }
+
+    public boolean eq(byte[] o) {
+        return Arrays.equals(this.bytes, o);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

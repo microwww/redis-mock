@@ -192,6 +192,12 @@ public class ListOperationTest extends AbstractRedisTest {
 
     @Test
     public void rpoplpush() {
+        String[] r = Server.random(8);
+        String rpp = jedis.rpoplpush(r[0], r[1]);
+        assertNull(rpp);
+        jedis.lpush(r[0], r[5], r[6]);
+        rpp = jedis.rpoplpush(r[0], r[1]);
+        assertEquals(r[5], rpp);
     }
 
     @Test
