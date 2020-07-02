@@ -6,8 +6,11 @@ import redis.clients.jedis.BinaryClient;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.exceptions.JedisDataException;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
@@ -64,28 +67,27 @@ public class ListOperationTest extends AbstractRedisTest {
     public void rpop() {
     }
 
-    // @Test
-    public void blpop() throws InterruptedException {
+    @Test
+    public void blpop() throws InterruptedException, IOException {
         String[] r = Server.random(8);
+        InetSocketAddress address = Server.startListener();
+        BlockingQueue<List<String>> queue = new LinkedBlockingQueue();
         new Thread(() -> {
             try {
-                InetSocketAddress address = Server.startListener();
-                jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
-                System.out.println("==========================");
+                Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
                 List<String> pop = jedis.blpop(1000, r[0], r[1], r[3]);
-                System.out.println(pop);
+                queue.put(pop);
             } catch (Exception ex) {
             }
         }).start();
-        Thread.sleep(100);
         new Thread(() -> {
-            System.out.println("==========1================");
-            jedis.rpush(r[0], r[4], r[5]);
-            jedis.rpush(r[1], r[4], r[5]);
-            jedis.rpush(r[3], r[4], r[5]);
-            System.out.println("==========2================");
+            Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
+            jedis.rpush(r[0], r[4]);
+            jedis.rpush(r[1], r[4]);
+            jedis.rpush(r[3], r[4]);
         }).start();
-        Thread.sleep(10000);
+        List<String> take = queue.take();
+        assertNotNull(take);
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
+
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -7,6 +10,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ListData extends AbstractValueData<List<Bytes>> implements DataLock {
+    private static final Logger log = LogFactory.getLogger(ListData.class);
+
     private List<CountDownLatch> latches = new LinkedList<>();
     private final List<Bytes> origin;
 
@@ -34,13 +39,14 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         if (origin.isEmpty()) {
             if (!this.latches.contains(latch)) {
                 this.latches.add(latch);
+                log.debug("Lock {}", this);
             }
             return Optional.empty();
         }
         return fun.apply(this);
     }
 
-    public void removeCountDownLatch(CountDownLatch latch) {
+    public synchronized void removeCountDownLatch(CountDownLatch latch) {
         this.latches.remove(latch);
     }
     //BRPOP
@@ -214,6 +220,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     //RPUSHX
 
     private synchronized void latch() {
+        log.debug("Try Release {}, {}", this, latches.size());
         if (!latches.isEmpty()) {
             try {
                 latches.remove(0).countDown();

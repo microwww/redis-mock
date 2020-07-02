@@ -19,6 +19,7 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class ListOperation extends AbstractOperation {
 
@@ -45,9 +46,10 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCountBigger(1);
         ListData list = this.getOrCreateList(request);
         ExpectRedisRequest[] args = request.getArgs();
-        for (int i = 1; i < args.length; i++) {
-            list.rightAdd(args[i].getByteArray());
-        }
+        byte[][] bytes = Arrays.stream(args, 1, args.length)
+                .map(e -> e.getByteArray())
+                .toArray(byte[][]::new);
+        list.rightAdd(bytes);
         RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
     }
 
@@ -82,40 +84,35 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCountGE(2);
         ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
-        List<Optional<byte[]>> res = new ArrayList<>();
-        boolean exist = false;
+        List<Bytes> res = new ArrayList<>();
         long timeoutSeconds = request.getArgs()[args.length - 1].byteArray2long();
         long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
         while (true) { // TODO: time not
             long lost = stopTime - System.currentTimeMillis();
-            if (lost <= 0) {
+            if (lost <= 0 && !res.isEmpty()) {
                 break;
             }
-            for (int i = 1; i < args.length - 1; i++) {
-                HashKey key = args[i].byteArray2hashKey();
-                ListData list = request.getDatabase().getOrCreate(key, ListData::new);
-                Optional<Bytes> bytes = list.blockPop(latch, fun);
-                res.add(bytes.map(Bytes::getBytes));
-                if (bytes.isPresent()) {
-                    exist = true;
-                }
-            }
-            if (!exist) {
+            res = Arrays.stream(args, 0, args.length - 1)
+                    .map(e -> e.byteArray2hashKey()) // key
+                    .map(e -> request.getDatabase().getOrCreate(e, ListData::new)) // create ListDate
+                    .map(e -> e.blockPop(latch, fun)) // add lock
+                    .filter(Optional::isPresent).map(Optional::get)
+                    .collect(Collectors.toList());
+            if (res.isEmpty()) {
                 try {
                     latch.await(lost, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
                     Thread.interrupted();
                 }
+            } else {
+                break;
             }
         }
         for (int i = 1; i < args.length - 1; i++) {
             HashKey key = args[i].byteArray2hashKey();
             request.getDatabase().getOrCreate(key, ListData::new).removeCountDownLatch(latch);
         }
-        return res.stream() //
-                .filter(Optional::isPresent) //
-                .map(Optional::get) //
-                .toArray(byte[][]::new);
+        return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
     }
 
     //BRPOPLPUSH
