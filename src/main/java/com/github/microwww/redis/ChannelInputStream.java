@@ -53,7 +53,6 @@ public class ChannelInputStream extends InputStream {
             return -1;
         }
         byte b = buffer.get();
-        System.out.print((char) b);
         return b;
     }
 

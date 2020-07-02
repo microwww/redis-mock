@@ -1,5 +1,8 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -7,6 +10,7 @@ import java.nio.channels.*;
 import java.util.Iterator;
 
 public abstract class SelectSockets {
+    private static final Logger logger = LogFactory.getLogger(SelectSockets.class);
 
     private ServerSocketChannel serverChannel;
     protected ServerSocket serverSocket;
@@ -82,9 +86,9 @@ public abstract class SelectSockets {
     public void closeChannel(SocketChannel channel) throws IOException {
         try {
             InetSocketAddress add = (InetSocketAddress) channel.getRemoteAddress();
-            System.out.println(String.format("Remote KILLED : %s:%d", add.getHostName(), add.getPort()));
+            logger.info("Remote KILLED: {}:{}", add.getHostName(), add.getPort());
         } catch (Exception e) {
-            System.out.println(String.format("Remote KILLED : %s", channel));
+            logger.info("Remote KILLED : {}", channel);
         }
         channel.close();
     }

@@ -1,5 +1,8 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
+
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -8,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 public class SelectSocketsThreadPool extends SelectSockets {
+
+    private static final Logger logger = LogFactory.getLogger(SelectSocketsThreadPool.class);
 
     private Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap();
     private final Executor pool;
@@ -41,9 +46,10 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 });
             } catch (RuntimeException | IOException e) { // IO 做简单处理
                 try {
-                    System.out.println("Error ! try to close channel : " + e.getMessage());
+                    logger.info("Error ! try to close channel : {}", e.getMessage());
                     closeChannel(key);
                 } catch (IOException ex) {
+                    logger.debug("Close error !", ex);
                 }
             }
         });
