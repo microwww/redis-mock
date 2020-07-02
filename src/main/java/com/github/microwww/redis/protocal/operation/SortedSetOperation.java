@@ -5,6 +5,7 @@ import com.github.microwww.redis.database.*;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.ScanIterator;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 import redis.clients.util.SafeEncoder;
@@ -273,7 +274,20 @@ public class SortedSetOperation extends AbstractOperation {
         SortedSetData target = this.getOrCreate(request);
         this.storeFromSortedSet(request, (db, param) -> target.interStore(request.getDatabase(), param));
     }
+
     //ZSCAN
+    public void zscan(RedisRequest request) throws IOException {
+        Optional<SortedSetData> opt = this.getData(request);
+        NavigableSet<Member> hk = opt.map(e -> e.getData()).orElse(Collections.emptyNavigableSet());
+        Iterator<Member> iterator = hk.iterator();
+        new ScanIterator<Member>(request, 1)
+                .skip(iterator)
+                .continueWrite(iterator, e -> {// key
+                    return e.getMember();
+                }, e -> {// value
+                    return e.getScore().toPlainString().getBytes();
+                });
+    }
 
     @NotNull
     private SortedSetData getOrCreate(RedisRequest request) {

@@ -5,6 +5,7 @@ import com.github.microwww.AbstractRedisTest;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import redis.clients.jedis.ScanResult;
 import redis.clients.jedis.Tuple;
 import redis.clients.jedis.ZParams;
 
@@ -369,5 +370,25 @@ public class SortedSetOperationTest extends AbstractRedisTest {
         jedis.zinterstore(r[4], params, r[0], r[1]);
         assertEquals(3, jedis.zscore(r[4], r[3]), 0.000000000001);
         assertEquals(4, jedis.zscore(r[4], r[4]), 0.000000000001);
+    }
+
+    @Test(timeout = 3000)
+    public void testZscan() {
+        String[] r = Server.random(25);
+        jedis.select(7);
+        for (int i = 0; i < r.length; i++) {
+            jedis.zadd(r[0], i, r[i]);
+        }
+        String cursor = "0";
+        int size = 0;
+        while (true) {
+            ScanResult<Tuple> scan = jedis.zscan(r[0], cursor);
+            cursor = scan.getStringCursor();
+            size += scan.getResult().size();
+            if ("0".equalsIgnoreCase(cursor)) {
+                break;
+            }
+        }
+        assertEquals(25, size);
     }
 }

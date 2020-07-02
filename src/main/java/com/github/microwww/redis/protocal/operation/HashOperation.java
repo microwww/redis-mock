@@ -6,6 +6,7 @@ import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.ScanIterator;
 import com.github.microwww.redis.util.Assert;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
@@ -132,7 +133,7 @@ public class HashOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Optional<Map<HashKey, byte[]>> opt = this.getHashMap(request);
         byte[][] res = Arrays.stream(args, 1, args.length).map(e -> e.byteArray2hashKey()).map(e -> {
-            if(opt.isPresent()){
+            if (opt.isPresent()) {
                 return opt.get().get(e);
             }
             return null;
@@ -191,7 +192,20 @@ public class HashOperation extends AbstractOperation {
             RedisOutputProtocol.writerMulti(request.getOutputStream());
         }
     }
+
     //HSCAN
+    public void hscan(RedisRequest request) throws IOException {
+        Optional<HashData> opt = this.getHashData(request);
+        Set<HashKey> hk = opt.map(e -> e.getData().keySet()).orElse(Collections.emptySet());
+        Iterator<HashKey> iterator = hk.iterator();
+        new ScanIterator<HashKey>(request, 1)
+                .skip(iterator)
+                .continueWrite(iterator, e -> {// key
+                    return e.getKey();
+                }, e -> {// value
+                    return opt.get().getData().get(e);
+                });
+    }
 
     private Optional<Map<HashKey, byte[]>> getHashMap(RedisRequest request) {
         return getHashData(request).map(e -> e.getData());

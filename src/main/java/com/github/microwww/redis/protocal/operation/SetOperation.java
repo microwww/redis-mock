@@ -1,13 +1,11 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
-import com.github.microwww.redis.database.Bytes;
-import com.github.microwww.redis.database.HashKey;
-import com.github.microwww.redis.database.RedisDatabase;
-import com.github.microwww.redis.database.SetData;
+import com.github.microwww.redis.database.*;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.ScanIterator;
 
 import java.io.IOException;
 import java.util.*;
@@ -250,7 +248,20 @@ public class SetOperation extends AbstractOperation {
 
         RedisOutputProtocol.writer(request.getOutputStream(), union.getData().size());
     }
+
     //SSCAN
+    public void sscan(RedisRequest request) throws IOException {
+        ExpectRedisRequest[] args = request.getArgs();
+        HashKey key = args[0].byteArray2hashKey();
+        Optional<SetData> opt = request.getDatabase().get(key, SetData.class);
+        Set<Bytes> hk = opt.map(e -> e.getData()).orElse(Collections.emptySet());
+        Iterator<Bytes> iterator = hk.iterator();
+        new ScanIterator<Bytes>(request, 1)
+                .skip(iterator)
+                .continueWrite(iterator, e -> {// key
+                    return e.getBytes();
+                });
+    }
 
     public SetData getOrCreate(RedisRequest request) {
         ExpectRedisRequest[] args = request.getArgs();

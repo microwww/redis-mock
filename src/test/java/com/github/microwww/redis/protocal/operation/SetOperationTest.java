@@ -5,6 +5,7 @@ import com.github.microwww.AbstractRedisTest;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
+import redis.clients.jedis.ScanResult;
 
 import java.util.List;
 import java.util.Set;
@@ -358,5 +359,25 @@ public class SetOperationTest extends AbstractRedisTest {
             assertEquals(5, jedis.scard(r[9]).intValue());
             assertTrue(jedis.smembers(r[9]).contains(r[7]));
         }
+    }
+
+    @Test(timeout = 3000)
+    public void testSscan() {
+        String[] r = Server.random(25);
+        jedis.select(7);
+        for (int i = 0; i < r.length; i++) {
+            jedis.sadd(r[0], r[i]);
+        }
+        String cursor = "0";
+        int size = 0;
+        while (true) {
+            ScanResult<String> scan = jedis.sscan(r[0], cursor);
+            cursor = scan.getStringCursor();
+            size += scan.getResult().size();
+            if ("0".equalsIgnoreCase(cursor)) {
+                break;
+            }
+        }
+        assertEquals(25, size);
     }
 }

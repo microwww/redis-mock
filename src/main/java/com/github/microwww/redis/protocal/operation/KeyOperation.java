@@ -2,17 +2,13 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.database.*;
-import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisArgumentsException;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
-import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.*;
 import com.github.microwww.redis.util.Assert;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 public class KeyOperation extends AbstractOperation {
@@ -269,35 +265,10 @@ public class KeyOperation extends AbstractOperation {
 
     //SCAN
     public void scan(RedisRequest request) throws IOException {
-        scan(request, 1, () -> {
-            return request.getDatabase().getUnmodifiableMap().keySet().iterator();
+        Iterator<HashKey> iterator = request.getDatabase().getUnmodifiableMap().keySet().iterator();
+        new ScanIterator<HashKey>(request, 0).skip(iterator).continueWrite(iterator, e -> {//
+            return e.getKey();
         });
-    }
-
-    public static void scan(RedisRequest request, int offset, Supplier<Iterator<? extends Bytes>> fun) throws IOException {
-        request.expectArgumentsCount(1);
-        ExpectRedisRequest[] args = request.getArgs();
-        int cursor = args[0].byteArray2int();
-
-        ScanParams spm = new ScanParams();
-        for (int i = offset; i < args.length; i++) {
-            String op = args[i].getByteArray2string();
-            Scan pm = Scan.valueOf(op.toUpperCase());
-            i = pm.next(spm, args, i);
-        }
-        Iterator<? extends Bytes> iterator = fun.get(); // request.getDatabase().getUnmodifiableMap().keySet().iterator();
-        List<byte[]> list = new ArrayList(spm.count);
-        for (int i = 0; i < cursor && iterator.hasNext(); i++) { // skip
-            iterator.next();
-        }
-        int i = cursor;
-        for (int j = 0; j < spm.count && iterator.hasNext(); i++, j++) {
-            list.add(iterator.next().getBytes());
-        }
-        cursor = iterator.hasNext() ? i : 0;
-        byte[][] arrays = list.toArray(new byte[list.size()][]);
-
-        RedisOutputProtocol.writerNested(request.getOutputStream(), (cursor + "").getBytes(), arrays);
     }
 
     public static class Sort {

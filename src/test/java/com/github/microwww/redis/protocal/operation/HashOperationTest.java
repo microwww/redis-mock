@@ -3,6 +3,7 @@ package com.github.microwww.redis.protocal.operation;
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.ScanResult;
 
 import java.io.IOException;
 import java.util.*;
@@ -249,5 +250,24 @@ public class HashOperationTest extends AbstractRedisTest {
             List<String> ex = jedis.hvals(key);
             assertEquals(3, ex.size());
         }
+    }
+
+    @Test(timeout = 3000)
+    public void testHscan() {
+        String[] r = Server.random(25);
+        for (int i = 0; i < r.length; i++) {
+            jedis.hset(r[0], r[i], i + "");
+        }
+        String cursor = "0";
+        int size = 0;
+        while (true) {
+            ScanResult<Map.Entry<String, String>> scan = jedis.hscan(r[0], cursor);
+            cursor = scan.getStringCursor();
+            size += scan.getResult().size();
+            if ("0".equalsIgnoreCase(cursor)) {
+                break;
+            }
+        }
+        assertEquals(25, size);
     }
 }

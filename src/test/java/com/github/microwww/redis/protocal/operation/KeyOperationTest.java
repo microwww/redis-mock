@@ -257,13 +257,15 @@ public class KeyOperationTest extends AbstractRedisTest {
             jedis.set(r[i], i + "", "nx", "ex", 10);
         }
         String cursor = "0";
+        int size = 0;
         while (true) {
             ScanResult<String> scan = jedis.scan(cursor);
             cursor = scan.getStringCursor();
-            System.out.println(cursor);
+            size += scan.getResult().size();
             if ("0".equalsIgnoreCase(cursor)) {
                 break;
             }
         }
+        assertEquals(25, size);
     }
 }
