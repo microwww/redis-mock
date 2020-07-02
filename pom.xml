@@ -4,9 +4,50 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>9</version>
+    </parent>
+
+    <name>jedis-mock</name>
+    <url>https://github.com/microwww/jedis-mock/</url>
+    <description>This is a template language for PPTX</description>
+
+    <licenses>
+        <license>
+            <name>Apache License</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:git:git@github.com:microwww/jedis-mock.git</connection>
+        <developerConnection>scm:git:git@github.com:microwww/jedis-mock.git</developerConnection>
+        <url>https://github.com/microwww/jedis-mock</url>
+    </scm>
+    <distributionManagement>
+        <snapshotRepository>
+            <id>sonatype-nexus-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </snapshotRepository>
+        <repository>
+            <id>sonatype-nexus-staging</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <developers>
+        <developer>
+            <name>changshu.li</name>
+            <email>lcs.005@163.com</email>
+            <organization>microwww</organization>
+        </developer>
+    </developers>
+
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1-2.8</version>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
