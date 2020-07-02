@@ -8,9 +8,9 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements DataLock {
+public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements DataLock {
 
-    private final Map<HashKey, byte[]> origin;
+    private final Map<HashKey, Bytes> origin;
 
     public HashData() {
         this(NEVER_EXPIRE);
@@ -20,7 +20,7 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements
         this(new ConcurrentHashMap<>(), exp);
     }
 
-    public HashData(Map<HashKey, byte[]> origin, long exp) {
+    public HashData(Map<HashKey, Bytes> origin, long exp) {
         this.origin = origin;
         this.data = Collections.unmodifiableMap(origin);
         this.expire = exp;
@@ -32,7 +32,7 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements
     }
 
     //HDEL
-    public synchronized byte[] remove(HashKey key) {
+    public synchronized Bytes remove(HashKey key) {
         return origin.remove(key);
     }
 
@@ -41,31 +41,31 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements
     //HGETALL
 
     //HINCRBY
-    public synchronized byte[] incrBy(HashKey key, int inc) {
-        byte[] bt = origin.get(key);
+    public synchronized Bytes incrBy(HashKey key, int inc) {
+        Bytes bt = origin.get(key);
         BigInteger bi;
         if (bt == null) {
             bi = BigInteger.ZERO;
         } else {
-            bi = new BigInteger(new String(bt));
+            bi = new BigInteger(bt.toString());
         }
         bi = bi.add(BigInteger.valueOf(inc));
-        byte[] val = bi.toString().getBytes();
-        origin.put(key, val);
-        return val;
+        Bytes bytes = new Bytes(bi.toString().getBytes());
+        origin.put(key, bytes);
+        return bytes;
     }
 
     //HINCRBYFLOAT
-    public synchronized byte[] incrByFloat(HashKey key, BigDecimal inc) {
-        byte[] bt = origin.get(key);
+    public synchronized Bytes incrByFloat(HashKey key, BigDecimal inc) {
+        Bytes bt = origin.get(key);
         BigDecimal bi;
         if (bt == null) {
             bi = BigDecimal.ZERO;
         } else {
-            bi = new BigDecimal(new String(bt));
+            bi = new BigDecimal(bt.toString());
         }
         bi = bi.add(inc);
-        byte[] bytes = bi.toPlainString().getBytes();
+        Bytes bytes = new Bytes(bi.toPlainString().getBytes());
         origin.put(key, bytes);
         return bytes;
     }
@@ -76,19 +76,19 @@ public class HashData extends AbstractValueData<Map<HashKey, byte[]>> implements
     //HMSET
     public synchronized int multiSet(ExpectRedisRequest[] kvs, int offset) {
         for (int i = offset; i < kvs.length; i += 2) {
-            this.origin.put(kvs[i].byteArray2hashKey(), kvs[i + 1].getByteArray());
+            this.origin.put(kvs[i].byteArray2hashKey(), kvs[i + 1].toBytes());
         }
         return kvs.length - offset / 2;
     }
 
     //HSET
-    public synchronized byte[] put(HashKey key, byte[] bytes) {
-        return origin.put(key, bytes);
+    public synchronized Bytes put(HashKey key, byte[] bytes) {
+        return origin.put(key, new Bytes(bytes));
     }
 
     //HSETNX
-    public synchronized byte[] putIfAbsent(HashKey key, byte[] bytes) {
-        return origin.putIfAbsent(key, bytes);
+    public synchronized Bytes putIfAbsent(HashKey key, byte[] bytes) {
+        return origin.putIfAbsent(key, new Bytes(bytes));
     }
     //HVALS
     //HSCAN

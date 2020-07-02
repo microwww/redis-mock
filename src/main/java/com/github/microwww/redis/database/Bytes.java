@@ -1,8 +1,9 @@
 package com.github.microwww.redis.database;
 
+import redis.clients.util.SafeEncoder;
+
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Comparator;
 
 public class Bytes implements Serializable, Comparable {
     private static final long serialVersionUID = 0;
@@ -15,6 +16,19 @@ public class Bytes implements Serializable, Comparable {
 
     public byte[] getBytes() {
         return Arrays.copyOf(bytes, bytes.length);
+    }
+
+    @Override
+    public String toString() {
+        return SafeEncoder.encode(this.bytes);
+    }
+
+    public int toInt() {
+        return Integer.parseInt(this.toString());
+    }
+
+    public long toLong() {
+        return Long.parseLong(this.toString());
     }
 
     @Override
