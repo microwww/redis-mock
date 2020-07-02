@@ -1,6 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.exception.RequestQuitException;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
@@ -12,6 +13,7 @@ import java.io.IOException;
 
 public class ConnectionOperation extends AbstractOperation {
 
+    //AUTH
     /**
      * do nothing, return OK
      *
@@ -23,15 +25,32 @@ public class ConnectionOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
     }
 
+    //ECHO
+    public void echo(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        byte[] echo = request.getArgs()[0].getByteArray();
+        RedisOutputProtocol.writer(request.getOutputStream(), echo);
+    }
+
+    //PING
     public void ping(RedisRequest request) throws IOException {
-        Assert.isTrue(request.getArgs().length == 0, "Not need other arguments");
+        request.expectArgumentsCount(0);
         RedisOutputStream out = request.getOutputStream();
         RedisOutputProtocol.writer(out, Protocol.Keyword.PONG.name());
     }
 
+    //QUIT
+    public void quit(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(0);
+        RedisOutputStream out = request.getOutputStream();
+        RedisOutputProtocol.writer(out, Protocol.Keyword.OK.name());
+        throw new RequestQuitException();
+    }
+
+    //SELECT
     public void select(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
         ExpectRedisRequest[] args = request.getArgs();
-        Assert.isTrue(args.length == 1, "Must only one argument");
         int index = Integer.parseInt(args[0].getByteArray2string());
         int db = request.getServer().getSchema().getSize();
         if (index >= db || index < 0) {

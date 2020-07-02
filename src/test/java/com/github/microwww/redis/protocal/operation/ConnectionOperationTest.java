@@ -17,6 +17,12 @@ public class ConnectionOperationTest extends AbstractRedisTest {
     }
 
     @Test
+    public void testEcho() {
+        String s = jedis.echo("Hello");
+        assertEquals("Hello", s);
+    }
+
+    @Test
     public void ping() {
         String s = jedis.ping();
         assertEquals("PONG", s);
@@ -31,5 +37,12 @@ public class ConnectionOperationTest extends AbstractRedisTest {
         String s = jedis.select(1);
         String s1 = jedis.get(key);
         assertNull(s1);
+    }
+
+    @Test
+    public void testQuit() {
+        String s = jedis.quit();
+        assertEquals("OK", s);
+        jedis.close();
     }
 }
