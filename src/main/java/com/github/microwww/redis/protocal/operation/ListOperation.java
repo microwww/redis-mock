@@ -23,51 +23,6 @@ import java.util.stream.Collectors;
 
 public class ListOperation extends AbstractOperation {
 
-    // 当 index 参数超出范围，或对一个空列表( key 不存在)进行 LSET 时，返回一个错误。
-    public void lset(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
-        Optional<ListData> opt = getList(request);
-        if (opt.isPresent()) {
-            String index = args[1].getByteArray2string();
-            try {
-                opt.get().getData().set(Integer.parseInt(index), args[2].toBytes());
-                RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
-            } catch (ArrayIndexOutOfBoundsException e) {
-                RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Array Index Out Of Bounds");
-            }
-        } else {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "NO LIST");
-        }
-    }
-
-    //RPUSH key value [value ...]
-    public void rpush(RedisRequest request) throws IOException {
-        request.expectArgumentsCountBigger(1);
-        ListData list = this.getOrCreateList(request);
-        ExpectRedisRequest[] args = request.getArgs();
-        byte[][] bytes = Arrays.stream(args, 1, args.length)
-                .map(e -> e.getByteArray())
-                .toArray(byte[][]::new);
-        list.rightAdd(bytes);
-        RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
-    }
-
-    //RPOP key
-    public void rpop(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(1);
-        Optional<ListData> opt = this.getList(request);
-        if (opt.isPresent()) {
-            try {
-                Optional<Bytes> rm = opt.get().rightPop();
-                RedisOutputProtocol.writer(request.getOutputStream(), rm.orElse(null));
-                return;
-            } catch (IndexOutOfBoundsException i) {// ignore
-            }
-        }
-        RedisOutputProtocol.writerNull(request.getOutputStream());
-    }
-
     //BLPOP
     public void blpop(RedisRequest request) throws IOException {
         byte[][] list = this.block(request, e -> e.leftPop());
@@ -80,7 +35,7 @@ public class ListOperation extends AbstractOperation {
         RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
     }
 
-    public byte[][] block(RedisRequest request, Function<ListData, Optional<Bytes>> fun) throws IOException {
+    private byte[][] block(RedisRequest request, Function<ListData, Optional<Bytes>> fun) throws IOException {
         request.expectArgumentsCountGE(2);
         ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
@@ -225,6 +180,24 @@ public class ListOperation extends AbstractOperation {
     }
 
     //LSET
+    // 当 index 参数超出范围，或对一个空列表( key 不存在)进行 LSET 时，返回一个错误。
+    public void lset(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        ExpectRedisRequest[] args = request.getArgs();
+        Optional<ListData> opt = getList(request);
+        if (opt.isPresent()) {
+            String index = args[1].getByteArray2string();
+            try {
+                opt.get().getData().set(Integer.parseInt(index), args[2].toBytes());
+                RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+            } catch (ArrayIndexOutOfBoundsException e) {
+                RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Array Index Out Of Bounds");
+            }
+        } else {
+            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "NO LIST");
+        }
+    }
+
     //LTRIM
     public void ltrim(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
@@ -237,6 +210,20 @@ public class ListOperation extends AbstractOperation {
     }
 
     //RPOP
+    public void rpop(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(1);
+        Optional<ListData> opt = this.getList(request);
+        if (opt.isPresent()) {
+            try {
+                Optional<Bytes> rm = opt.get().rightPop();
+                RedisOutputProtocol.writer(request.getOutputStream(), rm.orElse(null));
+                return;
+            } catch (IndexOutOfBoundsException i) {// ignore
+            }
+        }
+        RedisOutputProtocol.writerNull(request.getOutputStream());
+    }
+
     //RPOPLPUSH
     public void rpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
@@ -249,6 +236,17 @@ public class ListOperation extends AbstractOperation {
     }
 
     //RPUSH
+    public void rpush(RedisRequest request) throws IOException {
+        request.expectArgumentsCountBigger(1);
+        ListData list = this.getOrCreateList(request);
+        ExpectRedisRequest[] args = request.getArgs();
+        byte[][] bytes = Arrays.stream(args, 1, args.length)
+                .map(e -> e.getByteArray())
+                .toArray(byte[][]::new);
+        list.rightAdd(bytes);
+        RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
+    }
+
     //RPUSHX
     public void rpushx(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
