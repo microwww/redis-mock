@@ -15,7 +15,7 @@ public class DatabaseTest extends AbstractRedisTest {
     public void testConnection() throws IOException {
         Jedis jd = jedis;
         String result = jd.ping();
-        Assert.assertEquals(result, Protocol.Keyword.PONG.name());
+        Assert.assertEquals(result, "PONG");
         result = jd.select(1);
         Assert.assertEquals(result, Protocol.Keyword.OK.name());
         String val = "daatata";
@@ -29,7 +29,7 @@ public class DatabaseTest extends AbstractRedisTest {
             jd.echo("ee");
         } catch (JedisDataException e) {
             result = jd.ping();
-            Assert.assertEquals(result, Protocol.Keyword.PONG.name());
+            Assert.assertEquals(result, "PONG");
         }
         List<String> time = jd.time();
         Assert.assertEquals(2, time.size());

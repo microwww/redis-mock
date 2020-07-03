@@ -36,7 +36,7 @@ public class ConnectionOperation extends AbstractOperation {
     public void ping(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
         RedisOutputStream out = request.getOutputStream();
-        RedisOutputProtocol.writer(out, Protocol.Keyword.PONG.name());
+        RedisOutputProtocol.writer(out, "PONG");
     }
 
     //QUIT
