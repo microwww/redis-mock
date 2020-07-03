@@ -13,7 +13,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 public class ListOperationTest extends AbstractRedisTest {
 
@@ -82,18 +81,41 @@ public class ListOperationTest extends AbstractRedisTest {
                 assertNotNull(ex);
             }
         }).start();
-        new Thread(() -> {
-            Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
-            jedis.rpush(r[0], r[4]);
-            jedis.rpush(r[1], r[4]);
-            jedis.rpush(r[3], r[4]);
-        }).start();
+        rpush(r, address).start();
         List<String> take = queue.take();
         assertNotNull(take);
     }
 
+    private Thread rpush(String[] r, InetSocketAddress address) {
+        return new Thread(() -> {
+            Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
+            jedis.rpush(r[0], r[4]);
+            jedis.rpush(r[1], r[4]);
+            jedis.rpush(r[2], r[4]);
+        });
+    }
+
     @Test
-    public void brpop() {
+    public void brpoplpush() throws Exception {
+        String[] r = Server.random(8);
+        InetSocketAddress address = Server.startListener();
+        BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+        new Thread(() -> {
+            try {
+                Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
+                queue.put(r[3]);
+                String pop = jedis.brpoplpush(r[0], r[1], 2);
+                queue.put(pop);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }).start();
+        String take = queue.take();
+        assertEquals(r[3], take);
+        Thread.sleep(100);
+        rpush(r, address).start();
+        take = queue.take();
+        assertNotNull(take);
     }
 
     @Test

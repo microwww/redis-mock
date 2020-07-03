@@ -5,6 +5,8 @@ import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
@@ -22,42 +24,46 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ListOperation extends AbstractOperation {
+    private static final Logger log = LogFactory.getLogger(ListOperation.class);
 
     //BLPOP
     public void blpop(RedisRequest request) throws IOException {
-        byte[][] list = this.block(request, e -> e.leftPop());
+        request.expectArgumentsCountGE(2);
+        byte[][] list = this.block(request.getDatabase(), request.getArgs(), e -> e.leftPop());
         RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
     }
 
     //BRPOP
     public void brpop(RedisRequest request) throws IOException {
-        byte[][] list = this.block(request, e -> e.rightPop());
+        request.expectArgumentsCountGE(2);
+        byte[][] list = this.block(request.getDatabase(), request.getArgs(), e -> e.rightPop());
         RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
     }
 
-    private byte[][] block(RedisRequest request, Function<ListData, Optional<Bytes>> fun) throws IOException {
-        request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+    private byte[][] block(RedisDatabase db, ExpectRedisRequest[] args, Function<ListData, Optional<Bytes>> fun) {
+        //ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
         List<Bytes> res = new ArrayList<>();
-        long timeoutSeconds = request.getArgs()[args.length - 1].byteArray2long();
+        long timeoutSeconds = args[args.length - 1].byteArray2long();
         long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
         while (true) { // TODO: time not
             long lost = stopTime - System.currentTimeMillis();
-            if (lost <= 0 && !res.isEmpty()) {
+            if (lost <= 0) {
                 break;
             }
             res = Arrays.stream(args, 0, args.length - 1)
                     .map(e -> e.byteArray2hashKey()) // key
-                    .map(e -> request.getDatabase().getOrCreate(e, ListData::new)) // create ListDate
+                    .map(e -> db.getOrCreate(e, ListData::new)) // create ListDate
                     .map(e -> e.blockPop(latch, fun)) // add lock
                     .filter(Optional::isPresent).map(Optional::get)
                     .collect(Collectors.toList());
             if (res.isEmpty()) {
                 try {
                     latch.await(lost, TimeUnit.MILLISECONDS);
+                    log.debug("Release {}", this);
                 } catch (InterruptedException e) {
-                    Thread.interrupted();
+                    boolean nt = Thread.interrupted();
+                    log.error("InterruptedException : {}, cancel : {}", e.getMessage(), nt);
                 }
             } else {
                 break;
@@ -65,12 +71,28 @@ public class ListOperation extends AbstractOperation {
         }
         for (int i = 1; i < args.length - 1; i++) {
             HashKey key = args[i].byteArray2hashKey();
-            request.getDatabase().getOrCreate(key, ListData::new).removeCountDownLatch(latch);
+            db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
         }
         return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
     }
 
     //BRPOPLPUSH
+    public void brpoplpush(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(3);
+        //long start = System.currentTimeMillis();
+        byte[][] list = this.block(request.getDatabase(), new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, e -> e.rightPop());
+        HashKey hk = request.getArgs()[1].byteArray2hashKey();
+        byte[] data = null;
+        if (list.length > 0) {
+            data = list[0];
+            ListData oc = request.getDatabase().getOrCreate(hk, ListData::new);
+            oc.leftAdd(list[0]);
+        }
+        //double using = (System.currentTimeMillis() - start) / 1000.0;
+        //String val = BigDecimal.valueOf(using).setScale(3, BigDecimal.ROUND_HALF_DOWN).toPlainString();
+        RedisOutputProtocol.writer(request.getOutputStream(), data);
+    }
+
     //LINDEX key index
     public void lindex(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
@@ -203,7 +225,7 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCount(3);
         Optional<ListData> opt = getList(request);
         ExpectRedisRequest[] args = request.getArgs();
-        opt.ifPresent(e -> {
+        opt.ifPresent(e -> {//
             e.trim(args[1].byteArray2int(), args[2].byteArray2int());
         });
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
@@ -241,7 +263,7 @@ public class ListOperation extends AbstractOperation {
         ListData list = this.getOrCreateList(request);
         ExpectRedisRequest[] args = request.getArgs();
         byte[][] bytes = Arrays.stream(args, 1, args.length)
-                .map(e -> e.getByteArray())
+                .map(ExpectRedisRequest::getByteArray)
                 .toArray(byte[][]::new);
         list.rightAdd(bytes);
         RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
