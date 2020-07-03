@@ -1,4 +1,4 @@
-# jedis-server
+# Redis-server
 Pure Java implementation redis-server. Embedded redis service when unit testing. You no longer need to Mock redis apis.
 Support redis api 2.8
 
