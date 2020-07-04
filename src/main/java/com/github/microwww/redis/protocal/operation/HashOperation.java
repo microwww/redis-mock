@@ -76,7 +76,7 @@ public class HashOperation extends AbstractOperation {
             // Map<HashKey, byte[]> map = new HashMap<>(opt.get());
             List<byte[]> list = new ArrayList<>();
             opt.get().forEach((k, v) -> {
-                list.add(k.getKey());
+                list.add(k.getBytes());
                 list.add(v.getBytes());
             });
             RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
@@ -112,7 +112,7 @@ public class HashOperation extends AbstractOperation {
         request.expectArgumentsCount(1);
         Optional<Map<HashKey, Bytes>> map = this.getHashMap(request);
         if (map.isPresent()) {
-            byte[][] ks = map.get().keySet().stream().map(HashKey::getKey).toArray(byte[][]::new);
+            byte[][] ks = map.get().keySet().stream().map(HashKey::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
         } else {
             RedisOutputProtocol.writerMulti(request.getOutputStream());
@@ -199,7 +199,7 @@ public class HashOperation extends AbstractOperation {
         new ScanIterator<HashKey>(request, 1)
                 .skip(iterator)
                 .continueWrite(iterator, e -> {// key
-                    return e.getKey();
+                    return e.getBytes();
                 }, e -> {// value
                     return opt.get().getData().get(e).getBytes();
                 });

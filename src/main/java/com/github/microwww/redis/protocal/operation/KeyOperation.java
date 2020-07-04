@@ -76,7 +76,7 @@ public class KeyOperation extends AbstractOperation {
 
         List<byte[]> list = new ArrayList<>();
         for (HashKey s : request.getDatabase().getUnmodifiableMap().keySet()) {
-            byte[] k = s.getKey();
+            byte[] k = s.getBytes();
             String key = SafeEncoder.encode(k);
             if (compile.matcher(key).matches()) {
                 list.add(k);
@@ -170,7 +170,7 @@ public class KeyOperation extends AbstractOperation {
         for (int i = 0; i < v && iterator.hasNext(); i++) {
             val = iterator.next();
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), val.getKey());
+        RedisOutputProtocol.writer(request.getOutputStream(), val.getBytes());
     }
 
     //RENAME
@@ -246,7 +246,7 @@ public class KeyOperation extends AbstractOperation {
     public void scan(RedisRequest request) throws IOException {
         Iterator<HashKey> iterator = request.getDatabase().getUnmodifiableMap().keySet().iterator();
         new ScanIterator<HashKey>(request, 0).skip(iterator).continueWrite(iterator, e -> {//
-            return e.getKey();
+            return e.getBytes();
         });
     }
 

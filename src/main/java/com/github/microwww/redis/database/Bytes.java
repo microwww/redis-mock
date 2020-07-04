@@ -11,6 +11,11 @@ public class Bytes implements Serializable, Comparable<Bytes> {
     private final byte[] bytes;
     public final int length;
 
+    public Bytes(String data) {
+        this.bytes = SafeEncoder.encode(data);
+        this.length = bytes.length;
+    }
+
     public Bytes(byte[] bytes) {
         this.bytes = bytes;
         this.length = bytes.length;
@@ -20,9 +25,8 @@ public class Bytes implements Serializable, Comparable<Bytes> {
         return Arrays.copyOf(bytes, bytes.length);
     }
 
-    @Override
-    public String toString() {
-        return SafeEncoder.encode(this.bytes);
+    public byte[] copyByte(int newLength) {
+        return Arrays.copyOf(this.bytes, newLength);
     }
 
     public int toInt() {
@@ -60,5 +64,10 @@ public class Bytes implements Serializable, Comparable<Bytes> {
     @Override
     public int compareTo(Bytes o) {
         return ByteData.COMPARATOR.compare(this.bytes, o.bytes);
+    }
+
+    @Override
+    public String toString() {
+        return SafeEncoder.encode(this.bytes);
     }
 }

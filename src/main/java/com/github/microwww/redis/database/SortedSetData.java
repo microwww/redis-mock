@@ -221,7 +221,7 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
                 });
             }
             map.forEach((k, v) -> { // over write
-                this.addElement(new Member(k.getKey(), v));
+                this.addElement(new Member(k.getBytes(), v));
             });
             return this.origin.size();
         });
@@ -268,7 +268,7 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
                     BigDecimal score = vs.get(i).getScore().multiply(BigDecimal.valueOf(wt[i]));
                     val = us.getType().apply(val, score);
                 }
-                this.addElement(new Member(k.getKey(), val));// over write !
+                this.addElement(new Member(k.getBytes(), val));// over write !
             });
             return this.origin.size();
         });
