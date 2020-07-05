@@ -1,50 +1,39 @@
 package com.github.microwww.redis.database;
 
-import java.util.Arrays;
+import java.util.BitSet;
 
 public class BitArray {
 
-    private final byte[] data;
+    private final BitSet data;
 
     public BitArray(byte[] data) {
-        this.data = Arrays.copyOf(data, data.length);
+        this.data = BitSet.valueOf(data);
     }
 
-    public BitArray(byte[] data, int off, int len) {
-        this.data = Arrays.copyOfRange(data, off, off + len);
-    }
-
-    /**
-     * New byte[]
-     *
-     * @return
-     */
     public byte[] toArray() {
-        return Arrays.copyOf(this.data, data.length);
+        return data.toByteArray();
     }
 
     public int bitLength() {
-        return data.length * 8;
-    }
-
-    public int byteLength() {
-        return data.length;
-    }
-
-    public byte getByte(int position) {
-        return this.data[position];
+        return data.size();
     }
 
     public int count(boolean one, int from, int includeTo) {
         int count = 0;
-        if (from < 0) {
-            from = this.bitLength() + from;
+        if (bitLength() < 0) {
+            return 0;
         }
-        if (includeTo <= 0) {
-            includeTo = this.bitLength() + includeTo;
+        int len = this.bitLength();
+        while (from < 0) {
+            from = len + from;
         }
-        int max = Math.min(this.bitLength(), includeTo + 1);
-        for (int i = from; i < max; i++) {
+        if (includeTo < 0) {
+            includeTo = len + includeTo;
+        }
+        for (int i = from; i < len; i++) {
+            if (i > includeTo) {
+                break;
+            }
             boolean o = get(i);
             if (o == one) {
                 count++;
@@ -53,76 +42,28 @@ public class BitArray {
         return count;
     }
 
-    /**
-     * @param position
-     * @param bt
-     * @return this
-     */
-    public BitArray setByte(int position, byte bt) {
-        this.data[position] = bt;
-        return this;
-    }
-
-    /**
-     * get 0 / 1
-     *
-     * @param position
-     * @return 0/1
-     */
     public boolean get(int position) {
-        check(position);
-        int idx = position >> 3;// position / 8
-        position = idx << 3 ^ position;// position % 8
-        int dt = data[idx] << position & 0xFF;
-        dt = dt >>> (8 - 1);
-        return dt != 0;
+        return this.data.get(position);
     }
 
     /**
      * set 1
      *
-     * @param position
-     * @return
+     * @param position pos
+     * @return this
      */
     public BitArray set(int position) {
-        check(position);
-        int idx = position >> 3;// position / 8
-        position = idx << 3 ^ position;// position % 8
-        data[idx] |= 1 << (8 - 1 - position);
+        this.data.set(position);
         return this;
     }
 
-    /**
-     * set 0
-     *
-     * @param position
-     * @return
-     */
     public BitArray clean(int position) {
-        check(position);
-        int idx = position >> 3;// position / 8
-        position = idx << 3 ^ position;// position % 8
-        data[idx] &= (1 << (8 - 1 - position) ^ 0xFF);
+        this.data.clear(position);
         return this;
-    }
-
-    private void check(int position) {
-        if (position >= data.length * 8 || position < 0) {
-            throw new ArrayIndexOutOfBoundsException(position);
-        }
     }
 
     @Override
     public String toString() {
-        return this.toString(" ");
-    }
-
-    public String toString(String spide) {
-        StringBuffer buf = new StringBuffer();
-        for (byte b : this.data) {
-            String bn = "00000000" + Integer.toBinaryString(b);
-            buf.append(bn.substring(bn.length() - 8)).append(spide);
-        }
-        return buf.toString();
+        return this.data.toString();
     }
 }
