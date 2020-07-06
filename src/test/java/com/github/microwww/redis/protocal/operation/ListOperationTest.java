@@ -83,7 +83,25 @@ public class ListOperationTest extends AbstractRedisTest {
         }).start();
         rpush(r, address).start();
         List<String> take = queue.take();
-        assertNotNull(take);
+        assertFalse(take.isEmpty());
+    }
+
+    @Test
+    public void blpopOver() throws InterruptedException, IOException {
+        String[] r = Server.random(8);
+        InetSocketAddress address = Server.startListener();
+        BlockingQueue<List<String>> queue = new LinkedBlockingQueue<>();
+        new Thread(() -> {
+            try {
+                Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
+                List<String> pop = jedis.blpop(5, r[0], r[1], r[3]);
+                queue.put(pop);
+            } catch (Exception ex) {
+                assertNotNull(ex);
+            }
+        }).start();
+        List<String> take = queue.take();
+        assertTrue(take.isEmpty());
     }
 
     private Thread rpush(String[] r, InetSocketAddress address) {

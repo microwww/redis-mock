@@ -5,6 +5,7 @@ import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
+import com.github.microwww.redis.exception.RequestInterruptedException;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
@@ -24,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ListOperation extends AbstractOperation {
+    private static final long MAX_WAIT_SECONDS = 60 * 60 * 24 * 365;// max one year !
     private static final Logger log = LogFactory.getLogger(ListOperation.class);
 
     //BLPOP
@@ -40,11 +42,14 @@ public class ListOperation extends AbstractOperation {
         RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
     }
 
-    private byte[][] block(RedisDatabase db, ExpectRedisRequest[] args, Function<ListData, Optional<Bytes>> fun) {
+    private byte[][] block(RedisDatabase db, ExpectRedisRequest[] args, Function<ListData, Optional<Bytes>> fun) throws RequestInterruptedException {
         //ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
         List<Bytes> res = new ArrayList<>();
         long timeoutSeconds = args[args.length - 1].byteArray2long();
+        if (timeoutSeconds <= 0) {
+            timeoutSeconds = MAX_WAIT_SECONDS;
+        }
         long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
         while (true) { // TODO: time not
             long lost = stopTime - System.currentTimeMillis();
@@ -62,8 +67,8 @@ public class ListOperation extends AbstractOperation {
                     latch.await(lost, TimeUnit.MILLISECONDS);
                     log.debug("Release {}", this);
                 } catch (InterruptedException e) {
-                    boolean nt = Thread.interrupted();
-                    log.error("InterruptedException : {}, cancel : {}", e.getMessage(), nt);
+                    Thread.interrupted();
+                    throw new RequestInterruptedException("List Operation Interrupted", e);
                 }
             } else {
                 break;
