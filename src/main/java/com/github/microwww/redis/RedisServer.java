@@ -63,7 +63,9 @@ public class RedisServer extends SelectSocketsThreadPool {
         while (in.available() > 0) {
             Object read = Protocol.read(in);
             ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
-            this.getSchema().exec(new RedisRequest(this, channel, req));
+            RedisRequest redisRequest = new RedisRequest(this, channel, req);
+            redisRequest.setInputStream(in);
+            this.getSchema().exec(redisRequest);
         }
     }
 

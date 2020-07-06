@@ -14,7 +14,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
 
     private static final Logger logger = LogFactory.getLogger(SelectSocketsThreadPool.class);
 
-    private Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap();
+    private Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap<>();
     private final Executor pool;
 
     public SelectSocketsThreadPool(Executor pool) {
@@ -22,7 +22,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
     }
 
     @Override
-    protected void readableHandler(SelectionKey key) throws IOException {
+    protected void readableHandler(SelectionKey key) {
         SocketChannel channel = (SocketChannel) key.channel();
         pool.execute(() -> {
             if (!key.isValid()) {
@@ -55,6 +55,13 @@ public class SelectSocketsThreadPool extends SelectSockets {
         });
     }
 
+    /**
+     * Create new Thread to run
+     *
+     * @param channel socket
+     * @param lock input stream lock
+     * @throws IOException error
+     */
     protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
         throw new UnsupportedOperationException("暂未实现");
     }

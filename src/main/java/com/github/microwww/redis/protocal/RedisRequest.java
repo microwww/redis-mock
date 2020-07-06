@@ -6,6 +6,7 @@ import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
+import redis.clients.util.RedisInputStream;
 import redis.clients.util.RedisOutputStream;
 
 import java.nio.channels.SocketChannel;
@@ -13,6 +14,7 @@ import java.nio.channels.SocketChannel;
 public class RedisRequest {
 
     private final SocketChannel channel;
+    private RedisInputStream inputStream;
     private final String command;
     private final ExpectRedisRequest[] args;
     private RedisServer server;
@@ -42,6 +44,15 @@ public class RedisRequest {
         return new RedisOutputStream(new ChannelOutputStream(this.channel));
     }
 
+    public RedisInputStream getInputStream() {
+        return inputStream;
+    }
+
+    public void setInputStream(RedisInputStream inputStream) {
+        Assert.isTrue(this.inputStream == null, "Not allowed to reset input !");
+        this.inputStream = inputStream;
+    }
+
     public RequestSession getSessions() {
         return server.getSession(channel);
     }
@@ -64,8 +75,9 @@ public class RedisRequest {
     }
 
     /**
-     *  Greater than or equal to
-     * @param expect
+     * Greater than or equal to
+     *
+     * @param expect args count
      */
     public void expectArgumentsCountGE(int expect) {
         int count = this.getArgs().length;

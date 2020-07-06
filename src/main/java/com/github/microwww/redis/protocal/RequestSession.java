@@ -1,6 +1,8 @@
 package com.github.microwww.redis.protocal;
 
-public class RequestSession {
+import java.util.concurrent.ConcurrentHashMap;
+
+public class RequestSession extends ConcurrentHashMap<String, Object> {
     public static final int DEFAULT_DATABASE = 0;
     private int database;
 

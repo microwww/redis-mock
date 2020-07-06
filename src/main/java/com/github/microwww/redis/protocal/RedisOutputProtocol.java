@@ -43,6 +43,11 @@ public class RedisOutputProtocol {
     }
 
     public static void writer(RedisOutputStream out, byte[] val) throws IOException {
+        writerBuffer(out, val);
+        out.flush();
+    }
+
+    public static void writerBuffer(RedisOutputStream out, byte[] val) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         if (val == null) {
             out.writeIntCrLf(-1);
@@ -51,7 +56,6 @@ public class RedisOutputProtocol {
             out.write(val);
             out.writeCrLf();
         }
-        out.flush();
     }
 
 
