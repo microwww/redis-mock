@@ -94,7 +94,7 @@ public class ListOperationTest extends AbstractRedisTest {
         new Thread(() -> {
             try {
                 Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
-                List<String> pop = jedis.blpop(5, r[0], r[1], r[3]);
+                List<String> pop = jedis.blpop(1, r[0], r[1], r[3]);
                 queue.put(pop);
             } catch (Exception ex) {
                 assertNotNull(ex);

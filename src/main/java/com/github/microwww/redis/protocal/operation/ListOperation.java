@@ -43,8 +43,20 @@ public class ListOperation extends AbstractOperation {
     }
 
     private byte[][] block(RedisDatabase db, ExpectRedisRequest[] args, Function<ListData, Optional<Bytes>> fun) throws RequestInterruptedException {
-        //ExpectRedisRequest[] args = request.getArgs();
         CountDownLatch latch = new CountDownLatch(1);
+        try {
+            return this.tryBlock(db, args, latch, fun);
+        } finally {
+            for (int i = 1; i < args.length - 1; i++) {
+                HashKey key = args[i].byteArray2hashKey();
+                db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
+            }
+        }
+    }
+
+    private byte[][] tryBlock(RedisDatabase db, ExpectRedisRequest[] args, CountDownLatch latch, //
+                              Function<ListData, Optional<Bytes>> fun) throws RequestInterruptedException {
+        //ExpectRedisRequest[] args = request.getArgs();
         List<Bytes> res = new ArrayList<>();
         long timeoutSeconds = args[args.length - 1].byteArray2long();
         if (timeoutSeconds <= 0) {
@@ -73,10 +85,6 @@ public class ListOperation extends AbstractOperation {
             } else {
                 break;
             }
-        }
-        for (int i = 1; i < args.length - 1; i++) {
-            HashKey key = args[i].byteArray2hashKey();
-            db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
         }
         return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
     }
