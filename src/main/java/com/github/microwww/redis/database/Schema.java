@@ -1,5 +1,7 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisArgumentsException;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
@@ -14,6 +16,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Schema {
+    private static final Logger log = LogFactory.getLogger(Schema.class);
+
     public static final int DEFAULT_SCHEMA_SIZE = 16;
     private static AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[]{
             new ConnectionOperation(),
@@ -75,9 +79,14 @@ public class Schema {
         } catch (RedisArgumentsException error) {
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {
-            e.printStackTrace();
+            String message = e.getMessage();
+            log.error("Server error ! {}", message, e);
+            String msg = message;
+            if (msg != null) {
+                msg = message.replaceAll("\\r", "");
+            }
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR,
-                    String.format("Server run error ! : %s", e.getClass().getName()));
+                    String.format("Server run error ! : %s, %s", e.getClass().getName(), msg));
         }
     }
 
