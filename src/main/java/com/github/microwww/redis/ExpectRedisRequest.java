@@ -5,6 +5,7 @@ import com.github.microwww.redis.database.HashKey;
 import redis.clients.util.SafeEncoder;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 
 public class ExpectRedisRequest {
@@ -16,7 +17,8 @@ public class ExpectRedisRequest {
 
     public byte[] getByteArray() {
         if (origin instanceof byte[]) {
-            return (byte[]) origin;
+            byte[] ts = (byte[]) this.origin;
+            return Arrays.copyOf(ts, ts.length);
         }
         throw new IllegalArgumentException("Not your expect type : " + origin);
     }
@@ -42,7 +44,7 @@ public class ExpectRedisRequest {
     }
 
     public Bytes toBytes() {
-        return new Bytes(this.getByteArray());
+        return new Bytes((byte[]) this.origin);
     }
 
     public Long getLong() {
@@ -81,7 +83,7 @@ public class ExpectRedisRequest {
         if (o == null) {
             return res;
         } else if (o instanceof List) {
-            List list = (List) o;
+            List<?> list = (List<?>) o;
             res = new ExpectRedisRequest[list.size()];
             for (int i = 0; i < list.size(); i++) {
                 ExpectRedisRequest[] ex = parseRedisData(list.get(i));

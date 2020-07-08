@@ -17,7 +17,7 @@ public class Bytes implements Serializable, Comparable<Bytes> {
     }
 
     public Bytes(byte[] bytes) {
-        this.bytes = bytes;
+        this.bytes = Arrays.copyOf(bytes, bytes.length);
         this.length = bytes.length;
     }
 

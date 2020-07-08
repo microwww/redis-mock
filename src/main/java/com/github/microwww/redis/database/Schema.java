@@ -144,7 +144,7 @@ public class Schema {
     }
 
     public void unsupportedOperation(RedisRequest request) throws IOException {
-        RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "unsupported operation now");
+        RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "unsupported operation now :" + request.getCommand());
     }
 
     public synchronized void clearDatabase() {
