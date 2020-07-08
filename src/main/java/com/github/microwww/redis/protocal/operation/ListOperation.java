@@ -29,7 +29,7 @@ public class ListOperation extends AbstractOperation {
     //BLPOP
     public void blpop(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        this.block(request, request.getArgs(), e -> e.leftPop(), (o) -> {
+        this.block(request, request.getArgs(), ListData::leftPop, (o) -> {
             Bytes[] bytes = o.orElse(new Bytes[]{});
             byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
@@ -39,7 +39,7 @@ public class ListOperation extends AbstractOperation {
     //BRPOP
     public void brpop(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        this.block(request, request.getArgs(), e -> e.rightPop(), (o) -> {
+        this.block(request, request.getArgs(), ListData::rightPop, (o) -> {
             Bytes[] bytes = o.orElse(new Bytes[]{});
             byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
@@ -63,7 +63,7 @@ public class ListOperation extends AbstractOperation {
         if (lost > 0) {
             CountDownLatch latch = new CountDownLatch(1);
             Bytes[] res = Arrays.stream(args, 0, args.length - 1)
-                    .map(e -> e.byteArray2hashKey()) // key
+                    .map(ExpectRedisRequest::byteArray2hashKey) // key
                     .map(e -> db.getOrCreate(e, ListData::new)) // create ListDate
                     .map(e -> e.blockPop(latch, fetch)) // add lock
                     .filter(Optional::isPresent).map(Optional::get)
@@ -73,15 +73,20 @@ public class ListOperation extends AbstractOperation {
                     try {
                         latch.await(lost, TimeUnit.MILLISECONDS);
                         log.debug("Release {}", this);
-                        ExpectRedisRequest[] na = Arrays.copyOf(args, args.length);
-                        String next = (stopTime - System.currentTimeMillis()) / 1000 + "";
-                        na[args.length - 1] = new ExpectRedisRequest(next.getBytes());
-                        RedisRequest rq = new RedisRequest(r.getServer(), r.getChannel(), na);
-                        rq.setNext(r.getNext());
+                        ExpectRedisRequest[] na = r.getArgs();
+                        long next = (stopTime - System.currentTimeMillis()) / 1000;
+                        if (next <= 0) { // timeout
+                            done.accept(Optional.empty());
+                            return;
+                        }
+                        na[args.length - 1] = new ExpectRedisRequest(("" + next).getBytes());
+                        RedisRequest rq = new RedisRequest(r.getServer(), r.getChannel(), r.getCommand(), na);
+                        log.debug("And new command : " + r.getCommand());
+                        // rq.setNext(r.getNext());
                         request.getServer().getSchema().exec(rq);
                     } catch (InterruptedException e) {
-                        Thread.interrupted();
-                        throw new RequestInterruptedException("List Operation Interrupted", e);
+                        boolean st = Thread.interrupted();
+                        throw new RequestInterruptedException("List Operation Interrupted: " + st, e);
                     } finally {
                         for (int i = 1; i < args.length - 1; i++) {
                             HashKey key = args[i].byteArray2hashKey();
@@ -102,7 +107,7 @@ public class ListOperation extends AbstractOperation {
     public void brpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         //long start = System.currentTimeMillis();
-        this.block(request, new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, e -> e.rightPop(), (o) -> {
+        this.block(request, new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, ListData::rightPop, (o) -> {
             HashKey hk = request.getArgs()[1].byteArray2hashKey();
             byte[] data = null;
             if (o.isPresent()) {

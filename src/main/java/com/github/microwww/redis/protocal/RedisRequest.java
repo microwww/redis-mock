@@ -11,6 +11,7 @@ import redis.clients.util.RedisInputStream;
 import redis.clients.util.RedisOutputStream;
 
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 
 public class RedisRequest {
 
@@ -22,12 +23,16 @@ public class RedisRequest {
     private ConsumerIO<RedisRequest> next = (r) -> {
     };
 
-    public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] req) {
+    public RedisRequest(RedisServer server, SocketChannel channel, String command, ExpectRedisRequest[] params) {
         this.server = server;
         this.channel = channel;
-        this.command = new String(req[0].isNotNull().getByteArray()); // 命令
-        this.args = new ExpectRedisRequest[req.length - 1];
-        System.arraycopy(req, 1, args, 0, args.length);
+        this.command = command;
+        this.args = params;
+    }
+
+    public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] request) {
+        this(server, channel, request[0].isNotNull().getByteArray2string(), new ExpectRedisRequest[request.length - 1]);
+        System.arraycopy(request, 1, this.args, 0, this.args.length);
     }
 
     public SocketChannel getChannel() {
@@ -40,7 +45,7 @@ public class RedisRequest {
 
     @NotNull
     public ExpectRedisRequest[] getArgs() {
-        return args;
+        return Arrays.copyOf(args, args.length);
     }
 
     public RedisOutputStream getOutputStream() {
