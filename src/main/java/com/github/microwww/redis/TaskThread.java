@@ -21,7 +21,7 @@ public class TaskThread {
      * @param read
      * @throws IOException
      */
-    public void scheduling(Reading read) throws IOException {
+    public void scheduling(ConsumerIO<AwaitRead> read) throws IOException {
         awaitRead = new AwaitRead(Thread.currentThread());
         lock.lock();
         try {
@@ -33,7 +33,7 @@ public class TaskThread {
                     }
                     status.set(0);
                 }
-                read.read(awaitRead);
+                read.accept(awaitRead);
             }
         } catch (Exception ex) { // 出错暂不处理
             throw ex;

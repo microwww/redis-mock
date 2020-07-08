@@ -1,6 +1,7 @@
 package com.github.microwww.redis.protocal;
 
 import com.github.microwww.redis.ChannelOutputStream;
+import com.github.microwww.redis.ConsumerIO;
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.database.RedisDatabase;
@@ -16,8 +17,10 @@ public class RedisRequest {
     private final SocketChannel channel;
     private RedisInputStream inputStream;
     private final String command;
-    private final ExpectRedisRequest[] args;
+    private ExpectRedisRequest[] args;
     private RedisServer server;
+    private ConsumerIO<RedisRequest> next = (r) -> {
+    };
 
     public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] req) {
         this.server = server;
@@ -93,5 +96,13 @@ public class RedisRequest {
 
     public RedisServer getServer() {
         return server;
+    }
+
+    public ConsumerIO<RedisRequest> getNext() {
+        return next;
+    }
+
+    public void setNext(ConsumerIO<RedisRequest> next) {
+        this.next = next;
     }
 }

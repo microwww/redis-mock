@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 public class Schema {
     private static final Logger log = LogFactory.getLogger(Schema.class);
+
+    private static ExecutorService pool = Executors.newFixedThreadPool(1);
 
     public static final int DEFAULT_SCHEMA_SIZE = 16;
     private static AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[]{
@@ -73,6 +75,27 @@ public class Schema {
     }
 
     public void exec(RedisRequest request) throws IOException {
+        Future<String> submit = pool.submit(() -> {
+            this.run(request);
+            return "T";
+        });
+        try {
+            submit.get();
+            request.getNext().accept(request);
+        } catch (ExecutionException | InterruptedException e) {
+            Throwable cause = e.getCause();
+            if (cause != null) {
+                log.error("Run commend error : {}", cause.getMessage());
+                if (cause instanceof IOException) {
+                    throw (IOException) cause;
+                }
+                throw new RuntimeException(cause);
+            }
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void run(RedisRequest request) throws IOException {
         String cmd = request.getCommand();
         try {
             this.exec(cmd, request);

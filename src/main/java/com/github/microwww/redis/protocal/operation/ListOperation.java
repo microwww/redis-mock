@@ -1,9 +1,10 @@
 package com.github.microwww.redis.protocal.operation;
 
+import com.github.microwww.redis.ConsumerIO;
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.database.Bytes;
-import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.HashKey;
+import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.exception.RequestInterruptedException;
 import com.github.microwww.redis.logger.LogFactory;
@@ -15,14 +16,11 @@ import com.github.microwww.redis.util.NotNull;
 import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class ListOperation extends AbstractOperation {
     private static final long MAX_WAIT_SECONDS = 60 * 60 * 24 * 365;// max one year !
@@ -31,79 +29,91 @@ public class ListOperation extends AbstractOperation {
     //BLPOP
     public void blpop(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        byte[][] list = this.block(request.getDatabase(), request.getArgs(), e -> e.leftPop());
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
+        this.block(request, request.getArgs(), e -> e.leftPop(), (o) -> {
+            Bytes[] bytes = o.orElse(new Bytes[]{});
+            byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
+        });
     }
 
     //BRPOP
     public void brpop(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        byte[][] list = this.block(request.getDatabase(), request.getArgs(), e -> e.rightPop());
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list);
+        this.block(request, request.getArgs(), e -> e.rightPop(), (o) -> {
+            Bytes[] bytes = o.orElse(new Bytes[]{});
+            byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
+            RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
+        });
     }
 
-    private byte[][] block(RedisDatabase db, ExpectRedisRequest[] args, Function<ListData, Optional<Bytes>> fun) throws RequestInterruptedException {
-        CountDownLatch latch = new CountDownLatch(1);
-        try {
-            return this.tryBlock(db, args, latch, fun);
-        } finally {
-            for (int i = 1; i < args.length - 1; i++) {
-                HashKey key = args[i].byteArray2hashKey();
-                db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
-            }
-        }
-    }
-
-    private byte[][] tryBlock(RedisDatabase db, ExpectRedisRequest[] args, CountDownLatch latch, //
-                              Function<ListData, Optional<Bytes>> fun) throws RequestInterruptedException {
+    private void block(
+            RedisRequest request,
+            ExpectRedisRequest[] args,
+            Function<ListData, Optional<Bytes>> fetch, //
+            ConsumerIO<Optional<Bytes[]>> done
+    ) throws IOException {
         //ExpectRedisRequest[] args = request.getArgs();
-        List<Bytes> res = new ArrayList<>();
+        RedisDatabase db = request.getDatabase();
         long timeoutSeconds = args[args.length - 1].byteArray2long();
         if (timeoutSeconds <= 0) {
             timeoutSeconds = MAX_WAIT_SECONDS;
         }
         long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
-        while (true) { // TODO: time not
-            long lost = stopTime - System.currentTimeMillis();
-            if (lost <= 0) {
-                break;
-            }
-            res = Arrays.stream(args, 0, args.length - 1)
+        long lost = stopTime - System.currentTimeMillis();
+        if (lost > 0) {
+            CountDownLatch latch = new CountDownLatch(1);
+            Bytes[] res = Arrays.stream(args, 0, args.length - 1)
                     .map(e -> e.byteArray2hashKey()) // key
                     .map(e -> db.getOrCreate(e, ListData::new)) // create ListDate
-                    .map(e -> e.blockPop(latch, fun)) // add lock
+                    .map(e -> e.blockPop(latch, fetch)) // add lock
                     .filter(Optional::isPresent).map(Optional::get)
-                    .collect(Collectors.toList());
-            if (res.isEmpty()) {
-                try {
-                    latch.await(lost, TimeUnit.MILLISECONDS);
-                    log.debug("Release {}", this);
-                } catch (InterruptedException e) {
-                    Thread.interrupted();
-                    throw new RequestInterruptedException("List Operation Interrupted", e);
+                    .toArray(Bytes[]::new);
+            request.setNext((r) -> {
+                if (res.length <= 0) { // lock !
+                    try {
+                        latch.await(lost, TimeUnit.MILLISECONDS);
+                        log.debug("Release {}", this);
+                        ExpectRedisRequest[] na = Arrays.copyOf(args, args.length);
+                        String next = (stopTime - System.currentTimeMillis()) / 1000 + "";
+                        na[args.length - 1] = new ExpectRedisRequest(next.getBytes());
+                        RedisRequest rq = new RedisRequest(r.getServer(), r.getChannel(), na);
+                        rq.setNext(r.getNext());
+                        request.getServer().getSchema().exec(rq);
+                    } catch (InterruptedException e) {
+                        Thread.interrupted();
+                        throw new RequestInterruptedException("List Operation Interrupted", e);
+                    } finally {
+                        for (int i = 1; i < args.length - 1; i++) {
+                            HashKey key = args[i].byteArray2hashKey();
+                            db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
+                        }
+                    }
+                } else {
+                    done.accept(Optional.of(res));
                 }
-            } else {
-                break;
-            }
+            });
+        } else {
+            done.accept(Optional.empty());
         }
-        return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+        // return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
     }
 
     //BRPOPLPUSH
     public void brpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         //long start = System.currentTimeMillis();
-        byte[][] list = this.block(request.getDatabase(), new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, e -> e.rightPop());
-        HashKey hk = request.getArgs()[1].byteArray2hashKey();
-        byte[] data = null;
-        if (list.length > 0) {
-            data = list[0];
-            ListData oc = request.getDatabase().getOrCreate(hk, ListData::new);
-            oc.leftAdd(list[0]);
-        }
-        //double using = (System.currentTimeMillis() - start) / 1000.0;
-        //String val = BigDecimal.valueOf(using).setScale(3, BigDecimal.ROUND_HALF_DOWN).toPlainString();
-        RedisOutputProtocol.writer(request.getOutputStream(), data);
+        this.block(request, new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, e -> e.rightPop(), (o) -> {
+            HashKey hk = request.getArgs()[1].byteArray2hashKey();
+            byte[] data = null;
+            if (o.isPresent()) {
+                data = o.get()[0].getBytes();
+                ListData oc = request.getDatabase().getOrCreate(hk, ListData::new);
+                oc.leftAdd(data);
+            }
+            //double using = (System.currentTimeMillis() - start) / 1000.0;
+            //String val = BigDecimal.valueOf(using).setScale(3, BigDecimal.ROUND_HALF_DOWN).toPlainString();
+            RedisOutputProtocol.writer(request.getOutputStream(), data);
+        });
     }
 
     //LINDEX key index
