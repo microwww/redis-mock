@@ -57,7 +57,7 @@ public abstract class AbstractValueData<T> implements Serializable {
         return expire <= System.currentTimeMillis();
     }
 
-    public long getVersion() {
-        return version.get();
+    public AtomicLong getVersion() {
+        return version;
     }
 }

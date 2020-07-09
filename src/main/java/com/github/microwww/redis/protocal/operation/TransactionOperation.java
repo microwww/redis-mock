@@ -125,7 +125,7 @@ public class TransactionOperation extends AbstractOperation {
         for (ExpectRedisRequest arg : request.getArgs()) {
             HashKey hk = arg.byteArray2hashKey();
             Optional<AbstractValueData<?>> val = request.getDatabase().get(hk);
-            watch.put(hk, val.map(e -> new DV(e, e.getVersion())).orElse(new DV(null, null)));
+            watch.put(hk, val.map(e -> new DV(e, e.getVersion().get())).orElse(new DV(null, null)));
         }
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
     }
