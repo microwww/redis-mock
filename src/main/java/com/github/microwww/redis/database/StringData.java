@@ -78,27 +78,6 @@ public abstract class StringData {
         });
     }
 
-    public static int multiSet(RedisDatabase database, ExpectRedisRequest[] args, boolean overWrite) {
-        Assert.isTrue(args.length % 2 == 0, "2x");
-        return database.sync(() -> {
-            if (!overWrite) {
-                for (int i = 0; i < args.length; i += 2) {
-                    HashKey key = args[i].byteArray2hashKey();
-                    Optional<AbstractValueData<?>> opt = database.get(key);
-                    if (opt.isPresent()) {
-                        return 0;
-                    }
-                }
-            }
-            for (int i = 0; i < args.length; i += 2) {
-                HashKey key = args[i].byteArray2hashKey();
-                byte[] val = args[i + 1].getByteArray();
-                database.put(key, val);
-            }
-            return args.length / 2;
-        });
-    }
-
     public static ByteData setRange(RedisDatabase database, HashKey key, int off, byte[] val) {
         Assert.isTrue(off >= 0, "offset >= 0");
         Assert.isTrue(Integer.MAX_VALUE - off > val.length, "Over max int !");
@@ -159,22 +138,13 @@ public abstract class StringData {
         });
     }
 
-    public static BigDecimal increase(RedisDatabase db, HashKey key, double add) {
-        return db.sync(() -> {
-            ByteData or = getOrInitZero(db, key);
-            BigDecimal num = new BigDecimal(new String(or.getData())).add(BigDecimal.valueOf(add));
-            or.setData(num.toPlainString().getBytes());
-            return num;
-        });
-    }
-
     private static ByteData getOrInitZero(RedisDatabase db, HashKey key) {
         return db.getOrCreate(key, () -> {
             return new ByteData(new byte[]{'0'}, AbstractValueData.NEVER_EXPIRE);
         });
     }
 
-    //DECRBY
+    //DECRBY , up-up (increase)
     //GET
     //GETBIT
     public static int getBIT(RedisDatabase db, HashKey key, int offset) {
@@ -216,13 +186,41 @@ public abstract class StringData {
     }
 
     //GETSET
-    //INCR
-    //INCRBY
-    //INCRBYFLOAT
+    //INCR  up-up (increase)
+    //INCRBY  up-up (increase)
+    //INCRBYFLOAT up-up (increase)
+    public static BigDecimal increase(RedisDatabase db, HashKey key, double add) {
+        return db.sync(() -> {
+            ByteData or = getOrInitZero(db, key);
+            BigDecimal num = new BigDecimal(new String(or.getData())).add(BigDecimal.valueOf(add));
+            or.setData(num.toPlainString().getBytes());
+            return num;
+        });
+    }
     //MGET
     //MSET
-    //MSETNX
-    //PSETEX
+    public static int multiSet(RedisDatabase database, ExpectRedisRequest[] args, boolean overWrite) {
+        Assert.isTrue(args.length % 2 == 0, "2x");
+        return database.sync(() -> {
+            if (!overWrite) {
+                for (int i = 0; i < args.length; i += 2) {
+                    HashKey key = args[i].byteArray2hashKey();
+                    Optional<AbstractValueData<?>> opt = database.get(key);
+                    if (opt.isPresent()) {
+                        return 0;
+                    }
+                }
+            }
+            for (int i = 0; i < args.length; i += 2) {
+                HashKey key = args[i].byteArray2hashKey();
+                byte[] val = args[i + 1].getByteArray();
+                database.put(key, val);
+            }
+            return args.length / 2;
+        });
+    }
+    //MSETNX (multiSet)
+    //PSETEX (database.setExpire)
     //SET
     public static boolean set(RedisDatabase db, StringOperation.SetParams spm, HashKey key, ByteData val) {
         return db.sync(() -> {

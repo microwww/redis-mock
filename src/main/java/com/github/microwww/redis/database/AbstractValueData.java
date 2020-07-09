@@ -3,7 +3,13 @@ package com.github.microwww.redis.database;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 
-public abstract class AbstractValueData<T> {
+import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicLong;
+
+public abstract class AbstractValueData<T> implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+    protected final AtomicLong version = new AtomicLong(0);
     public static final int NEVER_EXPIRE = -1;
 
     long expire = NEVER_EXPIRE;
@@ -34,8 +40,9 @@ public abstract class AbstractValueData<T> {
         return data;
     }
 
-    public void setData(@NotNull T data) {
+    protected void setData(@NotNull T data) {
         Assert.isNotNull(data, "Not null");
+        version.getAndIncrement();
         this.data = data;
     }
 
@@ -48,5 +55,9 @@ public abstract class AbstractValueData<T> {
             return false;
         }
         return expire <= System.currentTimeMillis();
+    }
+
+    public long getVersion() {
+        return version.get();
     }
 }
