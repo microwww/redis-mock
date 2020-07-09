@@ -25,6 +25,20 @@ public class RedisRequest {
         this.getOutputStream().flush();
     };
 
+    public static RedisRequest warp(RedisRequest request, ExpectRedisRequest[] requests) {
+        RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), requests);
+        rq.setOutputStream(request.getOutputStream());
+        rq.setInputStream(request.getInputStream());
+        return rq;
+    }
+
+    public static RedisRequest warp(RedisRequest request, String cmd, ExpectRedisRequest[] params) {
+        RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), cmd, params);
+        rq.setOutputStream(request.getOutputStream());
+        rq.setInputStream(request.getInputStream());
+        return rq;
+    }
+
     public RedisRequest(RedisServer server, SocketChannel channel, String command, ExpectRedisRequest[] params) {
         this.server = server;
         this.channel = channel;

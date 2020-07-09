@@ -81,7 +81,7 @@ public class ListOperation extends AbstractOperation {
                             return;
                         }
                         na[args.length - 1] = new ExpectRedisRequest(("" + next).getBytes());
-                        RedisRequest rq = new RedisRequest(r.getServer(), r.getChannel(), r.getCommand(), na);
+                        RedisRequest rq = RedisRequest.warp(r, r.getCommand(), na);
                         log.debug("And new command : " + r.getCommand());
                         // rq.setNext(r.getNext());
                         request.getServer().getSchema().exec(rq);

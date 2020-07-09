@@ -81,12 +81,13 @@ public class Schema {
 
     public void exec(RedisRequest request) throws IOException {
         Future<String> submit = pool.submit(() -> {
+            log.debug("Ready to run {}", request.getCommand());
             this.run(request);
-            return "T";
+            return request.getCommand();
         });
         try {
             submit.get();
-            request.getNext().accept(request);
+            request.getNext().accept(null);
         } catch (ExecutionException | InterruptedException e) {
             Throwable cause = e.getCause();
             if (cause != null) {
