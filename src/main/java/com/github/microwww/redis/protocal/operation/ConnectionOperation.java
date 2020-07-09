@@ -40,6 +40,7 @@ public class ConnectionOperation extends AbstractOperation {
         request.expectArgumentsCount(0);
         RedisOutputStream out = request.getOutputStream();
         RedisOutputProtocol.writer(out, Protocol.Keyword.OK.name());
+        out.flush();
         throw new RequestQuitException();
     }
 
