@@ -29,9 +29,9 @@ public abstract class SelectSockets {
                 try {
                     tryRun();
                 } catch (IOException ex) {
-                    ex.printStackTrace();
+                    logger.info("IO exception : {}", ex);
                 } catch (RuntimeException ex) {
-                    ex.printStackTrace();
+                    logger.error("Runtime exception : {}", ex);
                 }
             }
         };
@@ -42,9 +42,9 @@ public abstract class SelectSockets {
         if (n == 0) {
             return;
         }
-        Iterator it = selector.selectedKeys().iterator();
+        Iterator<SelectionKey> it = selector.selectedKeys().iterator();
         while (it.hasNext()) {
-            SelectionKey key = (SelectionKey) it.next();
+            SelectionKey key = it.next();
             try {
                 if (key.isValid()) { // CancelledKeyException
                     if (key.isAcceptable()) {
@@ -72,7 +72,7 @@ public abstract class SelectSockets {
         channel.register(selector, ops);
     }
 
-    protected void readableHandler(SelectionKey key) throws IOException {
+    protected void readableHandler(SelectionKey key) {
     }
 
     protected void acceptHandler(SocketChannel channel) throws IOException {

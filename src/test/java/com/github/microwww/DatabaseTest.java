@@ -12,7 +12,7 @@ import java.util.List;
 public class DatabaseTest extends AbstractRedisTest {
 
     @Test
-    public void testConnection() throws IOException {
+    public void testConnection() {
         Jedis jd = jedis;
         String result = jd.ping();
         Assert.assertEquals(result, "PONG");

@@ -3,15 +3,13 @@ package com.github.microwww;
 import org.junit.Test;
 
 import java.io.BufferedOutputStream;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 
 public class RequestTest {
 
     // @Test
-    public void test() throws IOException, InterruptedException {
+    public void test() throws InterruptedException {
         //while (true) {
         Thread th = new Thread(() -> {
             int i = 0;

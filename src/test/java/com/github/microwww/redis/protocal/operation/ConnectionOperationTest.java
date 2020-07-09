@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 public class ConnectionOperationTest extends AbstractRedisTest {
 
     @Test
-    public void auth() throws IOException {
+    public void auth() {
         String s = jedis.auth("s");
         assertEquals("OK", s);
     }

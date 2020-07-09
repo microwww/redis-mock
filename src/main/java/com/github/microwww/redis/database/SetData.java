@@ -43,8 +43,8 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     //SDIFF
     public synchronized Set<Bytes> diff(RedisDatabase db, HashKey[] ms) {
         Set<Bytes> origin = new HashSet<>(this.origin);
-        for (int i = 0; i < ms.length; i++) {
-            Optional<SetData> sd = db.get(ms[i], SetData.class);
+        for (HashKey m : ms) {
+            Optional<SetData> sd = db.get(m, SetData.class);
             sd.ifPresent(ee -> { //
                 origin.removeAll(ee.getData());
             });
@@ -122,8 +122,8 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     }
 
     /**
-     * @param len
-     * @return Don't repeat
+     * @param len len
+     * @return no repeat
      */
     //SRANDMEMBER
     public List<Bytes> randMember(int len) {
@@ -136,7 +136,7 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     }
 
     /**
-     * @param len
+     * @param len length
      * @return There is duplicate data
      */
     public List<Bytes> random(int len) {

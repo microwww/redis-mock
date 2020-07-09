@@ -14,7 +14,7 @@ import java.util.Comparator;
 public class SearchAPI {
 
     @Test
-    public void run() throws IOException, ClassNotFoundException {
+    public void run() throws IOException {
         String file = SearchAPI.class.getResource("/").getFile();
         String pck = this.getClass().getPackage().getName();
         Path path = FileSystems.getDefault().getPath(new File(file).getParentFile().getParent(), "src", "main", "java", pck.replace('.', '/'));

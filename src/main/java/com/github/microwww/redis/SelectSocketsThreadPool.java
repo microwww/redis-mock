@@ -14,7 +14,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
 
     private static final Logger logger = LogFactory.getLogger(SelectSocketsThreadPool.class);
 
-    private Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap<>();
+    private final Map<SocketChannel, TaskThread> tasks = new ConcurrentHashMap<>();
     private final Executor pool;
 
     public SelectSocketsThreadPool(Executor pool) {

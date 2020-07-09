@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class ListData extends AbstractValueData<List<Bytes>> implements DataLock {
     private static final Logger log = LogFactory.getLogger(ListData.class);
 
-    private List<CountDownLatch> latches = new LinkedList<>(); // !! 该对象需要现成安全 !!!
+    private final List<CountDownLatch> latches = new LinkedList<>(); // !! 该对象需要现成安全 !!!
     private final List<Bytes> origin;
 
     public ListData() {

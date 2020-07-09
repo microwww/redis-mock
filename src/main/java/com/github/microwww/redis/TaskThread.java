@@ -1,6 +1,9 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.util.Assert;
+import javafx.concurrent.Task;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -10,6 +13,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TaskThread {
+    private static final Logger log = LogFactory.getLogger(TaskThread.class);
     private static final int EXIT = -1;
     private final Lock lock = new ReentrantLock();
     private final AtomicInteger status = new AtomicInteger(1);
@@ -18,8 +22,8 @@ public class TaskThread {
     /**
      * invoke read.run()
      *
-     * @param read
-     * @throws IOException
+     * @param read io
+     * @throws IOException reader/write error
      */
     public void scheduling(ConsumerIO<AwaitRead> read) throws IOException {
         awaitRead = new AwaitRead(Thread.currentThread());
@@ -36,6 +40,7 @@ public class TaskThread {
                 read.accept(awaitRead);
             }
         } catch (Exception ex) { // 出错暂不处理
+            log.info("error ", ex);
             throw ex;
         } finally {
             lock.unlock();
@@ -59,7 +64,7 @@ public class TaskThread {
     /**
      * 线程中任务追加成功 返回 true, 否则返回 false, 追加失败需要新线程处理
      *
-     * @return
+     * @return append success: true, fail : false
      */
     public boolean append() {
         synchronized (status) {

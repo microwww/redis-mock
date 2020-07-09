@@ -13,7 +13,7 @@ import static org.junit.Assert.*;
 public class HashOperationTest extends AbstractRedisTest {
 
     @Test
-    public void hget() throws IOException {
+    public void hget() {
         Jedis jd = jedis;
         String[] rs = Server.random(3);
         {// get null

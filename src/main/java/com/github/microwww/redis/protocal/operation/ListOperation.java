@@ -28,18 +28,17 @@ public class ListOperation extends AbstractOperation {
 
     //BLPOP
     public void blpop(RedisRequest request) throws IOException {
-        request.expectArgumentsCountGE(2);
-        this.block(request, request.getArgs(), ListData::leftPop, (o) -> {
-            Bytes[] bytes = o.orElse(new Bytes[]{});
-            byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
-        });
+        blockPOP(request, ListData::leftPop);
     }
 
     //BRPOP
     public void brpop(RedisRequest request) throws IOException {
+        blockPOP(request, ListData::rightPop);
+    }
+
+    private void blockPOP(RedisRequest request, Function<ListData, Optional<Bytes>> fetch) throws IOException {
         request.expectArgumentsCountGE(2);
-        this.block(request, request.getArgs(), ListData::rightPop, (o) -> {
+        this.block(request, request.getArgs(), fetch, (o) -> {
             Bytes[] bytes = o.orElse(new Bytes[]{});
             byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), res);

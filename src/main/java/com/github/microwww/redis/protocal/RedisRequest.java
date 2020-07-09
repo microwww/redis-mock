@@ -16,10 +16,10 @@ import java.util.Arrays;
 public class RedisRequest {
 
     private final SocketChannel channel;
-    private RedisInputStream inputStream;
     private final String command;
-    private ExpectRedisRequest[] args;
-    private RedisServer server;
+    private final ExpectRedisRequest[] args;
+    private final RedisServer server;
+    private RedisInputStream inputStream;
     private ConsumerIO<RedisRequest> next = (r) -> {
     };
 

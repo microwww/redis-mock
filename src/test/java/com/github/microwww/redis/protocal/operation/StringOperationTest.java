@@ -253,7 +253,7 @@ public class StringOperationTest extends AbstractRedisTest {
     }
 
     @Test
-    public void testSetex() throws InterruptedException {
+    public void testSetex() {
         String k1 = UUID.randomUUID().toString();
         String v = k1 + "-";
         jedis.setex(k1, 500, v);

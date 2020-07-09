@@ -20,7 +20,7 @@ public abstract class AbstractValueData<T> {
     /**
      * 如果是负数则表示过期
      *
-     * @param expire
+     * @param expire seconds-expire
      */
     public void setSecondsExpire(int expire) {
         if (expire <= 0) {

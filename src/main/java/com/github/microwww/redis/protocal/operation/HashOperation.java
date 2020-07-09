@@ -193,15 +193,15 @@ public class HashOperation extends AbstractOperation {
 
     //HSCAN
     public void hscan(RedisRequest request) throws IOException {
-        Optional<HashData> opt = this.getHashData(request);
-        Set<HashKey> hk = opt.map(e -> e.getData().keySet()).orElse(Collections.emptySet());
+        HashData data = this.getHashData(request).orElse(new HashData());
+        Set<HashKey> hk = data.getData().keySet();
         Iterator<HashKey> iterator = hk.iterator();
         new ScanIterator<HashKey>(request, 1)
                 .skip(iterator)
                 .continueWrite(iterator, e -> {// key
                     return e.getBytes();
                 }, e -> {// value
-                    return opt.get().getData().get(e).getBytes();
+                    return data.getData().get(e).getBytes();
                 });
     }
 

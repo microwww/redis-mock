@@ -62,16 +62,9 @@ public class ExpectRedisRequest {
 
     public ExpectRedisRequest isNotNull() {
         if (origin == null) {
-            throw new IllegalArgumentException("Not your expect type : " + origin);
+            throw new IllegalArgumentException("Not your expect type : it is NULL");
         }
         return this;
-    }
-
-    public <T> T expectNull(Class<T> c) {
-        if (origin != null) {
-            throw new IllegalArgumentException("Not your expect type : " + origin);
-        }
-        return null;
     }
 
     public Object getOrigin() {

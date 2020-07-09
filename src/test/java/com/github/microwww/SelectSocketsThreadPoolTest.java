@@ -8,6 +8,7 @@ import org.junit.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisInputStream;
+import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -44,7 +45,7 @@ public class SelectSocketsThreadPoolTest {
                     bf.flip();
                     byte[] bt = new byte[bf.remaining()];
                     bf.get(bt);
-                    String str = new String(bt, "utf8");
+                    String str = SafeEncoder.encode(bt);
                     res.append(str);
                     System.out.println(res.toString());
                 }

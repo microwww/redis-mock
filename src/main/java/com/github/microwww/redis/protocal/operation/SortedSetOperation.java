@@ -460,6 +460,6 @@ public class SortedSetOperation extends AbstractOperation {
                 }
                 return d1.compareTo(d2) > 0 ? d1 : d2;
             }
-        };
+        }
     }
 }

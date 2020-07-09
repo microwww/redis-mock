@@ -170,7 +170,7 @@ public class KeyOperation extends AbstractOperation {
         for (int i = 0; i < v && iterator.hasNext(); i++) {
             val = iterator.next();
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), val.getBytes());
+        RedisOutputProtocol.writer(request.getOutputStream(), val == null ? null : val.getBytes());
     }
 
     //RENAME

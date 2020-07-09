@@ -5,7 +5,6 @@ import com.github.microwww.redis.exception.RequestQuitException;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.util.Assert;
 import redis.clients.jedis.Protocol;
 import redis.clients.util.RedisOutputStream;
 
@@ -16,9 +15,6 @@ public class ConnectionOperation extends AbstractOperation {
     //AUTH
     /**
      * do nothing, return OK
-     *
-     * @param request
-     * @throws IOException
      */
     public void auth(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);

@@ -15,8 +15,6 @@ public class ChainFactory<T> {
 
     /**
      * FilterChain 非线程安全的
-     *
-     * @return
      */
     public FilterChain<T> create() {
         return new FilterChain<T>() {

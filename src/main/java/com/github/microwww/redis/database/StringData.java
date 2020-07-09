@@ -249,13 +249,13 @@ public abstract class StringData {
     //SETBIT
 
     /**
-     * @param db
-     * @param key
-     * @param offset
-     * @param b
+     * @param db db
+     * @param key hash-key
+     * @param offset offset
+     * @param one set 1/0 : true:false
      * @return true : 1, false : 0
      */
-    public static boolean setBit(RedisDatabase db, HashKey key, int offset, boolean b) {
+    public static boolean setBit(RedisDatabase db, HashKey key, int offset, boolean one) {
         int size = (offset >>> 3) + 1; // offset / 8
         ByteData str = db.getOrCreate(key, () -> {//
             return new ByteData(new byte[size], AbstractValueData.NEVER_EXPIRE);
@@ -268,7 +268,7 @@ public abstract class StringData {
         }
         BitArray st = new BitArray(str.getData());
         boolean origin = st.get(offset);
-        if (b) {
+        if (one) {
             st.set(offset);
         } else {
             st.clean(offset);

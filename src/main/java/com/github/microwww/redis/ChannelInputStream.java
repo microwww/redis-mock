@@ -43,7 +43,7 @@ public class ChannelInputStream extends InputStream {
     @Override
     public int available() throws IOException {
         int len = tryRead(false);
-        return len < 0 ? 0 : len;
+        return Math.max(len, 0);
     }
 
     @Override
@@ -52,8 +52,7 @@ public class ChannelInputStream extends InputStream {
         if (len < 0) { // 远程正常关闭连接
             return -1;
         }
-        byte b = buffer.get();
-        return b;
+        return buffer.get();
     }
 
     @Override
