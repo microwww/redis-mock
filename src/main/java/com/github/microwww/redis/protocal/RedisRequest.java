@@ -19,8 +19,10 @@ public class RedisRequest {
     private final String command;
     private final ExpectRedisRequest[] args;
     private final RedisServer server;
+    private RedisOutputStream outputStream;
     private RedisInputStream inputStream;
-    private ConsumerIO<RedisRequest> next = (r) -> {
+    private ConsumerIO<Object> next = (r) -> {
+        this.getOutputStream().flush();
     };
 
     public RedisRequest(RedisServer server, SocketChannel channel, String command, ExpectRedisRequest[] params) {
@@ -28,6 +30,7 @@ public class RedisRequest {
         this.channel = channel;
         this.command = command;
         this.args = params;
+        this.outputStream = new RedisOutputStream(new ChannelOutputStream(this.channel));
     }
 
     public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] request) {
@@ -49,7 +52,11 @@ public class RedisRequest {
     }
 
     public RedisOutputStream getOutputStream() {
-        return new RedisOutputStream(new ChannelOutputStream(this.channel));
+        return outputStream;
+    }
+
+    public void setOutputStream(RedisOutputStream outputStream) {
+        this.outputStream = outputStream;
     }
 
     public RedisInputStream getInputStream() {
@@ -103,11 +110,16 @@ public class RedisRequest {
         return server;
     }
 
-    public ConsumerIO<RedisRequest> getNext() {
+    public ConsumerIO<Object> getNext() {
         return next;
     }
 
-    public void setNext(ConsumerIO<RedisRequest> next) {
+    /**
+     * set next, remember to invoke `output.flush();`
+     *
+     * @param next In request thread running
+     */
+    public void setNext(ConsumerIO<Object> next) {
         this.next = next;
     }
 }

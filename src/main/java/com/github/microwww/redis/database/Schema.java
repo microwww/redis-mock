@@ -8,6 +8,7 @@ import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.operation.*;
 import com.github.microwww.redis.util.Assert;
+import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -74,6 +75,10 @@ public class Schema {
         return operations;
     }
 
+    public void submit(RedisRequest request) throws IOException {
+        this.exec(request);
+    }
+
     public void exec(RedisRequest request) throws IOException {
         Future<String> submit = pool.submit(() -> {
             this.run(request);
@@ -102,14 +107,10 @@ public class Schema {
         } catch (RedisArgumentsException error) {
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {
-            String message = e.getMessage();
+            String message = StringUtil.redisErrorMessage(e);
             log.error("Server error ! {}", message, e);
-            String msg = message;
-            if (msg != null) {
-                msg = message.replaceAll("\\r", "");
-            }
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR,
-                    String.format("Server run error ! : %s, %s", e.getClass().getName(), msg));
+                    String.format("Server run error ! : %s, %s", e.getClass().getName(), message));
         }
     }
 

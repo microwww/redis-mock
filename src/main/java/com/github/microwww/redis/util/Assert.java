@@ -1,5 +1,7 @@
 package com.github.microwww.redis.util;
 
+import java.util.List;
+
 public abstract class Assert {
 
     public static void allNotNull(String error, Object... val) {
@@ -15,6 +17,12 @@ public abstract class Assert {
 
     public static void isNotNull(Object val, String error) {
         if (val == null) {
+            throw new IllegalArgumentException(error);
+        }
+    }
+
+    public static void isNotEmpty(List<?> val, String error) {
+        if (val == null || val.isEmpty()) {
             throw new IllegalArgumentException(error);
         }
     }

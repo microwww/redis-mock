@@ -18,4 +18,12 @@ public abstract class StringUtil {
         } catch (UnsupportedEncodingException e) {
         }
     }
+
+    public static String redisErrorMessage(Exception ex) {
+        String message = ex.getMessage();
+        if (message != null) {
+            message = message.replaceAll("\\r", "");
+        }
+        return message;
+    }
 }

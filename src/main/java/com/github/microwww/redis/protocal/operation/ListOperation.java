@@ -42,6 +42,7 @@ public class ListOperation extends AbstractOperation {
             Bytes[] bytes = o.orElse(new Bytes[]{});
             byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
+            request.getOutputStream().flush();
         });
     }
 
@@ -67,7 +68,8 @@ public class ListOperation extends AbstractOperation {
                     .map(e -> e.blockPop(latch, fetch)) // add lock
                     .filter(Optional::isPresent).map(Optional::get)
                     .toArray(Bytes[]::new);
-            request.setNext((r) -> {
+            request.setNext((o) -> {
+                RedisRequest r = request;
                 if (res.length <= 0) { // lock !
                     try {
                         latch.await(lost, TimeUnit.MILLISECONDS);
@@ -117,6 +119,7 @@ public class ListOperation extends AbstractOperation {
             //double using = (System.currentTimeMillis() - start) / 1000.0;
             //String val = BigDecimal.valueOf(using).setScale(3, BigDecimal.ROUND_HALF_DOWN).toPlainString();
             RedisOutputProtocol.writer(request.getOutputStream(), data);
+            request.getOutputStream().flush();
         });
     }
 

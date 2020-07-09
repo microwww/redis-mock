@@ -11,31 +11,26 @@ public class RedisOutputProtocol {
     public static void writer(RedisOutputStream out, String simple) throws IOException {
         out.write(Protocol.PLUS_BYTE);
         out.writeAsciiCrLf(simple);
-        out.flush();
     }
 
     public static void writerError(RedisOutputStream out, Level level, String simple) throws IOException {
         out.write(Protocol.MINUS_BYTE);
         out.writeAsciiCrLf(level.name() + " " + simple);
-        out.flush();
     }
 
     public static void writer(RedisOutputStream out, int val) throws IOException {
         out.write(Protocol.COLON_BYTE);
         out.writeIntCrLf(val);
-        out.flush();
     }
 
     public static void writer(RedisOutputStream out, long val) throws IOException {
         out.write(Protocol.COLON_BYTE);
         out.writeAsciiCrLf(val + "");
-        out.flush();
     }
 
     public static void writerNull(RedisOutputStream out) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         out.writeIntCrLf(-1);
-        out.flush();
     }
 
     public static void writer(RedisOutputStream out, Bytes val) throws IOException {
@@ -43,11 +38,6 @@ public class RedisOutputProtocol {
     }
 
     public static void writer(RedisOutputStream out, byte[] val) throws IOException {
-        writerBuffer(out, val);
-        out.flush();
-    }
-
-    public static void writerBuffer(RedisOutputStream out, byte[] val) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         if (val == null) {
             out.writeIntCrLf(-1);
@@ -84,7 +74,6 @@ public class RedisOutputProtocol {
             out.write(val);
             out.writeCrLf();
         }
-        out.flush();
     }
 
     public enum Level {
