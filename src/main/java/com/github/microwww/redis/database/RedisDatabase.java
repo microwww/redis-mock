@@ -55,7 +55,6 @@ public class RedisDatabase implements DataLock {
             if (e.isExpired()) {
                 this.remove(key);
             }
-            e.getVersion().getAndIncrement();
         });
         return val;
     }

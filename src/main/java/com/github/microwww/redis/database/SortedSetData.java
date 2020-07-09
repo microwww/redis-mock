@@ -56,11 +56,12 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
 
     private synchronized Member addElement(Member member) {
         Assert.isNotNull(member.getMember(), "member.byte[] not null");
-        origin.add(member);
         Member put = unique.put(member.getKey(), member);
         if (put != null) {
             origin.remove(put);
         }
+        this.version.incrementAndGet();
+        origin.add(member);
         return put;
     }
 
@@ -119,7 +120,6 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
 
     //ZRANGEBYSCORE
     //ZRANK
-
     public synchronized int rank(Iterator<Member> its, byte[] member) {
         // Iterator<Member> its = origin.iterator();
         for (int i = 0; its.hasNext(); i++) {
@@ -140,6 +140,9 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
                 this.origin.remove(member);
                 count++;
             }
+        }
+        if (count > 0) {
+            this.version.incrementAndGet();
         }
         return count;
     }
@@ -170,6 +173,9 @@ public class SortedSetData extends AbstractValueData<NavigableSet<Member>> imple
                     break;
                 }
             }
+        }
+        if (count > 0) {
+            this.version.incrementAndGet();
         }
         return count;
     }

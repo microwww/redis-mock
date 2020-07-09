@@ -21,6 +21,7 @@ public abstract class AbstractValueData<T> implements Serializable {
 
     public void setExpire(long expire) {
         this.expire = expire;
+        version.getAndIncrement();
     }
 
     /**

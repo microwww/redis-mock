@@ -36,6 +36,9 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
                 i++;
             }
         }
+        if (bytes.length > 0) {
+            this.version.incrementAndGet();
+        }
         return i;
     }
 
@@ -95,6 +98,7 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     public boolean move(RedisDatabase db, HashKey dest, Bytes member) {
         boolean remove = this.origin.remove(member);
         if (remove) {
+            this.version.incrementAndGet();
             SetData oc = db.getOrCreate(dest, SetData::new);
             oc.sync(() -> {// add
                 return oc.origin.add(member);
@@ -103,21 +107,13 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
         return remove;
     }
 
-    public synchronized int removeAll(Bytes... os) {
-        int count = 0;
-        for (Bytes o : os) {
-            boolean rm = origin.remove(o);
-            if (rm) {
-                count++;
-            }
-        }
-        return count;
-    }
-
     //SPOP
     public synchronized List<Bytes> pop(int count) {
         List<Bytes> bytes = this.randMember(count);
         this.origin.removeAll(bytes);
+        if (!bytes.isEmpty()) {
+            this.version.incrementAndGet();
+        }
         return bytes;
     }
 
@@ -150,6 +146,20 @@ public class SetData extends AbstractValueData<Set<Bytes>> implements DataLock {
     }
 
     //SREM
+    public synchronized int removeAll(Bytes... os) {
+        int count = 0;
+        for (Bytes o : os) {
+            boolean rm = origin.remove(o);
+            if (rm) {
+                count++;
+            }
+        }
+        if (count > 0) {
+            this.version.incrementAndGet();
+        }
+        return count;
+    }
+
     //SUNION
     //SUNIONSTORE
     public synchronized Set<Bytes> union(RedisDatabase db, HashKey[] keys) {

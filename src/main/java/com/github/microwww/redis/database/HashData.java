@@ -33,7 +33,11 @@ public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements 
 
     //HDEL
     public synchronized Bytes remove(HashKey key) {
-        return origin.remove(key);
+        if (origin.containsKey(key)) {
+            this.version.incrementAndGet();
+            return origin.remove(key);
+        }
+        return null;
     }
 
     //HEXISTS
@@ -52,6 +56,7 @@ public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements 
         bi = bi.add(BigInteger.valueOf(inc));
         Bytes bytes = new Bytes(bi.toString().getBytes());
         origin.put(key, bytes);
+        this.version.incrementAndGet();
         return bytes;
     }
 
@@ -67,6 +72,7 @@ public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements 
         bi = bi.add(inc);
         Bytes bytes = new Bytes(bi.toPlainString().getBytes());
         origin.put(key, bytes);
+        this.version.incrementAndGet();
         return bytes;
     }
 
@@ -78,17 +84,23 @@ public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements 
         for (int i = offset; i < kvs.length; i += 2) {
             this.origin.put(kvs[i].byteArray2hashKey(), kvs[i + 1].toBytes());
         }
+        this.version.incrementAndGet();
         return kvs.length - offset / 2;
     }
 
     //HSET
     public synchronized Bytes put(HashKey key, byte[] bytes) {
+        this.version.incrementAndGet();
         return origin.put(key, new Bytes(bytes));
     }
 
     //HSETNX
     public synchronized Bytes putIfAbsent(HashKey key, byte[] bytes) {
-        return origin.putIfAbsent(key, new Bytes(bytes));
+        Bytes val = origin.putIfAbsent(key, new Bytes(bytes));
+        if (val == null) {
+            this.version.incrementAndGet();
+        }
+        return val;
     }
     //HVALS
     //HSCAN

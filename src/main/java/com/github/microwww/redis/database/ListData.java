@@ -67,6 +67,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         int index = this.indexOf(pivot);
         if (index >= 0) {
             this.origin.add(index + offset, new Bytes(value));
+            this.version.incrementAndGet();
             this.latch();
             return true;
         }
@@ -86,7 +87,9 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     }
 
     public synchronized Bytes remove(int index) {
-        return origin.remove(index);
+        Bytes remove = origin.remove(index);
+        this.version.incrementAndGet();
+        return remove;
     }
 
     //LLEN
@@ -94,7 +97,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     public synchronized Optional<Bytes> leftPop() {
         Bytes rm = null;
         if (!origin.isEmpty()) {
-            rm = origin.remove(0);
+            rm = this.remove(0);
         }
         return Optional.ofNullable(rm);
     }
@@ -103,6 +106,9 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     public synchronized void leftAdd(byte[]... bytes) {
         for (byte[] a : bytes) {
             origin.add(0, new Bytes(a));
+        }
+        if (bytes.length > 0) {
+            this.version.incrementAndGet();
         }
         this.latch();
     }
@@ -165,12 +171,17 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
                 }
             }
         }
+        if (ct > 0) {
+            this.version.incrementAndGet();
+        }
         return ct;
     }
 
     //LSET
     public synchronized Bytes set(int index, byte[] element) {
-        return origin.set(index, new Bytes(element));
+        Bytes set = origin.set(index, new Bytes(element));
+        this.version.incrementAndGet();
+        return set;
     }
 
     //LTRIM
@@ -180,14 +191,15 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         int max = this.origin.size();
         if (from >= max || from > to) {
             this.origin.clear();
+            this.version.incrementAndGet();
             return;
         }
         for (int i = this.origin.size() - 1; i >= 0; i--) {
             if (i < from) {
-                this.origin.remove(i);
+                this.remove(i);
             }
             if (i > to) {
-                this.origin.remove(i);
+                this.remove(i);
             }
         }
     }
@@ -196,7 +208,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     public synchronized Optional<Bytes> rightPop() {
         Bytes or = null;
         if (!this.origin.isEmpty()) {
-            or = origin.remove(origin.size() - 1);
+            or = this.remove(origin.size() - 1);
         }
         return Optional.ofNullable(or);
     }
@@ -215,6 +227,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     //RPUSH
     public synchronized void rightAdd(byte[]... bytes) {
         this.origin.addAll(Arrays.stream(bytes).map(Bytes::new).collect(Collectors.toList()));
+        this.version.incrementAndGet();
         this.latch();
     }
     //RPUSHX
