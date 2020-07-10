@@ -24,7 +24,10 @@ public class ChannelInputStream extends InputStream {
 
     private synchronized int tryRead(boolean block) throws IOException {
         int remaining = buffer.remaining();
-        while (remaining <= 0) {
+        if (remaining > 0) {
+            return remaining;
+        }
+        while (true) {
             buffer.clear();
             int len = channel.read(buffer);
             buffer.flip();
@@ -37,7 +40,6 @@ public class ChannelInputStream extends InputStream {
             }
             return len;
         }
-        return remaining;
     }
 
     @Override
@@ -56,8 +58,8 @@ public class ChannelInputStream extends InputStream {
     }
 
     @Override
-    public int read(byte[] bts, int off, int len) throws IOException { // no block !!!
-        int r = tryRead(false);
+    public int read(byte[] bts, int off, int len) throws IOException { // api , must block !!!
+        int r = tryRead(true);
         if (r > 0) {
             buffer.get(bts, off, Math.min(r, len));
         }
