@@ -4,9 +4,10 @@ import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static org.junit.Assert.*;
 
@@ -86,15 +87,19 @@ public class ServerOperationTest extends AbstractRedisTest {
     }
 
     @Test
-    public void testClient() {
-        String[] time = jedis.clientList().split(Pattern.quote("\n"));
-        String ss = time[0];
-        String ip = ss.split(" ")[0].split(Pattern.quote("="))[1];
-        assertNull(jedis.clientGetname());
+    public void testClient() throws Exception {
+        jedis = connection();
+        String time = jedis.clientList();
+        Socket socket = jedis.getClient().getSocket();
+        InetSocketAddress add = (InetSocketAddress) socket.getLocalSocketAddress();
+        String ip = add.getHostName() + ":" + add.getPort();
+        assertTrue(time.contains(ip));
         jedis.clientSetname("test");
         assertEquals("test", jedis.clientGetname());
+
         jedis.clientKill(ip);
         try {
+            Thread.sleep(1000);
             jedis.ping();
             fail();
         } catch (JedisConnectionException ex) {
