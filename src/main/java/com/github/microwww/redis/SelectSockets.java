@@ -1,20 +1,27 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.exception.Run;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.channels.*;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.Consumer;
 
-public abstract class SelectSockets {
+public abstract class SelectSockets implements Closeable {
     private static final Logger logger = LogFactory.getLogger(SelectSockets.class);
 
     private ServerSocketChannel serverChannel;
     protected ServerSocket serverSocket;
     protected Selector selector;
+    private final List<Consumer<SelectSockets>> closeHandlers = new ArrayList<>();
+    private boolean close = false;
 
     public Runnable config(String host, int port) throws IOException {
         serverChannel = ServerSocketChannel.open();
@@ -26,14 +33,12 @@ public abstract class SelectSockets {
         return () -> {
             Thread.currentThread().setName("SELECT-IO");
             while (true) {
-                try {
-                    tryRun();
-                } catch (IOException ex) {
-                    logger.info("IO exception : {}", ex);
-                } catch (RuntimeException ex) {
-                    logger.error("Runtime exception : {}", ex);
-                }
+                if (close) break;
+                Run.ignoreException(logger, () -> {// start LISTENER
+                    this.tryRun();
+                });
             }
+            Run.ignoreException(logger, this::clean);
         };
     }
 
@@ -55,9 +60,12 @@ public abstract class SelectSockets {
                     if (key.isReadable()) {
                         readableHandler(key);
                     }
+                    if(key.isConnectable()){
+                        System.out.println("connection");
+                    }
                 }
             } catch (IOException ex) { // 远程强制关闭了一个连接
-                ex.printStackTrace();
+                logger.debug("close client");
                 closeChannel(key);
             }
             it.remove();
@@ -100,4 +108,37 @@ public abstract class SelectSockets {
         return serverSocket;
     }
 
+    protected Iterator<Consumer<SelectSockets>> getCloseHandlers() {
+        return closeHandlers.iterator();
+    }
+
+    public void addCloseHandlers(Consumer<SelectSockets> close) {
+        closeHandlers.add(close);
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (close) {
+            return;
+        }
+        this.close = true;
+    }
+
+    protected void clean() throws IOException {
+        this.close = true;
+        Thread.yield();
+        if (selector != null)
+            selector.close();
+        if (serverSocket != null)
+            serverSocket.close();
+        Iterator<Consumer<SelectSockets>> its = getCloseHandlers();
+        while (its.hasNext()) {
+            try {
+                Consumer<SelectSockets> next = its.next();
+                next.accept(this);
+            } catch (RuntimeException ex) {
+                logger.error("Close error , SKIP", ex);
+            }
+        }
+    }
 }

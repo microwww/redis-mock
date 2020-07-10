@@ -47,7 +47,6 @@ public class SelectSocketsThreadPoolTest {
                     bf.get(bt);
                     String str = SafeEncoder.encode(bt);
                     res.append(str);
-                    System.out.println(res.toString());
                 }
             }
         };
