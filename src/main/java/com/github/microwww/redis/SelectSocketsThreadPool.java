@@ -46,8 +46,8 @@ public class SelectSocketsThreadPool extends SelectSockets {
                     tasks.remove(k, thread);
                 });
             } catch (RuntimeException | IOException e) {
-                logger.info("Error ! try to close channel : {}", e);
-                Run.ignoreException(logger, () -> {
+                logger.error("Error ! try to close channel : {}", e.getMessage(), e);
+                Run.ignoreException(logger, () -> {// close channel
                     closeChannel(key);
                 });
             }
