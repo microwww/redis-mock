@@ -2,12 +2,13 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ServerOperationTest extends AbstractRedisTest {
 
@@ -82,5 +83,22 @@ public class ServerOperationTest extends AbstractRedisTest {
         List<String> time = jedis.time();
         assertEquals(10, time.get(0).length());
         assertTrue(Integer.parseInt(time.get(1)) <= 999_999);
+    }
+
+    @Test
+    public void testClient() {
+        String[] time = jedis.clientList().split(Pattern.quote("\n"));
+        String ss = time[0];
+        String ip = ss.split(" ")[0].split(Pattern.quote("="))[1];
+        assertNull(jedis.clientGetname());
+        jedis.clientSetname("test");
+        assertEquals("test", jedis.clientGetname());
+        jedis.clientKill(ip);
+        try {
+            jedis.ping();
+            fail();
+        } catch (JedisConnectionException ex) {
+            assertNotNull(ex);
+        }
     }
 }

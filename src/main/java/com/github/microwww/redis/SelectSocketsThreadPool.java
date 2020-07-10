@@ -65,7 +65,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
         throw new UnsupportedOperationException("暂未实现");
     }
 
-    public static SocketChannel key(SocketChannel channel) {
+    private static SocketChannel key(SocketChannel channel) {
         return channel;
     }
 

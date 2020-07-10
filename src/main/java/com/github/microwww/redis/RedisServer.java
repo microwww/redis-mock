@@ -17,6 +17,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
@@ -26,7 +27,7 @@ public class RedisServer extends SelectSocketsThreadPool {
     public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
     private static final Executor pool = Executors.newFixedThreadPool(5);
-    private final Map<SocketChannel, RequestSession> sessions = new ConcurrentHashMap<>();
+    private final Map<String, RequestSession> sessions = new ConcurrentHashMap<>();
     private Schema schema;
     private static final List<Filter> filters = new CopyOnWriteArrayList<>();
 
@@ -103,11 +104,19 @@ public class RedisServer extends SelectSocketsThreadPool {
     @Override
     protected void acceptHandler(SocketChannel channel) throws IOException {
         super.acceptHandler(channel);
-        sessions.put(key(channel), new RequestSession());
+        sessions.put(addressKey(channel), new RequestSession(channel));
     }
 
-    public RequestSession getSession(SocketChannel channel) {
-        return sessions.get(channel);
+    public RequestSession getSession(SocketChannel channel) throws IOException {
+        return sessions.get(addressKey(channel));
+    }
+
+    public Optional<RequestSession> getSession(String channel) {
+        return Optional.ofNullable(sessions.get(channel));
+    }
+
+    public Map<String, RequestSession> getSessions() {
+        return sessions;
     }
 
     public Schema getSchema() {
@@ -119,5 +128,10 @@ public class RedisServer extends SelectSocketsThreadPool {
             }
         }
         return schema;
+    }
+
+    public static String addressKey(SocketChannel client) throws IOException {
+        InetSocketAddress rm = (InetSocketAddress) client.getRemoteAddress();
+        return (rm.getHostName() + ":" + rm.getPort()).toLowerCase();
     }
 }
