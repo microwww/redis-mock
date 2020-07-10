@@ -33,6 +33,7 @@ public class ChannelOutputStream extends OutputStream {
     public void flush() throws IOException {
         buffer.flip();
         channel.write(buffer);
+        Assert.isTrue(!buffer.hasRemaining(), "Buffer not write ALL");
         buffer.clear();
     }
 

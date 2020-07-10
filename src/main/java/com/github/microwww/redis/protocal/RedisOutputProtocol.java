@@ -48,7 +48,6 @@ public class RedisOutputProtocol {
         }
     }
 
-
     public static void writerNested(RedisOutputStream out, byte[] start, byte[][] args) throws IOException {
         out.write(Protocol.ASTERISK_BYTE);
         out.writeIntCrLf(2);
@@ -61,6 +60,10 @@ public class RedisOutputProtocol {
 
     public static void writerMulti(RedisOutputStream out, byte[]... args) throws IOException {
         out.write(Protocol.ASTERISK_BYTE);
+        if (args == null) {
+            out.writeIntCrLf(-1);
+            return;
+        }
         out.writeIntCrLf(args.length);
 
         for (byte[] val : args) {

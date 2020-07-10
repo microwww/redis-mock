@@ -25,7 +25,7 @@ public class TransactionOperation extends AbstractOperation {
     //DISCARD
     public void discard(RedisRequest request) throws IOException {
         try {
-            request.getOutputStream().write(Protocol.Keyword.OK.raw);
+            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
         } finally {
             request.getSessions().remove(MULTI_SESSION_KEY);
             request.getSessions().remove(WATCH_SESSION_KEY);
@@ -44,11 +44,9 @@ public class TransactionOperation extends AbstractOperation {
 
     private void tryExec(RedisRequest request) throws IOException {
         List<RedisRequest> rqs = (List<RedisRequest>) request.getSessions().get(MULTI_SESSION_KEY);
-        Assert.isNotEmpty(rqs, "exec not find command");
+        Assert.isNotEmpty(rqs, "Must start with MULTI, But not find command");
         Assert.isTrue("multi".equalsIgnoreCase(rqs.get(0).getCommand()), "Must start with MULTI");
         RedisOutputStream out = request.getOutputStream();
-        out.write(Protocol.ASTERISK_BYTE);
-        out.writeIntCrLf(rqs.size() - 1);
 
         Map<HashKey, DV> watch = (Map<HashKey, DV>) request.getSessions().get(WATCH_SESSION_KEY);
         if (watch != null) {
@@ -58,13 +56,20 @@ public class TransactionOperation extends AbstractOperation {
                 return !ver.eq(ov); // not equal
             }).findAny();
             if (notEqual.isPresent()) {
-                RedisOutputProtocol.writer(out, (byte[]) null);
+                RedisOutputProtocol.writerMulti(out, (byte[][])null);
                 return;
             }
         }
 
+        out.write(Protocol.ASTERISK_BYTE);
+        out.writeIntCrLf(rqs.size() - 1);
+
         for (int i = 1; i < rqs.size(); i++) {
             try {
+                if ("unwatch".equalsIgnoreCase(request.getCommand())) { // ignore , client 2.9 will error !
+                    RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+                    continue;
+                }
                 request.getServer().getSchema().run(rqs.get(i)); // same thread !
             } catch (IOException ex) {
                 String message = StringUtil.redisErrorMessage(ex);
@@ -102,9 +107,15 @@ public class TransactionOperation extends AbstractOperation {
                 } else if ("discard".equalsIgnoreCase(cmd)) {
                     request.getServer().getSchema().submit(rr);// new Thread
                     break;
+                } else if ("watch".equalsIgnoreCase(cmd)) {
+                    RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "WATCH inside MULTI is not allowed");
+                    break;
                 } else {
                     rqs.add(rr);
                     RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.QUEUED.raw);
+                }
+                if ("unwatch".equalsIgnoreCase(cmd)) { // ignore
+                    request.getOutputStream().flush();
                 }
             }
         });
@@ -139,12 +150,12 @@ public class TransactionOperation extends AbstractOperation {
             this.version = version;
         }
 
-        public boolean eq(AbstractValueData dv) {
+        public boolean eq(AbstractValueData<?> dv) {
             if (this.data == dv) {
                 if (dv == null) {
                     return true;
                 }
-                return this.version.equals(dv.getVersion());
+                return this.version.equals(dv.getVersion().get());
             }
             return false;
         }
