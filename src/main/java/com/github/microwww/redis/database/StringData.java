@@ -222,7 +222,7 @@ public abstract class StringData {
     //MSETNX (multiSet)
     //PSETEX (database.setExpire)
     //SET
-    public static boolean set(RedisDatabase db, StringOperation.SetParams spm, HashKey key, ByteData val) {
+    public static boolean set(RedisDatabase db, StringOperation.Params spm, HashKey key, ByteData val) {
         return db.sync(() -> {
             Optional<AbstractValueData<?>> opt = db.get(key);
             if (opt.isPresent()) {
@@ -262,7 +262,7 @@ public abstract class StringData {
         if (od.length < size) {
             byte[] ov = new byte[size];
             System.arraycopy(od, 0, ov, 0, od.length);
-            str.setData(od);
+            str.setData(ov);
         }
         BitArray st = new BitArray(str.getData());
         boolean origin = st.get(offset);
