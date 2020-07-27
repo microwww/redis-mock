@@ -208,19 +208,16 @@ public class StringOperation extends AbstractOperation {
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
         byte[] val = args[1].getByteArray();
-        SetParams spm = new SetParams();
+        Params spm = new Params();
         for (int i = 2; i < args.length; i++) {
             String op = args[i].getByteArray2string();
-            Params pm = Params.valueOf(op.toUpperCase());
-            i = pm.next(spm, args, i);
+            Parser pm = Parser.valueOf(op.toUpperCase());
+            i = pm.parse(spm, args, i);
         }
         long time = AbstractValueData.NEVER_EXPIRE;
         long now = System.currentTimeMillis();
-        if (spm.ex != null) {
-            time = now + spm.ex * 1000L;
-        }
-        if (spm.px != null) {
-            time = now + spm.px;
+        if (spm.milliseconds != null) {
+            time = now + spm.milliseconds;
         }
 
         boolean set = StringData.set(db, spm, key, new ByteData(val, time));
@@ -286,26 +283,17 @@ public class StringOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), len);
     }
 
-    public static class SetParams {
-        private Integer ex;
-        private Long px;
+    public static class Params {
+        private Long milliseconds;
         private boolean nx;
         private boolean xx;
 
-        public Integer getEx() {
-            return ex;
+        public Long getMilliseconds() {
+            return milliseconds;
         }
 
-        public void setEx(Integer ex) {
-            this.ex = ex;
-        }
-
-        public Long getPx() {
-            return px;
-        }
-
-        public void setPx(Long px) {
-            this.px = px;
+        public void setMilliseconds(Long milliseconds) {
+            this.milliseconds = milliseconds;
         }
 
         public boolean isNx() {
@@ -325,36 +313,36 @@ public class StringOperation extends AbstractOperation {
         }
     }
 
-    public enum Params {
+    public enum Parser {
         EX {
             @Override
-            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
-                params.ex = args[i + 1].byteArray2int();
+            public int parse(Params params, ExpectRedisRequest[] args, int i) {
+                params.milliseconds = 1000L * args[i + 1].byteArray2int();
                 return i + 1;
             }
         },
         PX {
             @Override
-            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
-                params.px = args[i + 1].byteArray2long();
+            public int parse(Params params, ExpectRedisRequest[] args, int i) {
+                params.milliseconds = args[i + 1].byteArray2long();
                 return i + 1;
             }
         },
         NX {
             @Override
-            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+            public int parse(Params params, ExpectRedisRequest[] args, int i) {
                 params.nx = true;
                 return i;
             }
         },
         XX {
             @Override
-            public int next(SetParams params, ExpectRedisRequest[] args, int i) {
+            public int parse(Params params, ExpectRedisRequest[] args, int i) {
                 params.xx = true;
                 return i;
             }
         };
 
-        public abstract int next(SetParams params, ExpectRedisRequest[] args, int i);
+        public abstract int parse(Params params, ExpectRedisRequest[] args, int i);
     }
 }
