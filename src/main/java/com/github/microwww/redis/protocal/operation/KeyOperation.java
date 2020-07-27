@@ -214,6 +214,7 @@ public class KeyOperation extends AbstractOperation {
 
     //RESTORE
     //SORT
+    // SORT key [BY pattern] [LIMIT offset count] [GET pattern [GET pattern ...]] [ASC | DESC] [ALPHA] [STORE destination]
     public void sort(RedisRequest request) throws IOException {
         RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Not support !");
     }
@@ -250,22 +251,71 @@ public class KeyOperation extends AbstractOperation {
         });
     }
 
+    public enum Order {
+        ASC, DESC
+    }
+
     public static class Sort {
+        String byPattern;
+        int offset, count;
+        List<String> getPattern = new ArrayList<>();
+        Order order = Order.ASC;
+        boolean alpha = false;
+        String destination;
 
         public static Sort parseString(String[] args, int from, int len) {
             Assert.isTrue(from >= 0, " >= 0");
             Assert.isTrue(len >= 0, " >= 0");
             int max = Math.min(from + len, args.length);
+            Sort sort = new Sort();
             for (int i = from; i < max; i++) {
                 String key = args[i];
                 SortArgument of = SortArgument.valueOf(key.toUpperCase());
+                of.parse(sort, args, i);
+                i += of.getCount();
             }
-            return new Sort();
+            return sort;
         }
     }
 
     public enum SortArgument {
-        BY(1), LIMIT(2), GET(1), ASC, DESC, ALPHA, STORE(1);
+        BY(1) {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.byPattern = args[position];
+            }
+        }, LIMIT(2) {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.offset = Integer.parseInt(args[position]);
+                sort.count = Integer.parseInt(args[position + 1]);
+            }
+        }, GET(1) {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.getPattern.add(args[position]);
+            }
+        }, ASC {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.order = Order.ASC;
+            }
+        }, DESC {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.order = Order.DESC;
+            }
+        }, ALPHA {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.alpha = true;
+            }
+        }, STORE(1) {
+            @Override
+            public void parse(Sort sort, String[] args, int position) {
+                sort.destination = args[position];
+            }
+        };
 
         private int count = 0;
         private List args = new ArrayList();
@@ -281,6 +331,8 @@ public class KeyOperation extends AbstractOperation {
         public int getCount() {
             return count;
         }
+
+        public abstract void parse(Sort sort, String[] args, int position);
 
     }
 
