@@ -1,5 +1,6 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.exception.Run;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 
@@ -44,13 +45,11 @@ public class SelectSocketsThreadPool extends SelectSockets {
                     readChannel(channel, lock);
                     tasks.remove(k, thread);
                 });
-            } catch (RuntimeException | IOException e) { // IO 做简单处理
-                try {
-                    logger.info("Error ! try to close channel : {}", e.getMessage());
+            } catch (RuntimeException | IOException e) {
+                logger.error("Error ! try to close channel : {}", e.getMessage(), e);
+                Run.ignoreException(logger, () -> {// close channel
                     closeChannel(key);
-                } catch (IOException ex) {
-                    logger.debug("Close error !", ex);
-                }
+                });
             }
         });
     }
@@ -59,14 +58,14 @@ public class SelectSocketsThreadPool extends SelectSockets {
      * Create new Thread to run
      *
      * @param channel socket
-     * @param lock input stream lock
+     * @param lock    input stream lock
      * @throws IOException error
      */
     protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
         throw new UnsupportedOperationException("暂未实现");
     }
 
-    public static SocketChannel key(SocketChannel channel) {
+    private static SocketChannel key(SocketChannel channel) {
         return channel;
     }
 

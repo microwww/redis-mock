@@ -10,6 +10,7 @@ import com.github.microwww.redis.util.NotNull;
 import redis.clients.util.RedisInputStream;
 import redis.clients.util.RedisOutputStream;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
@@ -82,13 +83,17 @@ public class RedisRequest {
         this.inputStream = inputStream;
     }
 
-    public RequestSession getSessions() {
+    public RequestSession getSessions() throws IOException {
         return server.getSession(channel);
     }
 
     public RedisDatabase getDatabase() {
-        int index = this.getSessions().getDatabase();
-        return server.getSchema().getRedisDatabases(index);
+        try {
+            int index = this.getSessions().getDatabase();
+            return server.getSchema().getRedisDatabases(index);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 
     public void expectArgumentsCount(int expect) {

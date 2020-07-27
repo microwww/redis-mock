@@ -13,7 +13,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TaskThread {
-    private static final Logger log = LogFactory.getLogger(TaskThread.class);
     private static final int EXIT = -1;
     private final Lock lock = new ReentrantLock();
     private final AtomicInteger status = new AtomicInteger(1);
@@ -39,9 +38,6 @@ public class TaskThread {
                 }
                 read.accept(awaitRead);
             }
-        } catch (Exception ex) { // 出错暂不处理
-            log.info("error ", ex);
-            throw ex;
         } finally {
             lock.unlock();
         }
