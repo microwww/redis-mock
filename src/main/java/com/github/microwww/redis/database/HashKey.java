@@ -1,6 +1,6 @@
 package com.github.microwww.redis.database;
 
-import redis.clients.util.SafeEncoder;
+import com.github.microwww.redis.util.SafeEncoder;
 
 public final class HashKey extends Bytes {
     private static final long serialVersionUID = 0;

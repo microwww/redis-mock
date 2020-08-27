@@ -5,13 +5,11 @@ import com.github.microwww.redis.database.AbstractValueData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
-import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 import redis.clients.jedis.Protocol;
-import redis.clients.util.RedisOutputStream;
 
 import java.io.IOException;
 import java.util.*;
@@ -46,7 +44,7 @@ public class TransactionOperation extends AbstractOperation {
         List<RedisRequest> rqs = (List<RedisRequest>) request.getSessions().get(MULTI_SESSION_KEY);
         Assert.isNotEmpty(rqs, "Must start with MULTI, But not find command");
         Assert.isTrue("multi".equalsIgnoreCase(rqs.get(0).getCommand()), "Must start with MULTI");
-        RedisOutputStream out = request.getOutputStream();
+        JedisOutputStream out = request.getOutputStream();
 
         Map<HashKey, DV> watch = (Map<HashKey, DV>) request.getSessions().get(WATCH_SESSION_KEY);
         if (watch != null) {
@@ -56,7 +54,7 @@ public class TransactionOperation extends AbstractOperation {
                 return !ver.eq(ov); // not equal
             }).findAny();
             if (notEqual.isPresent()) {
-                RedisOutputProtocol.writerMulti(out, (byte[][])null);
+                RedisOutputProtocol.writerMulti(out, (byte[][]) null);
                 return;
             }
         }
@@ -97,7 +95,7 @@ public class TransactionOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
         request.setNext((o) -> {
             while (true) {
-                Object read = Protocol.read(request.getInputStream());
+                Object read = request.getInputStream().readRedisData();
                 ExpectRedisRequest[] param = ExpectRedisRequest.parseRedisData(read);
                 RedisRequest rr = RedisRequest.warp(request, param);
                 String cmd = rr.getCommand();

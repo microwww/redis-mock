@@ -4,8 +4,8 @@ import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.database.*;
 import com.github.microwww.redis.protocal.*;
 import com.github.microwww.redis.util.Assert;
+import com.github.microwww.redis.util.SafeEncoder;
 import redis.clients.jedis.Protocol;
-import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.util.*;

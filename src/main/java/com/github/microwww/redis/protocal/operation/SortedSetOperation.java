@@ -8,7 +8,7 @@ import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.ScanIterator;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
-import redis.clients.util.SafeEncoder;
+import com.github.microwww.redis.util.SafeEncoder;
 
 import java.io.IOException;
 import java.math.BigDecimal;

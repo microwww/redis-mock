@@ -2,11 +2,9 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.exception.RequestQuitException;
-import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
-import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import redis.clients.jedis.Protocol;
-import redis.clients.util.RedisOutputStream;
 
 import java.io.IOException;
 
@@ -31,14 +29,14 @@ public class ConnectionOperation extends AbstractOperation {
     //PING
     public void ping(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
-        RedisOutputStream out = request.getOutputStream();
+        JedisOutputStream out = request.getOutputStream();
         RedisOutputProtocol.writer(out, "PONG");
     }
 
     //QUIT
     public void quit(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
-        RedisOutputStream out = request.getOutputStream();
+        JedisOutputStream out = request.getOutputStream();
         RedisOutputProtocol.writer(out, Protocol.Keyword.OK.name());
         out.flush();
         throw new RequestQuitException();

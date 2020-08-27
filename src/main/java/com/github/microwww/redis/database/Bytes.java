@@ -1,6 +1,6 @@
 package com.github.microwww.redis.database;
 
-import redis.clients.util.SafeEncoder;
+import com.github.microwww.redis.util.SafeEncoder;
 
 import java.io.Serializable;
 import java.util.Arrays;

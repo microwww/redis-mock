@@ -6,11 +6,9 @@ import com.github.microwww.redis.filter.FilterChain;
 import com.github.microwww.redis.filter.ChainFactory;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.protocal.RequestSession;
+import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import redis.clients.jedis.Protocol;
-import redis.clients.util.RedisInputStream;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -85,9 +83,9 @@ public class RedisServer extends SelectSocketsThreadPool {
 
     @Override
     protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
-        RedisInputStream in = new RedisInputStream(new ChannelInputStream(channel, lock));
+        JedisInputStream in = new JedisInputStream(new ChannelInputStream(channel, lock));
         while (in.available() > 0) {
-            Object read = Protocol.read(in);
+            Object read = in.readRedisData();
             ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
             RedisRequest redisRequest = new RedisRequest(this, channel, req);
             redisRequest.setInputStream(in);

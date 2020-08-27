@@ -5,10 +5,10 @@ import com.github.microwww.redis.ConsumerIO;
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.database.RedisDatabase;
+import com.github.microwww.redis.protocal.jedis.JedisInputStream;
+import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
-import redis.clients.util.RedisInputStream;
-import redis.clients.util.RedisOutputStream;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -20,8 +20,8 @@ public class RedisRequest {
     private final String command;
     private final ExpectRedisRequest[] args;
     private final RedisServer server;
-    private RedisOutputStream outputStream;
-    private RedisInputStream inputStream;
+    private JedisOutputStream outputStream;
+    private JedisInputStream inputStream;
     private ConsumerIO<Object> next = (r) -> {
         this.getOutputStream().flush();
     };
@@ -45,7 +45,7 @@ public class RedisRequest {
         this.channel = channel;
         this.command = command;
         this.args = params;
-        this.outputStream = new RedisOutputStream(new ChannelOutputStream(this.channel));
+        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel));
     }
 
     public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] request) {
@@ -66,19 +66,19 @@ public class RedisRequest {
         return Arrays.copyOf(args, args.length);
     }
 
-    public RedisOutputStream getOutputStream() {
+    public JedisOutputStream getOutputStream() {
         return outputStream;
     }
 
-    public void setOutputStream(RedisOutputStream outputStream) {
+    public void setOutputStream(JedisOutputStream outputStream) {
         this.outputStream = outputStream;
     }
 
-    public RedisInputStream getInputStream() {
+    public JedisInputStream getInputStream() {
         return inputStream;
     }
 
-    public void setInputStream(RedisInputStream inputStream) {
+    public void setInputStream(JedisInputStream inputStream) {
         Assert.isTrue(this.inputStream == null, "Not allowed to reset input !");
         this.inputStream = inputStream;
     }

@@ -4,11 +4,10 @@ import com.github.microwww.redis.AwaitRead;
 import com.github.microwww.redis.ChannelInputStream;
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.SelectSocketsThreadPool;
+import com.github.microwww.redis.protocal.jedis.JedisInputStream;
+import com.github.microwww.redis.util.SafeEncoder;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Protocol;
-import redis.clients.util.RedisInputStream;
-import redis.clients.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -82,9 +81,9 @@ public class SelectSocketsThreadPoolTest {
         SelectSocketsThreadPool sst = new SelectSocketsThreadPool(pool) {
             @Override
             protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
-                RedisInputStream in = new RedisInputStream(new ChannelInputStream(channel, lock));
+                JedisInputStream in = new JedisInputStream(new ChannelInputStream(channel, lock));
                 while (in.available() > 0) {
-                    Object read = Protocol.read(in);
+                    Object read = in.readRedisData();
                     ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
                     bf.append(new String(req[0].isNotNull().getByteArray())); // 命令
                     down.countDown();

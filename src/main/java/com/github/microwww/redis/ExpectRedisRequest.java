@@ -2,7 +2,7 @@ package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
-import redis.clients.util.SafeEncoder;
+import com.github.microwww.redis.util.SafeEncoder;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
