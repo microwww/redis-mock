@@ -13,6 +13,9 @@ public class ConnectionOperation extends AbstractOperation {
     //AUTH
     /**
      * do nothing, return OK
+     *
+     * @param request
+     * @throws IOException
      */
     public void auth(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
