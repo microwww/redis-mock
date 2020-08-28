@@ -7,6 +7,7 @@ import static org.junit.Assert.*;
 import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.BitOP;
+import redis.clients.jedis.params.SetParams;
 
 import java.util.List;
 import java.util.UUID;
@@ -226,26 +227,26 @@ public class StringOperationTest extends AbstractRedisTest {
         String k1 = UUID.randomUUID().toString();
         String v = k1 + "-";
         {
-            String nx = jedis.set(k1, k1, "xx");
+            String nx = jedis.set(k1, k1, SetParams.setParams().xx());
             assertNull(nx);
             assertNull(jedis.get(k1));
         }
         {
-            String nx = jedis.set(k1, v, "nx");
+            String nx = jedis.set(k1, v,  SetParams.setParams().nx());
             Assert.assertEquals("OK", nx);
             assertEquals(v, jedis.get(k1));
         }
         {
-            String nx = jedis.set(k1, v + "1", "nx"); // try , is not
+            String nx = jedis.set(k1, v + "1",  SetParams.setParams().nx()); // try , is not
             assertNull(nx);
             assertEquals(v, jedis.get(k1));
         }
         {
-            String nx = jedis.set(k1, v + "2", "xx");
+            String nx = jedis.set(k1, v + "2",  SetParams.setParams().xx());
             assertEquals(v + "2", jedis.get(k1));
         }
         {
-            jedis.set(k1, v, "xx", "px", 500);
+            jedis.set(k1, v,  SetParams.setParams().xx().px(500));
             assertEquals(v, jedis.get(k1));
             Thread.sleep(500);
             assertNull(jedis.get(k1));

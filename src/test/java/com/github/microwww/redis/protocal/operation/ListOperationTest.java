@@ -4,6 +4,7 @@ import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
 import redis.clients.jedis.BinaryClient;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.ListPosition;
 import redis.clients.jedis.exceptions.JedisDataException;
 
 import java.io.IOException;
@@ -151,14 +152,14 @@ public class ListOperationTest extends AbstractRedisTest {
     @Test
     public void linsert() {
         String[] r = Server.random(8);
-        long val = jedis.linsert(r[0], BinaryClient.LIST_POSITION.AFTER, r[1], r[2]);
+        long val = jedis.linsert(r[0], ListPosition.AFTER, r[1], r[2]);
         assertEquals(0, val);
         jedis.rpush(r[0], r[6]);
-        val = jedis.linsert(r[0], BinaryClient.LIST_POSITION.BEFORE, r[1], r[3]);// R3, R1, R2
+        val = jedis.linsert(r[0], ListPosition.BEFORE, r[1], r[3]);// R3, R1, R2
         assertEquals(-1, val);
-        val = jedis.linsert(r[0], BinaryClient.LIST_POSITION.AFTER, r[6], r[4]);// R6, R4
+        val = jedis.linsert(r[0], ListPosition.AFTER, r[6], r[4]);// R6, R4
         assertEquals(2, val);
-        val = jedis.linsert(r[0], BinaryClient.LIST_POSITION.BEFORE, r[6], r[2]);// R2, R6, R4
+        val = jedis.linsert(r[0], ListPosition.BEFORE, r[6], r[2]);// R2, R6, R4
         assertEquals(3, val);
         assertEquals(r[2], jedis.lindex(r[0], 0));
         assertEquals(r[6], jedis.lindex(r[0], 1));

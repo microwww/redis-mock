@@ -95,6 +95,12 @@ public class TransactionOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
         request.setNext((o) -> {
             while (true) {
+                // 2.0 client not need server send any data, when client send next commend
+                // 3.0 client get the server send data and then send next commend
+                if (request.getInputStream().available() <= 0) { // TODO: bugger ? always equal '0'
+                    request.getOutputStream().flush();
+                }
+
                 Object read = request.getInputStream().readRedisData();
                 ExpectRedisRequest[] param = ExpectRedisRequest.parseRedisData(read);
                 RedisRequest rr = RedisRequest.warp(request, param);
@@ -111,9 +117,6 @@ public class TransactionOperation extends AbstractOperation {
                 } else {
                     rqs.add(rr);
                     RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.QUEUED.raw);
-                }
-                if ("unwatch".equalsIgnoreCase(cmd)) { // ignore
-                    request.getOutputStream().flush();
                 }
             }
         });

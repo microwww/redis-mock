@@ -1,6 +1,7 @@
 package com.github.microwww.redis.protocal.jedis;
 
-import redis.clients.util.RedisOutputStream;
+import com.github.microwww.redis.util.SafeEncoder;
+import redis.clients.jedis.util.RedisOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -22,7 +23,8 @@ public final class JedisOutputStream extends OutputStream {
     }
 
     public void writeAsciiCrLf(String message) throws IOException {
-        redisOutputStream.writeAsciiCrLf(message);
+        this.write(SafeEncoder.encode(message));
+        this.writeCrLf();
     }
 
     public void writeCrLf() throws IOException {

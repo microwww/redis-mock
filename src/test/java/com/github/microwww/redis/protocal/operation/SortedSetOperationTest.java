@@ -383,7 +383,7 @@ public class SortedSetOperationTest extends AbstractRedisTest {
         int size = 0;
         while (true) {
             ScanResult<Tuple> scan = jedis.zscan(r[0], cursor);
-            cursor = scan.getStringCursor();
+            cursor = scan.getCursor();
             size += scan.getResult().size();
             if ("0".equalsIgnoreCase(cursor)) {
                 break;

@@ -4,6 +4,7 @@ import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
 import redis.clients.jedis.ScanResult;
 import redis.clients.jedis.exceptions.JedisDataException;
+import redis.clients.jedis.params.SetParams;
 
 import java.util.List;
 import java.util.Set;
@@ -268,13 +269,13 @@ public class KeyOperationTest extends AbstractRedisTest {
         String[] r = Server.random(25);
         jedis.select(7);
         for (int i = 0; i < r.length; i++) {
-            jedis.set(r[i], i + "", "nx", "ex", 10);
+            jedis.set(r[i], i + "", new SetParams().nx().ex(10));
         }
         String cursor = "0";
         int size = 0;
         while (true) {
             ScanResult<String> scan = jedis.scan(cursor);
-            cursor = scan.getStringCursor();
+            cursor = scan.getCursor();
             size += scan.getResult().size();
             if ("0".equalsIgnoreCase(cursor)) {
                 break;

@@ -2,7 +2,7 @@ package com.github.microwww.redis.protocal.jedis;
 
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisConnectionException;
-import redis.clients.util.RedisInputStream;
+import redis.clients.jedis.util.RedisInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -262,7 +262,7 @@ public class HashOperationTest extends AbstractRedisTest {
         int size = 0;
         while (true) {
             ScanResult<Map.Entry<String, String>> scan = jedis.hscan(r[0], cursor);
-            cursor = scan.getStringCursor();
+            cursor = scan.getCursor();
             size += scan.getResult().size();
             if ("0".equalsIgnoreCase(cursor)) {
                 break;

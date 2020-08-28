@@ -372,7 +372,7 @@ public class SetOperationTest extends AbstractRedisTest {
         int size = 0;
         while (true) {
             ScanResult<String> scan = jedis.sscan(r[0], cursor);
-            cursor = scan.getStringCursor();
+            cursor = scan.getCursor();
             size += scan.getResult().size();
             if ("0".equalsIgnoreCase(cursor)) {
                 break;

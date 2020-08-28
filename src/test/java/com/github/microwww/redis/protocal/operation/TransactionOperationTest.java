@@ -56,7 +56,7 @@ public class TransactionOperationTest extends AbstractRedisTest {
             jedis.unwatch(); // 会被忽略
             tr.set(key, "");
             List<Object> exec = tr.exec();
-            Assert.assertEquals(0, exec.size());
+            AssertMultiError(exec);
         }
         {
             String key = r[1];
@@ -104,7 +104,7 @@ public class TransactionOperationTest extends AbstractRedisTest {
             this.connection().expire(key, 1000);
             tr.set(key, "");
             List<Object> exec = tr.exec();
-            Assert.assertEquals(0, exec.size());
+            AssertMultiError(exec);
         }
         {
             String key = r[2];
@@ -114,7 +114,7 @@ public class TransactionOperationTest extends AbstractRedisTest {
             this.connection().hset(key, key, ""); // change is error, equal is same also
             tr.set(key, "");
             List<Object> exec = tr.exec();
-            Assert.assertEquals(0, exec.size());
+            AssertMultiError(exec);
         }
         {
             String key = r[3];
@@ -124,8 +124,16 @@ public class TransactionOperationTest extends AbstractRedisTest {
             this.connection().hset(key, key, ""); // change is error, equal is same also
             tr.set(key, "");
             List<Object> exec = tr.exec();
-            Assert.assertEquals(0, exec.size());
+            AssertMultiError(exec);
         }
 
+    }
+
+    private void AssertMultiError(List<Object> exec) {
+        try {
+            Assert.assertEquals(0, exec.size()); // 2.0+ return empty list
+        } catch (NullPointerException e) {
+            Assert.assertNull(exec); // 3.0+ return null
+        }
     }
 }

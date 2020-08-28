@@ -8,7 +8,6 @@ import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.*;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
-import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
