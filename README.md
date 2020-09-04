@@ -2,13 +2,15 @@
 Pure Java implementation redis-server. Embedded redis service when unit testing. You no longer need to Mock redis apis.
 Support redis api 2.8
 
+jedis-3.0+ api is changed, so you must update it to 0.1.0-3.0 if you are using the latest api
+
 ## maven dependency
 
 ```
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.0.1-2.8</version>
+    <version>0.1.0-3.0</version>
     <scope>test</scope>
 </dependency>
 ```
