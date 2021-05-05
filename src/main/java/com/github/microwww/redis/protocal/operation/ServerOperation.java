@@ -47,7 +47,7 @@ public class ServerOperation extends AbstractOperation {
     //DEBUG SEGFAULT
     //FLUSHALL
     public void flushall(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(0);
+        request.expectArgumentsCountLE(1);// ASYNC|SYNC
         Schema db = request.getServer().getSchema();
         db.clearDatabase();
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
@@ -55,7 +55,7 @@ public class ServerOperation extends AbstractOperation {
 
     //FLUSHDB
     public void flushdb(RedisRequest request) throws IOException {
-        request.expectArgumentsCount(0);
+        request.expectArgumentsCountLE(1);// ASYNC|SYNC
         RedisDatabase db = request.getDatabase();
         db.clear();
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);

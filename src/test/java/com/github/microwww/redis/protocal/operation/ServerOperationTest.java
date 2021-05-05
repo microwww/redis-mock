@@ -2,6 +2,7 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
+import redis.clients.jedis.args.FlushMode;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.net.InetSocketAddress;
@@ -61,6 +62,7 @@ public class ServerOperationTest extends AbstractRedisTest {
             keys = jedis.keys("*");
             assertEquals(0, keys.size());
         }
+        jedis.flushAll(FlushMode.ASYNC);
     }
 
     @Test
@@ -73,6 +75,7 @@ public class ServerOperationTest extends AbstractRedisTest {
             assertTrue(keys.size() > 0);
         }
         jedis.flushDB();
+        jedis.flushDB(FlushMode.ASYNC);
         {
             Set<String> keys = jedis.keys("*");
             assertEquals(0, keys.size());

@@ -25,6 +25,17 @@ public class KeyOperationTest extends AbstractRedisTest {
     }
 
     @Test
+    public void unlink() {
+        String key1 = UUID.randomUUID().toString();
+        jedis.set(key1, key1);
+        String key2 = UUID.randomUUID().toString();
+        jedis.set(key2, key2);
+        // 异步删除 服务器端使用同步删除
+        Long count = jedis.unlink(key1, key2, UUID.randomUUID().toString());
+        assertEquals(2, count.longValue());
+    }
+
+    @Test
     public void testExpire() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);

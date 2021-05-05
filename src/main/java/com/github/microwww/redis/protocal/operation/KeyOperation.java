@@ -47,6 +47,11 @@ public class KeyOperation extends AbstractOperation {
         RedisOutputProtocol.writer(request.getOutputStream(), count);
     }
 
+    // UNLINK // it is not blocking, BUT for simple we will sync !
+    public void unlink(RedisRequest request) throws IOException {
+        this.del(request);
+    }
+
     //DUMP
     //EXISTS
     public void exists(RedisRequest request) throws IOException {
