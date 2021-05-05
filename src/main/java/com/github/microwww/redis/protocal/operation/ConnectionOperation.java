@@ -2,15 +2,18 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.exception.RequestQuitException;
-import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.AbstractOperation;
+import com.github.microwww.redis.protocal.RedisOutputProtocol;
+import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
-import redis.clients.jedis.Protocol;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.IOException;
 
 public class ConnectionOperation extends AbstractOperation {
 
     //AUTH
+
     /**
      * do nothing, return OK
      *

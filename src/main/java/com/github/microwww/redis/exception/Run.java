@@ -13,4 +13,11 @@ public interface Run {
             logger.warn("Sever Exception : {}", ex);
         }
     }
+
+    static void silentException(Run warnLogger) {
+        try {
+            warnLogger.run();
+        } catch (Exception ex) {
+        }
+    }
 }

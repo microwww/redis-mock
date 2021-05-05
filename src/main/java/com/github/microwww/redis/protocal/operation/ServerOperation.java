@@ -10,7 +10,7 @@ import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.RequestSession;
-import redis.clients.jedis.Protocol;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Map;

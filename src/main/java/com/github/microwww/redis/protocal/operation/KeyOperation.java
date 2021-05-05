@@ -1,11 +1,13 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ExpectRedisRequest;
-import com.github.microwww.redis.database.*;
+import com.github.microwww.redis.database.AbstractValueData;
+import com.github.microwww.redis.database.HashKey;
+import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.SafeEncoder;
-import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.*;

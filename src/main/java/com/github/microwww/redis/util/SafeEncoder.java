@@ -1,8 +1,8 @@
 package com.github.microwww.redis.util;
 
-import redis.clients.jedis.Protocol;
-import redis.clients.jedis.exceptions.JedisDataException;
-import redis.clients.jedis.exceptions.JedisException;
+import com.github.microwww.redis.protocal.jedis.JedisDataException;
+import com.github.microwww.redis.protocal.jedis.JedisException;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.UnsupportedEncodingException;
 

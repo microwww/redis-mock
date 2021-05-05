@@ -1,7 +1,6 @@
 package com.github.microwww.redis.protocal.jedis;
 
 import com.github.microwww.redis.util.SafeEncoder;
-import redis.clients.jedis.util.RedisOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;

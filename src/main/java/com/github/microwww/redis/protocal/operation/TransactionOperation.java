@@ -5,11 +5,13 @@ import com.github.microwww.redis.database.AbstractValueData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.AbstractOperation;
+import com.github.microwww.redis.protocal.RedisOutputProtocol;
+import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
-import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.*;

@@ -35,7 +35,7 @@ public class RequestSession extends ConcurrentHashMap<String, Object> {
 
     @NotNull
     public Optional<String> getName() {
-        return Optional.ofNullable((String)this.get(NAME));
+        return Optional.ofNullable((String) this.get(NAME));
     }
 
     public void setName(String name) {

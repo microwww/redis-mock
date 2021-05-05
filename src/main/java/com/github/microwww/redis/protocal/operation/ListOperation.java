@@ -12,8 +12,8 @@ import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.NotNull;
-import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
