@@ -1,9 +1,6 @@
 package com.github.microwww.redis;
 
-import com.github.microwww.redis.logger.LogFactory;
-import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.util.Assert;
-import javafx.concurrent.Task;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
