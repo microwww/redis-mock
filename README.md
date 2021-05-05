@@ -4,6 +4,8 @@ Support redis api 2.8
 
 jedis-3.0+ api is changed, so you must update it to 0.1.0-3.0 if you are using the latest api
 
+version 0.2.0 , will remove jedis dependence, There is no need for any external dependencies.
+
 ## maven dependency
 
 ```
