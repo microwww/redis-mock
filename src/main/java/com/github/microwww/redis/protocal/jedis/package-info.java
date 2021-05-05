@@ -1,4 +1,4 @@
 /**
- * 大部分代码 copy 自 redis.clients ->  jedis ->  3.0.0, 为了减少外部依赖
+ * this package code is copy from redis.clients--jedis--3.0.0, this has less dependence .
  */
 package com.github.microwww.redis.protocal.jedis;
