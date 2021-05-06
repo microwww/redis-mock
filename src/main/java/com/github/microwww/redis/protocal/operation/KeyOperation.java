@@ -24,14 +24,15 @@ public class KeyOperation extends AbstractOperation {
         exp(request, key, exp);
     }
 
-    private void exp(RedisRequest request, HashKey key, long exp) throws IOException {
-        expMilliseconds(request, key, exp * 1000L + System.currentTimeMillis());
+    private void exp(RedisRequest request, HashKey key, long seconds) throws IOException {
+        expMilliseconds(request, key, seconds * 1000L + System.currentTimeMillis());
     }
 
     private void expMilliseconds(RedisRequest request, HashKey key, long exp) throws IOException {
         RedisDatabase db = request.getDatabase();
-        db.setExpire(key, exp <= 0 ? 0 : exp);
-        RedisOutputProtocol.writer(request.getOutputStream(), 1);
+        Optional<?> opt = db.setExpire(key, exp <= 0 ? 0 : exp);
+        int exist = opt.map((e) -> 1).orElse(0).intValue();
+        RedisOutputProtocol.writer(request.getOutputStream(), exist);
     }
 
     //DEL
