@@ -12,6 +12,7 @@ import java.nio.channels.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 public abstract class SelectSockets implements Closeable {
@@ -21,7 +22,7 @@ public abstract class SelectSockets implements Closeable {
     protected ServerSocket serverSocket;
     protected Selector selector;
     private final List<Consumer<SelectSockets>> closeHandlers = new ArrayList<>();
-    private boolean close = false;
+    private AtomicBoolean close = new AtomicBoolean();
 
     public Runnable config(String host, int port) throws IOException {
         serverChannel = ServerSocketChannel.open();
@@ -33,7 +34,7 @@ public abstract class SelectSockets implements Closeable {
         return () -> {
             Thread.currentThread().setName("SELECT-IO");
             while (true) {
-                if (close) break;
+                if (close.get()) break;
                 Run.ignoreException(logger, () -> {// start LISTENER
                     this.tryRun();
                 });
@@ -44,7 +45,7 @@ public abstract class SelectSockets implements Closeable {
 
     public void tryRun() throws IOException {
         int n = selector.select(1000);
-        if (n == 0) {
+        if (n <= 0) {
             return;
         }
         Iterator<SelectionKey> it = selector.selectedKeys().iterator();
@@ -60,15 +61,13 @@ public abstract class SelectSockets implements Closeable {
                     if (key.isReadable()) {
                         readableHandler(key);
                     }
-                    if(key.isConnectable()){
-                        System.out.println("connection");
-                    }
                 }
             } catch (IOException ex) { // 远程强制关闭了一个连接
                 logger.debug("close client");
                 closeChannel(key);
+            } finally {
+                it.remove();
             }
-            it.remove();
         }
     }
 
@@ -80,7 +79,7 @@ public abstract class SelectSockets implements Closeable {
         channel.register(selector, ops);
     }
 
-    protected void readableHandler(SelectionKey key) {
+    protected void readableHandler(SelectionKey key) throws IOException {
     }
 
     protected void acceptHandler(SocketChannel channel) throws IOException {
@@ -88,17 +87,22 @@ public abstract class SelectSockets implements Closeable {
     }
 
     public void closeChannel(SelectionKey key) throws IOException {
-        this.closeChannel((SocketChannel) key.channel());
+        SelectableChannel channel = key.channel();
+        if (channel instanceof SocketChannel) {
+            this.closeChannel((SocketChannel) channel);
+        }
+        key.cancel();
     }
 
     public void closeChannel(SocketChannel channel) throws IOException {
         try {
             InetSocketAddress add = (InetSocketAddress) channel.getRemoteAddress();
-            logger.info("Remote KILLED: {}:{}", add.getHostName(), add.getPort());
+            logger.info("Remote client {}:{} is closed", add.getHostName(), add.getPort());
         } catch (Exception e) {
-            logger.info("Remote KILLED : {}", channel);
+            logger.info("Remote channel {} , is closed", channel);
+        } finally {
+            channel.close();
         }
-        channel.close();
     }
 
     public ServerSocket getServerSocket() {
@@ -118,14 +122,14 @@ public abstract class SelectSockets implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if (close) {
+        if (close.get()) {
             return;
         }
-        this.close = true;
+        close.set(true);
     }
 
     protected void clean() throws IOException {
-        this.close = true;
+        close.set(true);
         Thread.yield();
         if (selector != null)
             selector.close();

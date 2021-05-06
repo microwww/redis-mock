@@ -37,7 +37,7 @@ public class Slf4jLogger implements Logger {
 
     @Override
     public void warn(String var1, Object... var2) {
-        logger.info(var1, var2);
+        logger.warn(var1, var2);
     }
 
     @Override
@@ -47,6 +47,6 @@ public class Slf4jLogger implements Logger {
 
     @Override
     public void error(String var1, Object... var2) {
-        logger.info(var1, var2);
+        logger.error(var1, var2);
     }
 }
