@@ -190,19 +190,19 @@ public final class Protocol {
         return process(is);
     }
 
-    public static final byte[] toByteArray(final boolean value) {
+    public static byte[] toByteArray(final boolean value) {
         return value ? BYTES_TRUE : BYTES_FALSE;
     }
 
-    public static final byte[] toByteArray(final int value) {
+    public static byte[] toByteArray(final int value) {
         return SafeEncoder.encode(String.valueOf(value));
     }
 
-    public static final byte[] toByteArray(final long value) {
+    public static byte[] toByteArray(final long value) {
         return SafeEncoder.encode(String.valueOf(value));
     }
 
-    public static final byte[] toByteArray(final double value) {
+    public static byte[] toByteArray(final double value) {
         if (value == Double.POSITIVE_INFINITY) {
             return POSITIVE_INFINITY_BYTES;
         } else if (value == Double.NEGATIVE_INFINITY) {
@@ -212,7 +212,7 @@ public final class Protocol {
         }
     }
 
-    public static enum Command implements ProtocolCommand {
+    public enum Command implements ProtocolCommand {
         PING, SET, GET, QUIT, EXISTS, DEL, UNLINK, TYPE, FLUSHDB, KEYS, RANDOMKEY, RENAME, RENAMENX,
         RENAMEX, DBSIZE, EXPIRE, EXPIREAT, TTL, SELECT, MOVE, FLUSHALL, GETSET, MGET, SETNX, SETEX,
         MSET, MSETNX, DECRBY, DECR, INCRBY, INCR, APPEND, SUBSTR, HSET, HGET, HSETNX, HMSET, HMGET,
@@ -242,7 +242,7 @@ public final class Protocol {
         }
     }
 
-    public static enum Keyword {
+    public enum Keyword {
         AGGREGATE, ALPHA, ASC, BY, DESC, GET, LIMIT, MESSAGE, NO, NOSORT, PMESSAGE, PSUBSCRIBE,
         PUNSUBSCRIBE, OK, ONE, QUEUED, SET, STORE, SUBSCRIBE, UNSUBSCRIBE, WEIGHTS, WITHSCORES,
         RESETSTAT, REWRITE, RESET, FLUSH, EXISTS, LOAD, KILL, LEN, REFCOUNT, ENCODING, IDLETIME,

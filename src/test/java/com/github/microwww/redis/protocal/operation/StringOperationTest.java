@@ -257,7 +257,7 @@ public class StringOperationTest extends AbstractRedisTest {
     public void testSetex() {
         String k1 = UUID.randomUUID().toString();
         String v = k1 + "-";
-        jedis.setex(k1, 500, v);
+        jedis.setex(k1, 500L, v);
         assertEquals(v, jedis.get(k1));
         assertEquals(500, jedis.ttl(k1).doubleValue(), 1.0);
     }

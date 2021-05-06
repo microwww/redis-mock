@@ -13,8 +13,8 @@ public class HostAndPort implements Serializable {
     public static volatile String localhost;
 
 
-    private String host;
-    private int port;
+    private final String host;
+    private final int port;
 
     public HostAndPort(String host, int port) {
         this.host = host;

@@ -39,7 +39,7 @@ public class DatabaseTest extends AbstractRedisTest {
 
     // @Test
     public void test() {
-        Jedis jd = new Jedis("192.168.2.18");
+        Jedis jd = new Jedis("192.168.2.18", 6379);
         jd.auth("123456");
         String result = jd.ping();
         String ss = jd.get("---");

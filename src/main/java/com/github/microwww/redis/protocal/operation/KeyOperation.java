@@ -20,11 +20,11 @@ public class KeyOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length == 2, "Must has tow arguments");
         HashKey key = args[0].byteArray2hashKey();
-        int exp = args[1].byteArray2int();
+        long exp = args[1].byteArray2long();
         exp(request, key, exp);
     }
 
-    private void exp(RedisRequest request, HashKey key, int exp) throws IOException {
+    private void exp(RedisRequest request, HashKey key, long exp) throws IOException {
         expMilliseconds(request, key, exp * 1000L + System.currentTimeMillis());
     }
 
@@ -325,13 +325,13 @@ public class KeyOperation extends AbstractOperation {
         };
 
         private int count = 0;
-        private List args = new ArrayList();
+        private final List args = new ArrayList();
 
-        private SortArgument() {
+        SortArgument() {
             this.count = 0;
         }
 
-        private SortArgument(int count) {
+        SortArgument(int count) {
             this.count = count;
         }
 

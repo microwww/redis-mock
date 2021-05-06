@@ -352,7 +352,7 @@ public class SetOperationTest extends AbstractRedisTest {
             assertFalse(jedis.smembers(r[9]).contains(r[1]));
         }
         {
-            jedis.expire(r[9], 10);
+            jedis.expire(r[9], 10L);
             long meb = jedis.sunionstore(r[9], r[2]);
             assertTrue(jedis.ttl(r[9]) < 0);
             assertEquals(5, meb);

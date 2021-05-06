@@ -120,7 +120,7 @@ public class ServerOperation extends AbstractOperation {
                 Map<String, RequestSession> sessions = request.getServer().getSessions();
                 StringBuilder ss = new StringBuilder();
                 for (RequestSession sc : sessions.values()) {
-                    ss.append("addr=" + sc.getAddress()).append("\n");
+                    ss.append("addr=").append(sc.getAddress()).append("\n");
                 }
                 RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
             }

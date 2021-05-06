@@ -39,12 +39,12 @@ public class KeyOperationTest extends AbstractRedisTest {
     public void testExpire() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
-        int ex = (int) (10 + Math.random() * 100000);
+        long ex = (long) (10 + Math.random() * 100000);
         jedis.expire(key1, ex);
         Long ttl = jedis.ttl(key1);
         assertEquals(ttl, ex, 1);
 
-        jedis.expire(key1, 0);
+        jedis.expire(key1, 0L);
         String val = jedis.get(key1);
         assertNull(val);
     }
@@ -53,7 +53,7 @@ public class KeyOperationTest extends AbstractRedisTest {
     public void testTestDel() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
-        jedis.expire(key1, 0);
+        jedis.expire(key1, 0L);
         String ttl = jedis.get(key1);
         assertNull(ttl);
     }
@@ -131,7 +131,7 @@ public class KeyOperationTest extends AbstractRedisTest {
     public void testPersist() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
-        jedis.expire(key1, 1000);
+        jedis.expire(key1, 1000L);
         jedis.persist(key1);
         Long ttl = jedis.ttl(key1);
         assertEquals(-1, ttl.intValue());
@@ -280,7 +280,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         String[] r = Server.random(25);
         jedis.select(7);
         for (int i = 0; i < r.length; i++) {
-            jedis.set(r[i], i + "", new SetParams().nx().ex(10));
+            jedis.set(r[i], i + "", new SetParams().nx().ex(10L));
         }
         String cursor = "0";
         int size = 0;
