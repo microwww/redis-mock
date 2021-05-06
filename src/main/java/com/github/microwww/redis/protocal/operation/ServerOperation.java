@@ -39,7 +39,8 @@ public class ServerOperation extends AbstractOperation {
     //DBSIZE
     public void dbsize(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
-        int size = request.getServer().getSchema().getSize();
+        int index = request.getSessions().getDatabase();
+        int size = request.getServer().getSchema().getRedisDatabases(index).getMapSize();
         RedisOutputProtocol.writer(request.getOutputStream(), size);
     }
 
