@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 
@@ -16,8 +17,11 @@ public class ServerOperationTest extends AbstractRedisTest {
 
     @Test
     public void testDbsize() {
+        long origin = jedis.dbSize();
+        // assertEquals(size, 0);
+        jedis.set(UUID.randomUUID().toString(), "");
         long size = jedis.dbSize();
-        assertTrue(size > 0);
+        assertEquals(origin + 1, size);
     }
 
     @Test

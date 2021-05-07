@@ -38,13 +38,18 @@ public class KeyOperationTest extends AbstractRedisTest {
     @Test
     public void testExpire() {
         String key1 = UUID.randomUUID().toString();
+        long ex = (long) (10 + Math.random() * 100000);
+        long ok = jedis.expire(key1, ex);
+        assertEquals(0L, ok);
+        assertFalse(jedis.exists(key1));
+
         jedis.set(key1, key1);
-        int ex = (int) (10 + Math.random() * 100000);
-        jedis.expire(key1, ex);
+        ok = jedis.expire(key1, ex);
+        assertEquals(1L, ok);
         Long ttl = jedis.ttl(key1);
         assertEquals(ttl, ex, 1);
 
-        jedis.expire(key1, 0);
+        jedis.expire(key1, 0L);
         String val = jedis.get(key1);
         assertNull(val);
     }
@@ -53,7 +58,7 @@ public class KeyOperationTest extends AbstractRedisTest {
     public void testTestDel() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
-        jedis.expire(key1, 0);
+        jedis.expire(key1, 0L);
         String ttl = jedis.get(key1);
         assertNull(ttl);
     }
@@ -131,7 +136,7 @@ public class KeyOperationTest extends AbstractRedisTest {
     public void testPersist() {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
-        jedis.expire(key1, 1000);
+        jedis.expire(key1, 1000L);
         jedis.persist(key1);
         Long ttl = jedis.ttl(key1);
         assertEquals(-1, ttl.intValue());
@@ -142,7 +147,8 @@ public class KeyOperationTest extends AbstractRedisTest {
         String key1 = UUID.randomUUID().toString();
         jedis.set(key1, key1);
         long ex = (long) (10 + Math.random() * 100000);
-        jedis.pexpire(key1, ex);
+        long ok = jedis.pexpire(key1, ex);
+        assertEquals(1L, ok);
         Long ttl = jedis.ttl(key1);
         assertEquals(ttl, (int) (ex / 1000), 1.0);
         Long t2 = jedis.pttl(key1);
@@ -152,6 +158,9 @@ public class KeyOperationTest extends AbstractRedisTest {
         jedis.pexpire(key1, 0L);
         String val = jedis.get(key1);
         assertNull(val);
+
+        ok = jedis.pexpire(key1 + "00", 0L);
+        assertEquals(0L, ok);
     }
 
     @Test
@@ -280,7 +289,7 @@ public class KeyOperationTest extends AbstractRedisTest {
         String[] r = Server.random(25);
         jedis.select(7);
         for (int i = 0; i < r.length; i++) {
-            jedis.set(r[i], i + "", new SetParams().nx().ex(10));
+            jedis.set(r[i], i + "", new SetParams().nx().ex(10L));
         }
         String cursor = "0";
         int size = 0;

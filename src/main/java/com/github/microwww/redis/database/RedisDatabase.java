@@ -72,6 +72,10 @@ public class RedisDatabase implements DataLock {
         return Collections.unmodifiableMap(map);
     }
 
+    public int getMapSize() {
+        return map.size();
+    }
+
     //DEL
     public synchronized AbstractValueData<?> remove(HashKey key) {
         return map.remove(key);

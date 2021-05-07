@@ -6,10 +6,16 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisDataException;
 
-import java.io.IOException;
 import java.util.List;
 
 public class DatabaseTest extends AbstractRedisTest {
+
+    @Test
+    public void testPing() {
+        Jedis jd = jedis;
+        String result = jd.ping();
+        Assert.assertEquals(result, "PONG");
+    }
 
     @Test
     public void testConnection() {
@@ -39,7 +45,7 @@ public class DatabaseTest extends AbstractRedisTest {
 
     // @Test
     public void test() {
-        Jedis jd = new Jedis("192.168.2.18");
+        Jedis jd = new Jedis("192.168.2.18", 6379);
         jd.auth("123456");
         String result = jd.ping();
         String ss = jd.get("---");

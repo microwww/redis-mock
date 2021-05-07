@@ -23,9 +23,9 @@ version 0.2.0 , will remove jedis dependence, There is no need for any external 
     InetSocketAddress address = (InetSocketAddress) server.getServerSocket().getLocalSocketAddress();
     logger.info("Redis start :: [{}:{}]", address.getHostName(), address.getPort());
 ```
-> You can set port to 0, server will bind at **random port**, you can get it by server..getLocalSocketAddress
+> You can set port to 0, server will bind at **random port**, you can get it by `server.getLocalSocketAddress`
 
-if you using spring boot, you can start like this :
+if you are using spring boot, you can start like this :
 ```
     @Bean
     public RedisServer mockRedisServer(RedisProperties redisProperties) throws IOException {
@@ -49,7 +49,7 @@ HashOperation
 >  HDEL, HEXISTS, HGET, HGETALL, HINCRBY, HINCRBYFLOAT, HKEYS, HLEN, HMGET, HMSET, HSCAN, HSET, HSETNX, HVALS, 
 
 KeyOperation
->  DEL, EXISTS, EXPIRE, EXPIREAT, KEYS, MOVE, PERSIST, PEXPIRE, PEXPIREAT, PTTL, RANDOMKEY, RENAME, RENAMENX, SCAN, SORT, TTL, TYPE, 
+>  DEL, EXISTS, EXPIRE, EXPIREAT, KEYS, MOVE, PERSIST, PEXPIRE, PEXPIREAT, PTTL, RANDOMKEY, RENAME, RENAMENX, SCAN, SORT, TTL, TYPE, UNLINK<4.0.0+>,
 
 ListOperation
 >  BLPOP, BRPOP, LINDEX, LINSERT, LLEN, LPOP, LPUSH, LPUSHX, LRANGE, LREM, LSET, LTRIM, RPOP, RPOPLPUSH, RPUSH, RPUSHX, 
@@ -59,7 +59,7 @@ ListOperation
 ~~ScriptOperation~~
 
 ServerOperation
->  DBSIZE, FLUSHALL, FLUSHDB, TIME, 0.0.2+, CLIENT GETNAME, CLIENT KILL, CLIENT LIST, CLIENT SETNAME,
+>  DBSIZE, FLUSHALL<ASYNC, 4.0.0+>, FLUSHDB<ASYNC, 4.0.0+>, TIME, 0.0.2+, CLIENT GETNAME, CLIENT KILL, CLIENT LIST, CLIENT SETNAME,
 
 SetOperation
 >  SADD, SCARD, SDIFF, SDIFFSTORE, SINTER, SINTERSTORE, SISMEMBER, SMEMBERS, SMOVE, SPOP, SRANDMEMBER, SREM, SSCAN, SUNION, SUNIONSTORE, 
@@ -79,10 +79,10 @@ If you find unsupported operation, you can add it by yourself, you must `impleme
 
 You can add a method, Method signature like this:
  `public void name(RedisRequest request) throws IOException`
-Method name is same as the commend, and Method names are all lowercase.
+Method name is same as your command, and Method names are all lowercase.
 
 In `RedisRequest` , you can get RedisServer -> Scheme -> database and so on !
 
-You can create a issue also, I will add it as much as I can.
+You can create an issue also, I will add it as much as I can.
 
 Good luck !

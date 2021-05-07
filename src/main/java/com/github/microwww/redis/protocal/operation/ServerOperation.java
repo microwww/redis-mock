@@ -39,7 +39,8 @@ public class ServerOperation extends AbstractOperation {
     //DBSIZE
     public void dbsize(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
-        int size = request.getServer().getSchema().getSize();
+        int index = request.getSessions().getDatabase();
+        int size = request.getServer().getSchema().getRedisDatabases(index).getMapSize();
         RedisOutputProtocol.writer(request.getOutputStream(), size);
     }
 
@@ -120,7 +121,7 @@ public class ServerOperation extends AbstractOperation {
                 Map<String, RequestSession> sessions = request.getServer().getSessions();
                 StringBuilder ss = new StringBuilder();
                 for (RequestSession sc : sessions.values()) {
-                    ss.append("addr=" + sc.getAddress()).append("\n");
+                    ss.append("addr=").append(sc.getAddress()).append("\n");
                 }
                 RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
             }

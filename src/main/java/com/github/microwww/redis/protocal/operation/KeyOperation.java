@@ -20,18 +20,19 @@ public class KeyOperation extends AbstractOperation {
         ExpectRedisRequest[] args = request.getArgs();
         Assert.isTrue(args.length == 2, "Must has tow arguments");
         HashKey key = args[0].byteArray2hashKey();
-        int exp = args[1].byteArray2int();
+        long exp = args[1].byteArray2long();
         exp(request, key, exp);
     }
 
-    private void exp(RedisRequest request, HashKey key, int exp) throws IOException {
-        expMilliseconds(request, key, exp * 1000L + System.currentTimeMillis());
+    private void exp(RedisRequest request, HashKey key, long seconds) throws IOException {
+        expMilliseconds(request, key, seconds * 1000L + System.currentTimeMillis());
     }
 
     private void expMilliseconds(RedisRequest request, HashKey key, long exp) throws IOException {
         RedisDatabase db = request.getDatabase();
-        db.setExpire(key, exp <= 0 ? 0 : exp);
-        RedisOutputProtocol.writer(request.getOutputStream(), 1);
+        Optional<?> opt = db.setExpire(key, exp <= 0 ? 0 : exp);
+        int exist = opt.map((e) -> 1).orElse(0).intValue();
+        RedisOutputProtocol.writer(request.getOutputStream(), exist);
     }
 
     //DEL
@@ -325,13 +326,13 @@ public class KeyOperation extends AbstractOperation {
         };
 
         private int count = 0;
-        private List args = new ArrayList();
+        private final List args = new ArrayList();
 
-        private SortArgument() {
+        SortArgument() {
             this.count = 0;
         }
 
-        private SortArgument(int count) {
+        SortArgument(int count) {
             this.count = count;
         }
 

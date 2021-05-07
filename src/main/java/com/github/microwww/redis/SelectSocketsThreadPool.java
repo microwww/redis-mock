@@ -29,6 +29,7 @@ public class SelectSocketsThreadPool extends SelectSockets {
             if (!key.isValid()) {
                 return;
             }
+            Exception ex = null;
             try {
                 SocketChannel k = key(channel);
                 TaskThread thread = new TaskThread();
@@ -40,14 +41,23 @@ public class SelectSocketsThreadPool extends SelectSockets {
                 if (doing) {
                     return;
                 }
-                tasks.put(k, thread); // 原先已经停止, 开启新的读取
-                thread.scheduling((lock) -> {
-                    readChannel(channel, lock);
+                try {
+                    tasks.put(k, thread); // 原先已经停止, 开启新的读取
+                    thread.scheduling((lock) -> {
+                        readChannel(channel, lock);
+                    });
+                } finally {
                     tasks.remove(k, thread);
-                });
-            } catch (RuntimeException | IOException e) {
-                logger.error("Error ! try to close channel : {}", e.getMessage(),
-                        e instanceof IOException ? "-" : e);
+                }
+            } catch (RuntimeException e) {
+                ex = e;
+                logger.error("invoke channel error !", e);
+            } catch (IOException e) {
+                ex = e;
+                // We have no API to detect if the channel is closed. so if catch an IOException, The client closed the connection voluntarily !
+                logger.debug("client channel is close ! <IOException>", e);
+            }
+            if (ex != null) {
                 Run.ignoreException(logger, () -> {// close channel
                     closeChannel(key);
                 });

@@ -52,8 +52,8 @@ public class TransactionOperationTest extends AbstractRedisTest {
             jedis.set(key, "");
             jedis.watch(key);
             Transaction tr = jedis.multi();
-            this.connection().expire(key, 1000);
-            jedis.unwatch(); // 会被忽略
+            this.connection().expire(key, 1000L);
+            // jedis.unwatch(); // jedis-3.0 会被忽略, jedis-3.6+ client 直接报错
             tr.set(key, "");
             List<Object> exec = tr.exec();
             AssertMultiError(exec);
@@ -61,10 +61,9 @@ public class TransactionOperationTest extends AbstractRedisTest {
         {
             String key = r[1];
             jedis.set(key, "");
-            //jedis.watch(key);
             Transaction tr = jedis.multi();
-            this.connection().expire(key, 1000);
-            jedis.unwatch(); // 会被忽略
+            this.connection().expire(key, 1000L);
+            //jedis.unwatch(); // 同上, jedis-3.0 会被忽略
             tr.set(key, "");
             try {
                 tr.exec();
@@ -91,7 +90,7 @@ public class TransactionOperationTest extends AbstractRedisTest {
             String key = r[0];
             jedis.watch(key);
             Transaction tr = jedis.multi();
-            this.connection().expire(key, 1000); // 无值
+            this.connection().expire(key, 1000L); // 无值
             tr.set(key, "");
             List<Object> exec = tr.exec();
             Assert.assertEquals(1, exec.size());
@@ -101,7 +100,7 @@ public class TransactionOperationTest extends AbstractRedisTest {
             jedis.set(key, "");
             jedis.watch(key);
             Transaction tr = jedis.multi();
-            this.connection().expire(key, 1000);
+            this.connection().expire(key, 1000L);
             tr.set(key, "");
             List<Object> exec = tr.exec();
             AssertMultiError(exec);
