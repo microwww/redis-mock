@@ -11,7 +11,7 @@
     </parent>
 
     <name>spring-boot-mocker-redis</name>
-    <url>https://github.com/microwww/spring-boot-mocker-redis/</url>
+    <url>https://github.com/microwww/jedis-mock</url>
     <description>This is a redis server mock for spring-boot</description>
 
     <licenses>
@@ -22,9 +22,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:git@github.com:microwww/spring-boot-mocker-redis.git</connection>
-        <developerConnection>scm:git:git@github.com:microwww/spring-boot-mocker-redis.git</developerConnection>
-        <url>https://github.com/microwww/spring-boot-mocker-redis</url>
+        <connection>scm:git:git@github.com:microwww/jedis-mock.git</connection>
+        <developerConnection>scm:git:git@github.com:microwww/jedis-mock.git</developerConnection>
+        <url>https://github.com/microwww/jedis-mock</url>
     </scm>
     <distributionManagement>
         <snapshotRepository>
