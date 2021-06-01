@@ -128,6 +128,10 @@ public abstract class SelectSockets implements Closeable {
         close.set(true);
     }
 
+    public boolean isClose() {
+        return close.get();
+    }
+
     protected void clean() throws IOException {
         close.set(true);
         Thread.yield();
