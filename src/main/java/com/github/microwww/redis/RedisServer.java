@@ -1,35 +1,45 @@
 package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Schema;
+import com.github.microwww.redis.filter.ChainFactory;
 import com.github.microwww.redis.filter.Filter;
 import com.github.microwww.redis.filter.FilterChain;
-import com.github.microwww.redis.filter.ChainFactory;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.AbstractOperation;
+import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
+import com.github.microwww.redis.util.Assert;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
+import java.net.ServerSocket;
+import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public class RedisServer extends SelectSocketsThreadPool {
+public class RedisServer {
     public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
-    private static final Executor pool = Executors.newFixedThreadPool(5);
-    private final Map<String, RequestSession> sessions = new ConcurrentHashMap<>();
-    private Schema schema;
+    private final Executor pool;
     private static final List<Filter> filters = new CopyOnWriteArrayList<>();
+    private final SelectSockets sockets = new SelectSockets();
+    private Schema schema;
 
     public RedisServer() {
-        super(pool);
+        this(5);
+    }
+
+    public RedisServer(int max) {
+        this(Executors.newFixedThreadPool(max));
+        Assert.isTrue(max > 2, "pool > 2");
+    }
+
+    public RedisServer(Executor pool) {
+        this.pool = pool;
     }
 
     public void configScheme(int size, AbstractOperation... operation) {
@@ -59,61 +69,24 @@ public class RedisServer extends SelectSocketsThreadPool {
     }
 
     public void listener(String host, int port) throws IOException {
-        Runnable config = this.config(host, port);
+        sockets.bind(host, port);
+        // Runnable config = this.bind(host, port);
 
         if (Thread.getDefaultUncaughtExceptionHandler() == null) {
             Thread.setDefaultUncaughtExceptionHandler((t, e) -> {//
                 log.error("Thread runtime error {}", e);
             });
         }
-        pool.execute(config);
-    }
 
-    @Override
-    public Runnable config(String host, int port) throws IOException {
-        Runnable run = super.config(host, port);
-        return () -> {
-            InetSocketAddress address = (InetSocketAddress) this.serverSocket.getLocalSocketAddress();
-            log.info("Redis server start @ {}:{}", address.getHostName(), "" + address.getPort());
-            // RUN and block !
-            run.run();
-        };
-    }
+        ServerSocket ss = sockets.getServerSocket();
+        InetSocketAddress address = (InetSocketAddress) ss.getLocalSocketAddress();
+        log.info("Redis server start @ {}:{}", address.getHostName(), "" + address.getPort());
 
-    @Override
-    protected void readChannel(SocketChannel channel, AwaitRead lock) throws IOException {
-        JedisInputStream in = new JedisInputStream(new ChannelInputStream(channel, lock));
-        while (in.available() > 0) {
-            Object read = in.readRedisData();
-            ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
-            RedisRequest redisRequest = new RedisRequest(this, channel, req);
-            redisRequest.setInputStream(in);
-
-            Filter[] filters = this.appendToArray((r, chain) -> {//
-                RedisServer.this.getSchema().exec(redisRequest);
+        pool.execute(() -> {
+            sockets.startListener(channelContext -> {
+                return new InputStreamHandler(channelContext); // this
             });
-            FilterChain<RedisRequest> fc = new ChainFactory<RedisRequest>(filters).create();
-            fc.doFilter(redisRequest);
-
-        }
-    }
-
-    @Override
-    protected void acceptHandler(SocketChannel channel) throws IOException {
-        super.acceptHandler(channel);
-        sessions.put(addressKey(channel), new RequestSession(channel));
-    }
-
-    public RequestSession getSession(SocketChannel channel) throws IOException {
-        return sessions.get(addressKey(channel));
-    }
-
-    public Optional<RequestSession> getSession(String channel) {
-        return Optional.ofNullable(sessions.get(channel));
-    }
-
-    public Map<String, RequestSession> getSessions() {
-        return sessions;
+        });
     }
 
     public Schema getSchema() {
@@ -127,8 +100,41 @@ public class RedisServer extends SelectSocketsThreadPool {
         return schema;
     }
 
-    public static String addressKey(SocketChannel client) throws IOException {
-        InetSocketAddress rm = (InetSocketAddress) client.getRemoteAddress();
-        return (rm.getHostName() + ":" + rm.getPort()).toLowerCase();
+    public SelectSockets getSockets() {
+        return sockets;
+    }
+
+    public class InputStreamHandler extends ChannelSessionHandler.Adaptor {
+
+        private final ChannelInputStream channelInputStream;
+
+        public InputStreamHandler(ChannelContext channelContext) {
+            this.channelInputStream = new ChannelInputStream(channelContext) {
+                @Override
+                public void readableHandler(InputStream inputStream) throws IOException {
+                    InputStreamHandler.this.readableHandler(channelContext, inputStream);
+                }
+            };
+        }
+
+        @Override
+        public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
+            channelInputStream.write(buffer);
+        }
+
+        private void readableHandler(ChannelContext context, InputStream inputStream) throws IOException {
+            JedisInputStream in = new JedisInputStream(inputStream);
+            while (in.available() > 0) {
+                Object read = in.readRedisData();
+                ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+                RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
+                redisRequest.setInputStream(in);
+                Filter[] filters = appendToArray((r, chain) -> {//
+                    RedisServer.this.getSchema().exec(redisRequest);
+                });
+                FilterChain<RedisRequest> fc = new ChainFactory<RedisRequest>(filters).create();
+                fc.doFilter(redisRequest);
+            }
+        }
     }
 }

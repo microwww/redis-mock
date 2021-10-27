@@ -1,9 +1,6 @@
 package com.github.microwww.redis.protocal;
 
-import com.github.microwww.redis.ChannelOutputStream;
-import com.github.microwww.redis.ConsumerIO;
-import com.github.microwww.redis.ExpectRedisRequest;
-import com.github.microwww.redis.RedisServer;
+import com.github.microwww.redis.*;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
@@ -11,12 +8,11 @@ import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 
 import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 public class RedisRequest {
 
-    private final SocketChannel channel;
+    private final ChannelContext channel;
     private final String command;
     private final ExpectRedisRequest[] args;
     private final RedisServer server;
@@ -40,20 +36,20 @@ public class RedisRequest {
         return rq;
     }
 
-    public RedisRequest(RedisServer server, SocketChannel channel, String command, ExpectRedisRequest[] params) {
+    public RedisRequest(RedisServer server, ChannelContext channel, String command, ExpectRedisRequest[] params) {
         this.server = server;
         this.channel = channel;
         this.command = command;
         this.args = params;
-        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel));
+        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel.getChannel()));
     }
 
-    public RedisRequest(RedisServer server, SocketChannel channel, ExpectRedisRequest[] request) {
+    public RedisRequest(RedisServer server, ChannelContext channel, ExpectRedisRequest[] request) {
         this(server, channel, request[0].isNotNull().getByteArray2string(), new ExpectRedisRequest[request.length - 1]);
         System.arraycopy(request, 1, this.args, 0, this.args.length);
     }
 
-    public SocketChannel getChannel() {
+    public ChannelContext getChannel() {
         return channel;
     }
 
@@ -83,17 +79,9 @@ public class RedisRequest {
         this.inputStream = inputStream;
     }
 
-    public RequestSession getSessions() throws IOException {
-        return server.getSession(channel);
-    }
-
     public RedisDatabase getDatabase() {
-        try {
-            int index = this.getSessions().getDatabase();
-            return server.getSchema().getRedisDatabases(index);
-        } catch (IOException ex) {
-            throw new RuntimeException(ex);
-        }
+        int index = channel.getSessions().getDatabase();
+        return server.getSchema().getRedisDatabases(index);
     }
 
     public void expectArgumentsCount(int expect) {
@@ -146,5 +134,9 @@ public class RedisRequest {
      */
     public void setNext(ConsumerIO<Object> next) {
         this.next = next;
+    }
+
+    public RequestSession getSessions() {
+        return channel.getSessions();
     }
 }

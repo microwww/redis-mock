@@ -2,72 +2,53 @@ package com.github.microwww.redis;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
-public class ChannelInputStream extends InputStream {
-    private final ByteBuffer buffer;
-    private final SocketChannel channel;
-    private final AwaitRead lock;
+public abstract class ChannelInputStream {
+    private static final Executor threads = Executors.newCachedThreadPool();
+    private final PipedOutputStream pout = new PipedOutputStream();
+    private final PipedInputStream pin;
+    private int status = 0;
+    private final ChannelContext context;
 
-    public ChannelInputStream(SocketChannel channel, AwaitRead lock) {
-        this(channel, lock, 1024 * 8);
-    }
-
-    public ChannelInputStream(SocketChannel channel, AwaitRead lock, int buffer) {
-        this.channel = channel;
-        this.lock = lock;
-        this.buffer = ByteBuffer.allocate(buffer);
-        // 起始置空
-        this.buffer.flip();
-    }
-
-    private synchronized int tryRead(boolean block) throws IOException {
-        int remaining = buffer.remaining();
-        if (remaining > 0) {
-            return remaining;
+    public ChannelInputStream(ChannelContext context) {
+        this.context = context;
+        try {
+            this.pin = new PipedInputStream(pout);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        while (true) {
-            buffer.clear();
-            int len = channel.read(buffer);
-            buffer.flip();
-            if (len == 0) {
-                if (!block) {
-                    return len;
-                }
-                lock.park(); // block
-                continue;
+    }
+
+    public void write(ByteBuffer buffer) throws IOException {
+        byte[] data = new byte[buffer.remaining()];
+        buffer.get(data);
+        synchronized (this) {
+            if (status == 0) {
+                status = 1;
+                threads.execute(() -> {
+                    try {
+                        while (true) {
+                            this.readableHandler(pin);
+                            synchronized (this) {
+                                if (pin.available() <= 0) {
+                                    status = 0;
+                                    break;
+                                }
+                            }
+                        }
+                    } catch (IOException e) {
+                        context.getChannelHandler().exception(context, e);
+                    }
+                });
             }
-            return len;
+            pout.write(data);// pin.available()  是线程同步的
         }
     }
 
-    @Override
-    public int available() throws IOException {
-        int len = tryRead(false);
-        return Math.max(len, 0);
-    }
-
-    @Override
-    public int read() throws IOException { // will block
-        int len = tryRead(true);
-        if (len < 0) { // 远程正常关闭连接
-            return -1;
-        }
-        return buffer.get();
-    }
-
-    @Override
-    public int read(byte[] bts, int off, int len) throws IOException { // api , must block !!!
-        int r = tryRead(true);
-        if (r > 0) {
-            buffer.get(bts, off, Math.min(r, len));
-        }
-        return r;
-    }
-
-    @Override
-    public void close() throws IOException {
-        channel.close();
-    }
+    public abstract void readableHandler(InputStream inputStream) throws IOException;
 }

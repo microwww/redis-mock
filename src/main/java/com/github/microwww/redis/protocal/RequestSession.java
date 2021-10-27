@@ -1,10 +1,8 @@
 package com.github.microwww.redis.protocal;
 
-import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,9 +13,9 @@ public class RequestSession extends ConcurrentHashMap<String, Object> {
     private final SocketChannel channel;
     private int database = 0;
 
-    public RequestSession(SocketChannel channel) throws IOException {
+    public RequestSession(SocketChannel channel) {
         this.channel = channel;
-        this.put(ADDRESS, RedisServer.addressKey(channel));
+        //this.put(ADDRESS, RedisServer.addressKey(channel));
     }
 
     public SocketChannel getChannel() {

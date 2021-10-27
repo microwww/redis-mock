@@ -1,5 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
+import com.github.microwww.redis.ChannelContext;
 import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.database.Schema;
@@ -9,12 +10,12 @@ import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.protocal.RequestSession;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.IOException;
-import java.util.Map;
+import java.net.InetSocketAddress;
 import java.util.Optional;
+import java.util.Set;
 
 public class ServerOperation extends AbstractOperation {
 
@@ -83,9 +84,7 @@ public class ServerOperation extends AbstractOperation {
     public void kill(RedisRequest request) {
         request.expectArgumentsCount(1);
         String address = request.getArgs()[0].getByteArray2string();
-        request.getServer().getSession(address).ifPresent(e -> {// inner close
-            Run.ignoreException(log, () -> e.getChannel().close());
-        });
+        Run.ignoreException(log, () -> request.getChannel().getChannel().close());
         request.setNext(e -> log.info("USER KILL: " + address));
     }
 
@@ -118,10 +117,11 @@ public class ServerOperation extends AbstractOperation {
         LIST {
             @Override
             public void operation(RedisRequest request) throws IOException {
-                Map<String, RequestSession> sessions = request.getServer().getSessions();
+                Set<ChannelContext> clients = request.getServer().getSockets().getClients();
                 StringBuilder ss = new StringBuilder();
-                for (RequestSession sc : sessions.values()) {
-                    ss.append("addr=").append(sc.getAddress()).append("\n");
+                for (ChannelContext client : clients) {
+                    InetSocketAddress addr = (InetSocketAddress) client.getChannel().getRemoteAddress();
+                    ss.append("addr=").append(addr.getHostName()).append(":").append(addr.getPort()).append("\n");
                 }
                 RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
             }

@@ -20,7 +20,7 @@ public class Server {
                 }
             }
         }
-        return (InetSocketAddress) server.getServerSocket().getLocalSocketAddress();
+        return (InetSocketAddress) server.getSockets().getServerSocket().getLocalSocketAddress();
     }
 
     public static String[] random(int count) {
