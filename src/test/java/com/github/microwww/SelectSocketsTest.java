@@ -1,6 +1,8 @@
 package com.github.microwww;
 
 import com.github.microwww.redis.*;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
@@ -21,6 +23,7 @@ import java.util.concurrent.Executors;
 import static org.junit.Assert.assertEquals;
 
 public class SelectSocketsTest {
+    public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
     @Test
     public void testInputStream() throws Exception {
@@ -98,19 +101,19 @@ public class SelectSocketsTest {
                 public void readableHandler(ChannelContext context, ByteBuffer bf) throws IOException {
                     byte[] bt = new byte[bf.remaining()];
                     bf.get(bt);
-                    String v = String.format("context: %12d, %s", System.identityHashCode(context), new String(bt));
+                    String v = String.format("context %12d, %s", System.identityHashCode(context), new String(bt));
                     throw new RuntimeException(v);
                 }
 
                 @Override
                 public void exception(ChannelContext context, Exception ex) {
-                    System.out.println("Error: " + ex.getMessage());
+                    log.info("From readableHandler RuntimeException, {}", ex.getMessage());
                     doing.countDown();
                 }
 
                 @Override
                 public void close(ChannelContext context) throws IOException {
-                    System.out.println(String.format("Stop: %12d", System.identityHashCode(context)));
+                    log.info("Stop ChannelContext : {}", String.format("%12d", System.identityHashCode(context)));
                     stop.countDown();
                 }
             });

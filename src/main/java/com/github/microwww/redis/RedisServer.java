@@ -119,6 +119,9 @@ public class RedisServer {
 
         @Override
         public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
+            if (log.isDebugEnabled()) {
+                RedisServer.this.print(buffer.asReadOnlyBuffer());
+            }
             channelInputStream.write(buffer);
         }
 
@@ -136,5 +139,22 @@ public class RedisServer {
                 fc.doFilter(redisRequest);
             }
         }
+    }
+
+    private void print(ByteBuffer buffer) {
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
+        StringBuilder sb = new StringBuilder();
+        for (byte a : bytes) {
+            switch (a) {
+                case '\r':
+                case '\n':
+                    sb.append(" ");
+                    break;
+                default:
+                    sb.append((char) a);
+            }
+        }
+        log.debug("Buffer [{}]: {}", bytes.length, sb);
     }
 }
