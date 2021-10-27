@@ -3,6 +3,7 @@ package com.github.microwww.redis.protocal.operation;
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Assert;
 import org.junit.Test;
+import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.Transaction;
 import redis.clients.jedis.exceptions.JedisDataException;
 
@@ -10,6 +11,16 @@ import java.io.IOException;
 import java.util.List;
 
 public class TransactionOperationTest extends AbstractRedisTest {
+
+    @Test(timeout = 1000)
+    public void pipelined() {
+        Pipeline tr = jedis.pipelined();
+        tr.set("test0".getBytes(), "TEST".getBytes());
+        tr.set("test1".getBytes(), "TEST".getBytes());
+        tr.get("test1".getBytes());
+        List<Object> exec = tr.syncAndReturnAll();
+        Assert.assertEquals(3, exec.size());
+    }
 
     @Test
     public void testExec() {

@@ -204,4 +204,9 @@ public class RedisInputStream extends FilterInputStream {
             }
         }
     }
+
+    @Override
+    public int available() throws IOException {
+        return super.available() + limit - count;
+    }
 }
