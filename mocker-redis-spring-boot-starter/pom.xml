@@ -48,7 +48,7 @@
 
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.0.0</version>
+    <version>5.0.1</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -58,7 +58,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.2.9.RELEASE</spring-boot.version>
-        <redis-serve.version>0.2.0</redis-serve.version>
+        <redis-serve.version>0.2.1</redis-serve.version>
     </properties>
 
     <dependencies>
