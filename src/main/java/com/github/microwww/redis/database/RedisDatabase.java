@@ -2,6 +2,8 @@ package com.github.microwww.redis.database;
 
 import com.github.microwww.redis.util.Assert;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -9,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-public class RedisDatabase implements DataLock {
+public class RedisDatabase implements DataLock, Closeable {
 
     ConcurrentMap<HashKey, AbstractValueData<?>> map = new ConcurrentHashMap<>();
 
@@ -83,6 +85,11 @@ public class RedisDatabase implements DataLock {
 
     public void clear() {
         this.map.clear();
+    }
+
+    @Override
+    public void close() throws IOException {
+        map.clear();
     }
 
     //DUMP

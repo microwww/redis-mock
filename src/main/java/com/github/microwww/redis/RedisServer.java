@@ -12,6 +12,7 @@ import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
@@ -19,13 +20,13 @@ import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class RedisServer {
+public class RedisServer implements Closeable {
     public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
-    private final Executor pool;
+    private final ExecutorService pool;
     private static final List<Filter> filters = new CopyOnWriteArrayList<>();
     private final SelectSockets sockets = new SelectSockets();
     private Schema schema;
@@ -39,7 +40,7 @@ public class RedisServer {
         Assert.isTrue(max > 2, "pool > 2");
     }
 
-    public RedisServer(Executor pool) {
+    public RedisServer(ExecutorService pool) {
         this.pool = pool;
     }
 
@@ -105,7 +106,7 @@ public class RedisServer {
         return sockets;
     }
 
-    public class InputStreamHandler extends ChannelSessionHandler.Adaptor {
+    public class InputStreamHandler extends ChannelSessionHandler.Adaptor implements Closeable {
 
         private final ChannelInputStream channelInputStream;
 
@@ -138,6 +139,24 @@ public class RedisServer {
                 });
                 FilterChain<RedisRequest> fc = new ChainFactory<RedisRequest>(filters).create();
                 fc.doFilter(redisRequest);
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            channelInputStream.close();
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            this.sockets.close();
+        } finally {
+            try {
+                schema.close();
+            } finally {
+                pool.shutdown();
             }
         }
     }

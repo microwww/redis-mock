@@ -10,13 +10,14 @@ import com.github.microwww.redis.protocal.operation.*;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class Schema {
+public class Schema implements Closeable {
     private static final Logger log = LogFactory.getLogger(Schema.class);
 
     private static final ExecutorService pool = Executors.newFixedThreadPool(1);
@@ -153,6 +154,17 @@ public class Schema {
         for (RedisDatabase db : this.redisDatabases) {
             db.clear();
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        for (RedisDatabase r : redisDatabases) {
+            try {
+                r.close();
+            } catch (IOException e) {
+            }
+        }
+        pool.shutdown();
     }
 
     public static class Invoker {

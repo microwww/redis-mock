@@ -1,14 +1,11 @@
 package com.github.microwww.redis;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-public abstract class ChannelInputStream {
+public abstract class ChannelInputStream implements Closeable {
     private final Executor threads;
     private final PipedOutputStream pout = new PipedOutputStream();
     private final PipedInputStream pin;
@@ -56,4 +53,13 @@ public abstract class ChannelInputStream {
     }
 
     public abstract void readableHandler(InputStream inputStream) throws IOException;
+
+    @Override
+    public void close() throws IOException {
+        try {
+            pout.close();
+        } finally {
+            pin.close();
+        }
+    }
 }
