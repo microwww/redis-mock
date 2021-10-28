@@ -141,7 +141,7 @@ public class Schema {
             Method method = this.getClass().getMethod("unsupportedOperation", RedisRequest.class);
             invokers.put(cmd, new Invoker(this, method));
         } catch (NoSuchMethodException e) {//
-            Assert.notHere("This class must has unsupportedOperation method", e);
+            throw new RuntimeException("This class must has unsupportedOperation method", e);
         }
     }
 

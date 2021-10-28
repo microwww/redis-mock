@@ -33,7 +33,4 @@ public abstract class Assert {
         }
     }
 
-    public static void notHere(String message, @NotNull Exception e) {
-        throw new RuntimeException(message, e);
-    }
 }

@@ -45,5 +45,6 @@ public class SearchAPI {
                         System.out.print(", ");
                     });
         });
+        System.out.println();
     }
 }
