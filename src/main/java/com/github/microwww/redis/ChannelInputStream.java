@@ -9,13 +9,18 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public abstract class ChannelInputStream {
-    private static final Executor threads = Executors.newCachedThreadPool();
+    private final Executor threads;
     private final PipedOutputStream pout = new PipedOutputStream();
     private final PipedInputStream pin;
     private int status = 0;
     private final ChannelContext context;
 
     public ChannelInputStream(ChannelContext context) {
+        this(context, Executors.newCachedThreadPool());
+    }
+
+    public ChannelInputStream(ChannelContext context, Executor threads) {
+        this.threads = Executors.newCachedThreadPool();
         this.context = context;
         try {
             this.pin = new PipedInputStream(pout);

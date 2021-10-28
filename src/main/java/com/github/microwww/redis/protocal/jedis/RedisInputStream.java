@@ -37,12 +37,12 @@ public class RedisInputStream extends FilterInputStream {
         this(in, 8192);
     }
 
-    public byte readByte() throws JedisConnectionException {
+    public synchronized byte readByte() throws JedisConnectionException {
         ensureFill();
         return buf[count++];
     }
 
-    public String readLine() {
+    public synchronized String readLine() {
         final StringBuilder sb = new StringBuilder();
         while (true) {
             ensureFill();
@@ -70,7 +70,7 @@ public class RedisInputStream extends FilterInputStream {
         return reply;
     }
 
-    public byte[] readLineBytes() {
+    public synchronized byte[] readLineBytes() {
 
         /*
          * This operation should only require one fill. In that typical case we optimize allocation and
@@ -110,7 +110,7 @@ public class RedisInputStream extends FilterInputStream {
      * than creating the StrinbBuilder, String, then encoding as byte[] in Protocol, then decoding
      * back into a String.
      */
-    private byte[] readLineBytesSlowly() {
+    private synchronized byte[] readLineBytesSlowly() {
         ByteArrayOutputStream bout = null;
         while (true) {
             ensureFill();
@@ -146,7 +146,7 @@ public class RedisInputStream extends FilterInputStream {
         return (int) readLongCrLf();
     }
 
-    public long readLongCrLf() {
+    public synchronized long readLongCrLf() {
         final byte[] buf = this.buf;
 
         ensureFill();
@@ -178,7 +178,7 @@ public class RedisInputStream extends FilterInputStream {
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws JedisConnectionException {
+    public synchronized int read(byte[] b, int off, int len) throws JedisConnectionException {
         ensureFill();
 
         final int length = Math.min(limit - count, len);
@@ -191,7 +191,7 @@ public class RedisInputStream extends FilterInputStream {
      * This methods assumes there are required bytes to be read. If we cannot read anymore bytes an
      * exception is thrown to quickly ascertain that the stream was smaller than expected.
      */
-    private void ensureFill() throws JedisConnectionException {
+    private synchronized void ensureFill() throws JedisConnectionException {
         if (count >= limit) {
             try {
                 limit = in.read(buf);
@@ -206,7 +206,7 @@ public class RedisInputStream extends FilterInputStream {
     }
 
     @Override
-    public int available() throws IOException {
+    public synchronized int available() throws IOException {
         return super.available() + limit - count;
     }
 }
