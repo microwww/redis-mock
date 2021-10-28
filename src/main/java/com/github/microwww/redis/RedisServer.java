@@ -10,6 +10,7 @@ import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.util.Assert;
+import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -120,7 +121,7 @@ public class RedisServer {
         @Override
         public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
             if (log.isDebugEnabled()) {
-                RedisServer.this.print(buffer.asReadOnlyBuffer());
+                StringUtil.loggerBuffer(buffer.asReadOnlyBuffer());
             }
             channelInputStream.write(buffer);
         }
@@ -139,22 +140,5 @@ public class RedisServer {
                 fc.doFilter(redisRequest);
             }
         }
-    }
-
-    private void print(ByteBuffer buffer) {
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);
-        StringBuilder sb = new StringBuilder();
-        for (byte a : bytes) {
-            switch (a) {
-                case '\r':
-                case '\n':
-                    sb.append(" ");
-                    break;
-                default:
-                    sb.append((char) a);
-            }
-        }
-        log.debug("Buffer [{}]: {}", bytes.length, sb);
     }
 }
