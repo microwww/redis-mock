@@ -10,15 +10,39 @@ import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.util.Assert;
+import com.github.microwww.redis.util.SafeEncoder;
+import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Pattern;
 
 public class PubSubOperation extends AbstractOperation {
     private static final Logger log = LogFactory.getLogger(PubSubOperation.class);
 
     //PSUBSCRIBE
+    public void psubscribe(RedisRequest request) throws IOException {
+        request.expectArgumentsCountGE(1);
+        ExpectRedisRequest[] args = request.getArgs();
+        Object[] sub = new Object[3];
+        sub[0] = "psubscribe".getBytes(StandardCharsets.UTF_8);
+        PubSub pubSub = request.getPubSub();
+        for (ExpectRedisRequest arg : args) {
+            Bytes bytes = arg.toBytes();
+            PattenNotify notify = new PattenNotify(request.getContext(), bytes, pubSub);
+            try {
+                notify.subscribe();
+            } catch (Exception e) {
+                log.warn("subscribe [{}] error", notify.patten, e);
+                notify.unsubscribe();
+            }
+            sub[1] = bytes.getBytes();
+            sub[2] = request.getContext().getPattenSubscribe().subscribeChannels().size();
+            RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
+        }
+    }
+
     //PUBLISH
     public void publish(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
@@ -45,7 +69,7 @@ public class PubSubOperation extends AbstractOperation {
             try {
                 notify.subscribe();
             } catch (Exception e) {
-                log.warn("subscribe [{}] error", notify.bytes, e);
+                log.warn("subscribe [{}] error", notify.channel, e);
                 notify.unsubscribe();
             }
             sub[1] = bytes.getBytes();
@@ -81,26 +105,76 @@ public class PubSubOperation extends AbstractOperation {
         request.getOutputStream().flush();
     }
 
-    public static class PattenNotify extends Notify {
-        public PattenNotify(ChannelContext context, Bytes bytes, PubSub pubSub) {
-            super(context, bytes, pubSub);
+    public static class PattenNotify implements Observer {
+        private final ChannelContext context;
+        private final Bytes bytes;
+        private final Pattern patten;
+        private final PubSub pubSub;
+        private final ChannelContext.CloseListener channelClose;
+        private final Map<Bytes, Notify> notifies = new HashMap<>();
+
+        public PattenNotify(ChannelContext context, Bytes patten, PubSub pubSub) {
+            this.context = context;
+            this.bytes = patten;
+            this.patten = StringUtil.antPattern(SafeEncoder.encode(patten.getBytes()));
+            this.pubSub = pubSub;
+            this.channelClose = context.addCloseListener(this::close);
+        }
+
+        private void close(ChannelContext context) {
+            try {// channel close to unsubscribe !
+                unsubscribe();
+            } catch (Exception e) {
+            }
+        }
+
+        @Override
+        public void update(Observable o, Object arg) {
+            Bytes channel = (Bytes) arg;
+            if (patten.matcher(SafeEncoder.encode(channel.getBytes())).matches()) {
+                notifies.computeIfAbsent(channel, k -> {
+                    Notify notify = new Notify(context, (Bytes) arg, pubSub);
+                    pubSub.subscribe(channel, notify);
+                    return notify;
+                });
+
+            }
+        }
+
+        public void unsubscribe() {
+            pubSub.newChannelNotify.unsubscribe(this);
+            notifies.values().forEach(e -> {
+                pubSub.unsubscribe(e.channel, e);
+            });
+            context.getPattenSubscribe().removeSubscribe(bytes);
+            context.removeCloseListener(channelClose);
+        }
+
+        public void subscribe() {
+            find(this.context, bytes).ifPresent(PattenNotify::unsubscribe); // 删除已经存在的
+            pubSub.newChannelNotify.subscribe(this);
+            this.context.getPattenSubscribe().addSubscribe(bytes, this);
+        }
+
+        public static Optional<PattenNotify> find(ChannelContext context, Bytes bytes) {
+            return context.getPattenSubscribe().getSubscribe(bytes);
         }
     }
 
     public static class Notify implements Observer {
         private final ChannelContext context;
-        private final Bytes bytes;
+        private final Bytes channel;
         private final PubSub pubSub;
         private final ChannelContext.CloseListener channelClose;
 
-        public Notify(ChannelContext context, Bytes bytes, PubSub pubSub) {
+        public Notify(ChannelContext context, Bytes channel, PubSub pubSub) {
             this.context = context;
-            this.bytes = bytes;
+            this.channel = channel;
             this.pubSub = pubSub;
-            this.channelClose = context.addCloseListener(this::_unsubscribe);
+            this.channelClose = context.addCloseListener(this::close);
         }
 
-        private void _unsubscribe(ChannelContext context) {
+        private void close(ChannelContext context) {
             try {// channel close to unsubscribe !
                 unsubscribe();
             } catch (Exception e) {
@@ -112,7 +186,7 @@ public class PubSubOperation extends AbstractOperation {
             try {
                 Object[] msg = new Object[3];
                 msg[0] = "message".getBytes(StandardCharsets.UTF_8);
-                msg[1] = bytes;
+                msg[1] = channel;
                 Assert.isTrue(arg instanceof Bytes, "Observable publish must be `Bytes`");
                 msg[2] = arg;
                 RedisOutputProtocol.writerComplex(context.getOutputStream(), msg);
@@ -123,15 +197,15 @@ public class PubSubOperation extends AbstractOperation {
         }
 
         public void unsubscribe() {
-            pubSub.unsubscribe(bytes, this);
-            context.getSubscribe().removeSubscribe(bytes);
+            pubSub.unsubscribe(channel, this);
+            context.getSubscribe().removeSubscribe(channel);
             context.removeCloseListener(channelClose);
         }
 
         public void subscribe() {
-            Notify.find(this.context, bytes).ifPresent(Notify::unsubscribe);
-            this.context.getSubscribe().addSubscribe(bytes, this);
-            pubSub.subscribe(bytes, this);
+            find(this.context, channel).ifPresent(Notify::unsubscribe); // 删除已经存在的
+            this.context.getSubscribe().addSubscribe(channel, this);
+            pubSub.subscribe(channel, this);
         }
 
         public static Optional<Notify> find(ChannelContext context, Bytes bytes) {

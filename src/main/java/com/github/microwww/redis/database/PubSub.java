@@ -63,5 +63,13 @@ public class PubSub implements Closeable {
             this.notifyObservers(channel);
             return this.countObservers();
         }
+
+        public void subscribe(Observer o) {
+            newChannelNotify.addObserver(o);
+        }
+
+        public void unsubscribe(Observer o) {
+            newChannelNotify.deleteObserver(o);
+        }
     }
 }
