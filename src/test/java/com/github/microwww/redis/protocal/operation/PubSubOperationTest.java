@@ -7,8 +7,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.BinaryJedisPubSub;
+import redis.clients.jedis.JedisPubSub;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -56,6 +60,79 @@ public class PubSubOperationTest extends AbstractRedisTest {
 
     //PUBLISH
     //PUBSUB
+    @Test
+    public void testPUBSUB() throws IOException, InterruptedException {
+        String[] r5 = new String[]{"PUB1SUB", "PUBSUB2", "PUB3SUB", "PUBSUB4", "PUBSUB5"};
+        String[] r2 = new String[]{"PUB*", "SUB*", "test*", "sft"};
+        CountDownLatch down = new CountDownLatch(r5.length + r2.length + 1);
+        for (String s : r5) {
+            threads.submit(() -> {
+                try {
+                    this.connection().subscribe(new JedisPubSub() {
+                        @Override
+                        public void onSubscribe(String channel, int subscribedChannels) {
+                            down.countDown();
+                        }
+                    }, s);
+                } catch (IOException e) {
+                }
+            });
+        }
+        CountDownLatch d2 = new CountDownLatch(1);
+        CountDownLatch d3 = new CountDownLatch(1);
+        for (String s : r2) {
+            threads.submit(() -> {
+                try {
+                    this.connection().psubscribe(new JedisPubSub() {
+                        @Override
+                        public void onPSubscribe(String pattern, int subscribedChannels) {
+                            down.countDown();
+                            try {
+                                d3.await();
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
+                            }
+                            this.punsubscribe();
+                        }
+                    }, s);
+                } catch (IOException e) {
+                }
+            });
+        }
+        threads.submit(() -> {
+            try {
+                this.connection().psubscribe(new JedisPubSub() {
+                    @Override
+                    public void onPSubscribe(String pattern, int subscribedChannels) {
+                        down.countDown();
+                        try {
+                            d2.await();
+                        } catch (InterruptedException e) {
+                        }
+                        this.punsubscribe();
+                        d3.countDown();
+                    }
+                }, r2[0]);
+            } catch (IOException e) {
+            }
+        });
+        down.await();
+        List<String> strings = jedis.pubsubChannels("PUB?SUB");
+        Assert.assertEquals(2, strings.size());
+        System.out.println(strings);
+        Assert.assertEquals(0, jedis.pubsubNumSub().size());
+        Map<String, String> val = jedis.pubsubNumSub("PUB3SUB", "PUBSUB4", "PUBSUB_not_exist");
+        Assert.assertEquals(3, val.size());
+        Assert.assertArrayEquals(new String[]{"1", "1", "0"}, val.values().toArray(new String[]{}));
+        Assert.assertArrayEquals(new String[]{"PUB3SUB", "PUBSUB4", "PUBSUB_not_exist"}, val.keySet().toArray(new String[]{}));
+        Assert.assertEquals(4, jedis.pubsubNumPat().intValue());
+        d2.countDown();
+        d3.await();
+        Assert.assertEquals(4, jedis.pubsubNumPat().intValue());
+        Thread.sleep(100);
+        Assert.assertEquals(0, jedis.pubsubNumPat().intValue());
+    }
+
     //PUNSUBSCRIBE
     @Test(timeout = 1_000)
     public void testPUNSUBSCRIBE() {

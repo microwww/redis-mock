@@ -1,11 +1,10 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.protocal.operation.PubSubOperation;
+
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Observable;
-import java.util.Observer;
+import java.util.*;
 
 public class PubSub implements Closeable {
     /**
@@ -19,7 +18,7 @@ public class PubSub implements Closeable {
         return notify.notify(message);
     }
 
-    private MessageChannel getOrNewMessageNotify(Bytes channel) {
+    private synchronized MessageChannel getOrNewMessageNotify(Bytes channel) {
         MessageChannel mn = channels.get(channel);
         if (mn == null) {
             mn = new MessageChannel(channel);
@@ -40,6 +39,10 @@ public class PubSub implements Closeable {
         }
     }
 
+    public synchronized Map<Bytes, MessageChannel> getChannels() {
+        return Collections.unmodifiableMap(channels);
+    }
+
     @Override
     public void close() throws IOException {
         channels.clear();
@@ -47,6 +50,7 @@ public class PubSub implements Closeable {
 
     public static class MessageChannel extends Observable {
         private final Bytes channel;
+        private int numsub = 0; // not contain `patten`
 
         public MessageChannel(Bytes channel) {
             this.channel = channel;
@@ -61,9 +65,62 @@ public class PubSub implements Closeable {
             this.notifyObservers(message);
             return this.countObservers();
         }
+
+        @Override
+        public void addObserver(Observer o) {
+            int i = this.countObservers();
+            super.addObserver(o);
+            if (this.countObservers() != i) {
+                if (!isPatten(o)) {
+                    numsub++;
+                }
+            }
+        }
+
+        @Override
+        public void deleteObserver(Observer o) {
+            int i = this.countObservers();
+            super.deleteObserver(o);
+            if (this.countObservers() != i) {
+                if (!isPatten(o)) {
+                    numsub++;
+                }
+            }
+        }
+
+        @Override
+        public synchronized void deleteObservers() {
+            super.deleteObservers();
+            numsub = 0;
+        }
+
+        public int getNumsub() {
+            return numsub;
+        }
+
+        public boolean isActive() {
+            return this.getNumsub() > 0;
+        }
+    }
+
+    public static boolean isPatten(Observer observer) {
+        if (observer instanceof PubSubOperation.ChannelMessageListener) {
+            PubSubOperation.ChannelMessageListener pc = ((PubSubOperation.ChannelMessageListener) observer);
+            return pc.getPatten().isPresent();
+        }
+        return false;
+    }
+
+    public static Optional<Bytes> getNewPatten(Observer observer) {
+        if (observer instanceof PubSubOperation.NewChannelListener) {
+            PubSubOperation.NewChannelListener pc = ((PubSubOperation.NewChannelListener) observer);
+            return Optional.of(pc.getPatten());
+        }
+        return Optional.empty();
     }
 
     public class NewChannelNotify extends Observable {
+        private List<Bytes> pattens = new ArrayList<>();
 
         public int notify(Bytes channel) {
             this.setChanged();
@@ -78,5 +135,34 @@ public class PubSub implements Closeable {
         public void unsubscribe(Observer o) {
             newChannelNotify.deleteObserver(o);
         }
+
+        @Override
+        public synchronized void addObserver(Observer o) {
+            int i = this.countObservers();
+            super.addObserver(o);
+            if (this.countObservers() != i) {
+                getNewPatten(o).ifPresent(pattens::add);
+            }
+        }
+
+        @Override
+        public synchronized void deleteObserver(Observer o) {
+            int i = this.countObservers();
+            super.deleteObserver(o);
+            if (this.countObservers() != i) {
+                getNewPatten(o).ifPresent(pattens::remove);
+            }
+        }
+
+        @Override
+        public synchronized void deleteObservers() {
+            super.deleteObservers();
+            pattens.clear();
+        }
+
+        public List<Bytes> getPattens() {
+            return Collections.unmodifiableList(pattens);
+        }
     }
+
 }

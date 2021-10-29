@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 public class PubSubOperation extends AbstractOperation {
     private static final Logger log = LogFactory.getLogger(PubSubOperation.class);
@@ -55,6 +56,63 @@ public class PubSubOperation extends AbstractOperation {
     }
 
     //PUBSUB
+    public void pubsub(RedisRequest request) throws IOException {
+        request.expectArgumentsCountGE(1);
+        ExpectRedisRequest[] args = request.getArgs();
+        String subcommand = args[0].getByteArray2string().toLowerCase();
+        switch (subcommand) {
+            case "channels":
+                this.subChannels(request);
+                break;
+            case "numsub":
+                this.subNumSub(request);
+                break;
+            case "numpat":
+                this.subNumPat(request);
+                break;
+            default:
+                throw new UnsupportedOperationException(subcommand);
+        }
+    }
+
+    private void subChannels(RedisRequest request) throws IOException {
+        PubSub pubSub = request.getPubSub();
+        Stream<PubSub.MessageChannel> stream = pubSub.getChannels().values().stream().filter(PubSub.MessageChannel::isActive);
+        if (request.getArgs().length > 1) {
+            String patten = request.getArgs()[1].getByteArray2string();
+            stream = stream.filter(e -> StringUtil.antPatternMatches(patten, SafeEncoder.encode(e.getChannel().getBytes())));
+        }
+        Object[] objects = stream.map(PubSub.MessageChannel::getChannel).toArray(Object[]::new);
+        RedisOutputProtocol.writerComplex(request.getOutputStream(), objects);
+    }
+
+    private void subNumSub(RedisRequest request) throws IOException {
+        PubSub pubSub = request.getPubSub();
+        int len = request.getArgs().length;
+        List<Object> list = new ArrayList<>();
+        if (len > 1) {
+            for (int i = 1; i < len; i++) {
+                Bytes bytes = request.getArgs()[i].toBytes();
+                list.add(bytes);
+                PubSub.MessageChannel mc = pubSub.getChannels().get(bytes);
+                if (mc == null) {
+                    list.add(0);
+                } else {
+                    list.add(mc.getNumsub());
+                }
+            }
+        }
+        // 不指定 channel 则返回空的列表
+        RedisOutputProtocol.writerComplex(request.getOutputStream(), list.toArray());
+    }
+
+    // TODO :: 这个有出入, 不同的客户端对相同的 patten 是否认为是唯一的 ???
+    private void subNumPat(RedisRequest request) throws IOException {
+        PubSub pubSub = request.getPubSub();
+        // RedisOutputProtocol.writer(request.getOutputStream(), pubSub.newChannelNotify.countObservers());
+        RedisOutputProtocol.writer(request.getOutputStream(), new HashSet<>(pubSub.newChannelNotify.getPattens()).size());
+    }
+
     //PUNSUBSCRIBE
     public void punsubscribe(RedisRequest request) throws IOException {
         ExpectRedisRequest[] args = request.getArgs();
@@ -189,6 +247,10 @@ public class PubSubOperation extends AbstractOperation {
 
         public static Optional<NewChannelListener> find(ChannelContext context, Bytes bytes) {
             return context.getPattenSubscribe().getSubscribe(bytes);
+        }
+
+        public Bytes getPatten() {
+            return bytes;
         }
     }
 

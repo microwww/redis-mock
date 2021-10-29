@@ -48,4 +48,8 @@ public abstract class StringUtil {
         que = que.replaceAll(Pattern.quote("?"), ".");
         return Pattern.compile(que);
     }
+
+    public static boolean antPatternMatches(String patten, String str) {
+        return antPattern(patten).matcher(str).matches();
+    }
 }
