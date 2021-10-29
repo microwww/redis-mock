@@ -39,15 +39,13 @@ public abstract class StringUtil {
     }
 
     /**
-     * 仅支持 * / ? 两个通配符
-     *
      * @param format
      * @return
      */
     public static Pattern antPattern(String format) {
-        String que = Pattern.quote(format).replaceAll(Pattern.quote("*") + "+", "\\\\E.*\\\\Q");
-        que = que.replaceAll(Pattern.quote("?"), "\\\\E.\\\\Q");
-        que = que.replaceAll("\\\\Q\\\\E", "");
+        String que = format.replaceAll(Pattern.quote("."), "\\\\Q.\\\\E");
+        que = que.replaceAll(Pattern.quote("*") + "+", ".*");
+        que = que.replaceAll(Pattern.quote("?"), ".");
         return Pattern.compile(que);
     }
 }
