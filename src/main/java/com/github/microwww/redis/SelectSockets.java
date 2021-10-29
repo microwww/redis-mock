@@ -26,32 +26,38 @@ public class SelectSockets implements Closeable {
     protected Selector selector;
     private AtomicBoolean close = new AtomicBoolean();
     private Set<ChannelContext> clients = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Function<ChannelContext, ChannelSessionHandler> factory;
 
-    public void bind(String host, int port) throws IOException {
+    public SelectSockets(Function<ChannelContext, ChannelSessionHandler> factory) {
+        Assert.isTrue(factory != null, "Not null");
+        this.factory = factory;
+    }
+
+    public SelectSockets bind(String host, int port) throws IOException {
         serverChannel = ServerSocketChannel.open();
         serverSocket = serverChannel.socket();
         selector = Selector.open();
         serverSocket.bind(new InetSocketAddress(host, port));
         serverChannel.configureBlocking(false);
         serverChannel.register(selector, SelectionKey.OP_ACCEPT);
+        return this;
     }
 
-    public void startListener(ChannelSessionHandler factory) {
-        this.startListener(e -> factory);
-    }
-
-    public void startListener(Function<ChannelContext, ChannelSessionHandler> factory) {
+    /**
+     * will block !
+     */
+    public void sync() {
         Thread.currentThread().setName("SELECT-IO");
         while (true) {
             if (close.get()) break;
             Run.ignoreException(logger, () -> {// start LISTENER
-                this.tryRun(factory);
+                this.tryRun();
             });
         }
         Run.ignoreException(logger, this::close);
     }
 
-    private void tryRun(Function<ChannelContext, ChannelSessionHandler> factory) throws IOException {
+    private void tryRun() throws IOException {
         int n = selector.select();
         if (n <= 0) {
             return;
@@ -155,7 +161,6 @@ public class SelectSockets implements Closeable {
     @Override
     public void close() throws IOException {
         close.set(true);
-        Thread.yield();
         try {
             if (selector != null)
                 selector.close();

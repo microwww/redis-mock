@@ -162,11 +162,12 @@ public class Schema implements Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         for (RedisDatabase r : redisDatabases) {
             try {
                 r.close();
-            } catch (IOException e) {
+            } catch (Exception e) {
+                log.error("RedisDatabase close error", e);
             }
         }
         pool.shutdown();

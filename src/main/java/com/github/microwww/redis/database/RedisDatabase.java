@@ -88,7 +88,7 @@ public class RedisDatabase implements DataLock, Closeable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         map.clear();
     }
 

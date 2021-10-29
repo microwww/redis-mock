@@ -28,7 +28,7 @@ public class RedisServer implements Closeable {
 
     private final ExecutorService pool;
     private static final List<Filter> filters = new CopyOnWriteArrayList<>();
-    private final SelectSockets sockets = new SelectSockets();
+    private final SelectSockets sockets = new SelectSockets(this::handler);
     private Schema schema;
 
     public RedisServer() {
@@ -84,11 +84,11 @@ public class RedisServer implements Closeable {
         InetSocketAddress address = (InetSocketAddress) ss.getLocalSocketAddress();
         log.info("Redis server start @ {}:{}", address.getHostName(), "" + address.getPort());
 
-        pool.execute(() -> {
-            sockets.startListener(channelContext -> {
-                return new InputStreamHandler(channelContext); // this
-            });
-        });
+        pool.execute(sockets::sync);
+    }
+
+    private InputStreamHandler handler(ChannelContext context) {
+        return new InputStreamHandler(context); // this
     }
 
     public Schema getSchema() {

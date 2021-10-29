@@ -32,37 +32,37 @@ public class SelectSocketsTest {
         CountDownLatch d1 = new CountDownLatch(count);
         CountDownLatch d2 = new CountDownLatch(count);
         List<String> bf = new CopyOnWriteArrayList<>();
-        SelectSockets sockets = new SelectSockets();
+        SelectSockets sockets = new SelectSockets(e -> {
+            return new ChannelSessionHandler.Adaptor() {
+                private ChannelInputStream channelInputStream;
+
+                @Override
+                public void registerHandler(ChannelContext context) throws IOException {
+                    channelInputStream = new ChannelInputStream(context) {
+                        @Override
+                        public void readableHandler(InputStream inputStream) throws IOException {
+                            read(context, inputStream);
+                        }
+                    };
+                }
+
+                @Override
+                public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
+                    channelInputStream.write(buffer);
+                }
+
+                private void read(ChannelContext context, InputStream inputStream) throws IOException {
+                    JedisInputStream in = new JedisInputStream(inputStream);
+                    Object read = in.readRedisData();
+                    ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+                    bf.add(new String(req[0].isNotNull().getByteArray())); // 命令
+                    d1.countDown();
+                }
+            };
+        });
         sockets.bind("localhost", 0);
         pool.execute(() -> {
-            sockets.startListener((e) -> {
-                return new ChannelSessionHandler.Adaptor() {
-                    private ChannelInputStream channelInputStream;
-
-                    @Override
-                    public void registerHandler(ChannelContext context) throws IOException {
-                        channelInputStream = new ChannelInputStream(context) {
-                            @Override
-                            public void readableHandler(InputStream inputStream) throws IOException {
-                                read(context, inputStream);
-                            }
-                        };
-                    }
-
-                    @Override
-                    public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
-                        channelInputStream.write(buffer);
-                    }
-
-                    private void read(ChannelContext context, InputStream inputStream) throws IOException {
-                        JedisInputStream in = new JedisInputStream(inputStream);
-                        Object read = in.readRedisData();
-                        ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
-                        bf.add(new String(req[0].isNotNull().getByteArray())); // 命令
-                        d1.countDown();
-                    }
-                };
-            });
+            sockets.sync();
         });
         InetSocketAddress ss = (InetSocketAddress) sockets.getServerSocket().getLocalSocketAddress();
         for (int i = 0; i < count; i++) {
@@ -84,39 +84,39 @@ public class SelectSocketsTest {
     @Test(timeout = 1000)
     public void testChannelHandler() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(5);
-        SelectSockets sockets = new SelectSockets();
-        sockets.bind("localhost", 0);
         int count = 10;
         CountDownLatch stop = new CountDownLatch(count);
         CountDownLatch runs = new CountDownLatch(count);
         CountDownLatch doing = new CountDownLatch(count);
+        SelectSockets sockets = new SelectSockets(e -> new ChannelSessionHandler.Adaptor() {
+            @Override
+            public void registerHandler(ChannelContext context) throws IOException {
+                runs.countDown();
+            }
+
+            @Override
+            public void readableHandler(ChannelContext context, ByteBuffer bf) throws IOException {
+                byte[] bt = new byte[bf.remaining()];
+                bf.get(bt);
+                String v = String.format("context %12d, %s", System.identityHashCode(context), new String(bt));
+                throw new RuntimeException(v);
+            }
+
+            @Override
+            public void exception(ChannelContext context, Exception ex) {
+                log.info("From readableHandler RuntimeException, {}", ex.getMessage());
+                doing.countDown();
+            }
+
+            @Override
+            public void close(ChannelContext context) throws IOException {
+                log.info("Stop ChannelContext : {}", String.format("%12d", System.identityHashCode(context)));
+                stop.countDown();
+            }
+        });
+        sockets.bind("localhost", 0);
         pool.execute(() -> {
-            sockets.startListener(new ChannelSessionHandler.Adaptor() {
-                @Override
-                public void registerHandler(ChannelContext context) throws IOException {
-                    runs.countDown();
-                }
-
-                @Override
-                public void readableHandler(ChannelContext context, ByteBuffer bf) throws IOException {
-                    byte[] bt = new byte[bf.remaining()];
-                    bf.get(bt);
-                    String v = String.format("context %12d, %s", System.identityHashCode(context), new String(bt));
-                    throw new RuntimeException(v);
-                }
-
-                @Override
-                public void exception(ChannelContext context, Exception ex) {
-                    log.info("From readableHandler RuntimeException, {}", ex.getMessage());
-                    doing.countDown();
-                }
-
-                @Override
-                public void close(ChannelContext context) throws IOException {
-                    log.info("Stop ChannelContext : {}", String.format("%12d", System.identityHashCode(context)));
-                    stop.countDown();
-                }
-            });
+            sockets.sync();
         });
 
         InetSocketAddress ss = (InetSocketAddress) sockets.getServerSocket().getLocalSocketAddress();
