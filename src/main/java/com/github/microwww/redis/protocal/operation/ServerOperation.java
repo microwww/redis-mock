@@ -84,7 +84,7 @@ public class ServerOperation extends AbstractOperation {
     public void kill(RedisRequest request) {
         request.expectArgumentsCount(1);
         String address = request.getArgs()[0].getByteArray2string();
-        Run.ignoreException(log, () -> request.getChannel().getChannel().close());
+        Run.ignoreException(log, () -> request.getContext().getChannel().close());
         request.setNext(e -> log.info("USER KILL: " + address));
     }
 

@@ -41,7 +41,7 @@ public class PubSubOperation extends AbstractOperation {
         sub[0] = "subscribe".getBytes(StandardCharsets.UTF_8);
         for (ExpectRedisRequest arg : args) {
             Bytes bytes = arg.toBytes();
-            Notify notify = new Notify(request.getChannel(), bytes, pubSub);
+            Notify notify = new Notify(request.getContext(), bytes, pubSub);
             try {
                 notify.subscribe();
             } catch (Exception e) {
@@ -49,7 +49,7 @@ public class PubSubOperation extends AbstractOperation {
                 notify.unsubscribe();
             }
             sub[1] = bytes.getBytes();
-            sub[2] = request.getChannel().subscribeChannels().size();
+            sub[2] = request.getContext().subscribeChannels().size();
             RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
         }
     }
@@ -60,21 +60,21 @@ public class PubSubOperation extends AbstractOperation {
         Object[] uns = new Object[3];
         uns[0] = "unsubscribe".getBytes(StandardCharsets.UTF_8);
         if (args.length == 0) {
-            Map<Bytes, Observer> mpa = request.getChannel().subscribeChannels();
+            Map<Bytes, Observer> mpa = request.getContext().subscribeChannels();
             Iterator<Bytes> iterator = new HashSet<>(mpa.keySet()).iterator();
             while (iterator.hasNext()) {
                 Bytes next = iterator.next();
                 uns[1] = next;
-                Notify.find(request.getChannel(), next).ifPresent(Notify::unsubscribe);
-                uns[2] = request.getChannel().subscribeChannels().size();
+                Notify.find(request.getContext(), next).ifPresent(Notify::unsubscribe);
+                uns[2] = request.getContext().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         } else {
             for (ExpectRedisRequest arg : args) {
                 Bytes bytes = arg.toBytes();
                 uns[1] = bytes;
-                Notify.find(request.getChannel(), bytes).ifPresent(Notify::unsubscribe);
-                uns[2] = request.getChannel().subscribeChannels().size();
+                Notify.find(request.getContext(), bytes).ifPresent(Notify::unsubscribe);
+                uns[2] = request.getContext().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         }

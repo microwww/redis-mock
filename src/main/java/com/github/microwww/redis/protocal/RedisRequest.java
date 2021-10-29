@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 public class RedisRequest {
 
-    private final ChannelContext channel;
+    private final ChannelContext context;
     private final String command;
     private final ExpectRedisRequest[] args;
     private final RedisServer server;
@@ -25,31 +25,31 @@ public class RedisRequest {
     };
 
     public static RedisRequest warp(RedisRequest request, ExpectRedisRequest[] requests) {
-        RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), requests);
+        RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), requests);
         rq.setInputStream(request.getInputStream());
         return rq;
     }
 
     public static RedisRequest warp(RedisRequest request, String cmd, ExpectRedisRequest[] params) {
-        RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), cmd, params);
+        RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), cmd, params);
         rq.setInputStream(request.getInputStream());
         return rq;
     }
 
-    public RedisRequest(RedisServer server, ChannelContext channel, String command, ExpectRedisRequest[] params) {
+    public RedisRequest(RedisServer server, ChannelContext context, String command, ExpectRedisRequest[] params) {
         this.server = server;
-        this.channel = channel;
+        this.context = context;
         this.command = command;
         this.args = params;
     }
 
-    public RedisRequest(RedisServer server, ChannelContext channel, ExpectRedisRequest[] request) {
-        this(server, channel, request[0].isNotNull().getByteArray2string(), new ExpectRedisRequest[request.length - 1]);
+    public RedisRequest(RedisServer server, ChannelContext context, ExpectRedisRequest[] request) {
+        this(server, context, request[0].isNotNull().getByteArray2string(), new ExpectRedisRequest[request.length - 1]);
         System.arraycopy(request, 1, this.args, 0, this.args.length);
     }
 
-    public ChannelContext getChannel() {
-        return channel;
+    public ChannelContext getContext() {
+        return context;
     }
 
     public String getCommand() {
@@ -62,7 +62,7 @@ public class RedisRequest {
     }
 
     public JedisOutputStream getOutputStream() {
-        return this.channel.getOutputStream();
+        return this.context.getOutputStream();
     }
 
     public JedisInputStream getInputStream() {
@@ -75,7 +75,7 @@ public class RedisRequest {
     }
 
     public RedisDatabase getDatabase() {
-        int index = channel.getSessions().getDatabase();
+        int index = context.getSessions().getDatabase();
         return server.getSchema().getRedisDatabases(index);
     }
 
@@ -136,6 +136,6 @@ public class RedisRequest {
     }
 
     public RequestSession getSessions() {
-        return channel.getSessions();
+        return context.getSessions();
     }
 }
