@@ -49,7 +49,7 @@ public class PubSubOperation extends AbstractOperation {
                 notify.unsubscribe();
             }
             sub[1] = bytes.getBytes();
-            sub[2] = request.getContext().subscribeChannels().size();
+            sub[2] = request.getContext().getSubscribe().subscribeChannels().size();
             RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
         }
     }
@@ -60,13 +60,13 @@ public class PubSubOperation extends AbstractOperation {
         Object[] uns = new Object[3];
         uns[0] = "unsubscribe".getBytes(StandardCharsets.UTF_8);
         if (args.length == 0) {
-            Map<Bytes, Observer> mpa = request.getContext().subscribeChannels();
+            Map<Bytes, Observer> mpa = request.getContext().getSubscribe().subscribeChannels();
             Iterator<Bytes> iterator = new HashSet<>(mpa.keySet()).iterator();
             while (iterator.hasNext()) {
                 Bytes next = iterator.next();
                 uns[1] = next;
                 Notify.find(request.getContext(), next).ifPresent(Notify::unsubscribe);
-                uns[2] = request.getContext().subscribeChannels().size();
+                uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         } else {
@@ -74,7 +74,7 @@ public class PubSubOperation extends AbstractOperation {
                 Bytes bytes = arg.toBytes();
                 uns[1] = bytes;
                 Notify.find(request.getContext(), bytes).ifPresent(Notify::unsubscribe);
-                uns[2] = request.getContext().subscribeChannels().size();
+                uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         }
@@ -118,18 +118,18 @@ public class PubSubOperation extends AbstractOperation {
 
         public void unsubscribe() {
             pubSub.unsubscribe(bytes, this);
-            context.removeSubscribe(bytes);
+            context.getSubscribe().removeSubscribe(bytes);
             context.removeCloseListener(channelClose);
         }
 
         public void subscribe() {
             Notify.find(this.context, bytes).ifPresent(Notify::unsubscribe);
-            this.context.addSubscribe(bytes, this);
+            this.context.getSubscribe().addSubscribe(bytes, this);
             pubSub.subscribe(bytes, this);
         }
 
         public static Optional<Notify> find(ChannelContext context, Bytes bytes) {
-            return context.getSubscribe(bytes);
+            return context.getSubscribe().getSubscribe(bytes);
         }
     }
 }

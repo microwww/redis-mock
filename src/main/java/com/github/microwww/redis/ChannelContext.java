@@ -12,11 +12,15 @@ import java.util.*;
 import java.util.function.Consumer;
 
 public class ChannelContext implements Closeable {
-    private static final String PUB_SUB_KEY = "pub.sub.subscribe.channels";
+    private static final String PUB_SUB_N_KEY = ChannelContext.class.getName() + ".channels.names";
+    private static final String PUB_SUB_P_KEY = ChannelContext.class.getName() + ".channels.pattens";
+
     private final CloseObservable listener = new CloseObservable();
     private final SocketChannel channel;
     private final RequestSession sessions;
     private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    private final Subscribe subscribe;
+    private final Subscribe pattenSubscribe;
     private JedisOutputStream outputStream;
     private ChannelSessionHandler channelHandler;
 
@@ -24,7 +28,8 @@ public class ChannelContext implements Closeable {
         this.channel = channel;
         this.sessions = new RequestSession(channel);
         this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel));
-        this.sessions.put(PUB_SUB_KEY, new LinkedHashMap<>());
+        subscribe = new Subscribe(PUB_SUB_N_KEY);
+        pattenSubscribe = new Subscribe(PUB_SUB_P_KEY);
     }
 
     public ChannelSessionHandler getChannelHandler() {
@@ -57,28 +62,12 @@ public class ChannelContext implements Closeable {
         return outputStream;
     }
 
-    public <T extends Observer> Map<Bytes, T> subscribeChannels() {
-        return Collections.unmodifiableMap(subscribes());
+    public Subscribe getSubscribe() {
+        return subscribe;
     }
 
-    private <T extends Observer> Map<Bytes, T> subscribes() {
-        return (Map<Bytes, T>) this.sessions.get(PUB_SUB_KEY);
-    }
-
-    public <T extends Observer> void addSubscribe(Bytes channel, T v) {
-        subscribes().put(channel, v);
-    }
-
-    public <T extends Observer> Optional<T> getSubscribe(Bytes channel) {
-        return Optional.ofNullable((T) subscribes().get(channel));
-    }
-
-    public <T extends Observer> Optional<T> removeSubscribe(Bytes channel) {
-        return Optional.ofNullable((T) subscribes().remove(channel));
-    }
-
-    public void removeSubscribe() {
-        subscribes().clear();
+    public Subscribe getPattenSubscribe() {
+        return pattenSubscribe;
     }
 
     public CloseListener addCloseListener(Consumer<ChannelContext> notify) {
@@ -94,7 +83,7 @@ public class ChannelContext implements Closeable {
     @Override
     public void close() throws IOException {
         listener.doClose();
-        Map<Bytes, Observer> subscribes = subscribes();
+        Map<Bytes, Observer> subscribes = subscribe.subscribes();
         if (subscribes != null) subscribes.clear(); // 多次 close 可能 NullPointerException
         this.sessions.close();
     }
@@ -118,5 +107,39 @@ public class ChannelContext implements Closeable {
         public void update(Observable o, Object arg) {
             notify.accept(ChannelContext.this);
         }
+    }
+
+    public class Subscribe {
+        private final String key;
+
+        public Subscribe(String key) {
+            this.key = key;
+            ChannelContext.this.sessions.put(key, new LinkedHashMap<>());
+        }
+
+        public <T extends Observer> Map<Bytes, T> subscribeChannels() {
+            return Collections.unmodifiableMap(subscribes());
+        }
+
+        private <T extends Observer> Map<Bytes, T> subscribes() {
+            return (Map<Bytes, T>) ChannelContext.this.sessions.get(key);
+        }
+
+        public <T extends Observer> void addSubscribe(Bytes channel, T v) {
+            subscribes().put(channel, v);
+        }
+
+        public <T extends Observer> Optional<T> getSubscribe(Bytes channel) {
+            return Optional.ofNullable((T) subscribes().get(channel));
+        }
+
+        public <T extends Observer> Optional<T> removeSubscribe(Bytes channel) {
+            return Optional.ofNullable((T) subscribes().remove(channel));
+        }
+
+        public void removeSubscribe() {
+            subscribes().clear();
+        }
+
     }
 }
