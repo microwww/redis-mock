@@ -12,10 +12,19 @@ import java.util.concurrent.Executors;
 
 public abstract class AbstractRedisTest {
     protected static final ExecutorService threads = Executors.newCachedThreadPool();
+    private static InetSocketAddress address;
+
+    static {
+        try {
+            address = Server.startListener();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     protected Jedis jedis;
 
     public Jedis connection() throws IOException {
-        InetSocketAddress address = Server.startListener();
         return new Jedis(address.getHostName(), address.getPort(), 60_000);
         // return new Jedis("192.168.1.246", 6379, 60_000);
     }
