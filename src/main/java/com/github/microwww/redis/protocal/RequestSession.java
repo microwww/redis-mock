@@ -3,11 +3,13 @@ package com.github.microwww.redis.protocal;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class RequestSession extends ConcurrentHashMap<String, Object> {
+public class RequestSession extends ConcurrentHashMap<String, Object> implements Closeable {
     public static final String ADDRESS = RequestSession.class.getName() + ".ADDRESS";
     public static final String NAME = RequestSession.class.getName() + ".NAME";
     private final SocketChannel channel;
@@ -48,5 +50,10 @@ public class RequestSession extends ConcurrentHashMap<String, Object> {
     public <T> T withDefault(String key, T def) {
         Assert.isNotNull(def, "Not null");
         return (T) this.getOrDefault(key, def);
+    }
+
+    @Override
+    public void close() throws IOException {
+        this.clear();
     }
 }

@@ -1,13 +1,16 @@
 package com.github.microwww.redis.protocal;
 
-import com.github.microwww.redis.*;
+import com.github.microwww.redis.ChannelContext;
+import com.github.microwww.redis.ConsumerIO;
+import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RedisServer;
+import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 
-import java.io.IOException;
 import java.util.Arrays;
 
 public class RedisRequest {
@@ -16,7 +19,6 @@ public class RedisRequest {
     private final String command;
     private final ExpectRedisRequest[] args;
     private final RedisServer server;
-    private JedisOutputStream outputStream;
     private JedisInputStream inputStream;
     private ConsumerIO<Object> next = (r) -> {
         this.getOutputStream().flush();
@@ -24,14 +26,12 @@ public class RedisRequest {
 
     public static RedisRequest warp(RedisRequest request, ExpectRedisRequest[] requests) {
         RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), requests);
-        rq.setOutputStream(request.getOutputStream());
         rq.setInputStream(request.getInputStream());
         return rq;
     }
 
     public static RedisRequest warp(RedisRequest request, String cmd, ExpectRedisRequest[] params) {
         RedisRequest rq = new RedisRequest(request.getServer(), request.getChannel(), cmd, params);
-        rq.setOutputStream(request.getOutputStream());
         rq.setInputStream(request.getInputStream());
         return rq;
     }
@@ -41,7 +41,6 @@ public class RedisRequest {
         this.channel = channel;
         this.command = command;
         this.args = params;
-        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel.getChannel()));
     }
 
     public RedisRequest(RedisServer server, ChannelContext channel, ExpectRedisRequest[] request) {
@@ -63,11 +62,7 @@ public class RedisRequest {
     }
 
     public JedisOutputStream getOutputStream() {
-        return outputStream;
-    }
-
-    public void setOutputStream(JedisOutputStream outputStream) {
-        this.outputStream = outputStream;
+        return this.channel.getOutputStream();
     }
 
     public JedisInputStream getInputStream() {
@@ -82,6 +77,10 @@ public class RedisRequest {
     public RedisDatabase getDatabase() {
         int index = channel.getSessions().getDatabase();
         return server.getSchema().getRedisDatabases(index);
+    }
+
+    public PubSub getPubSub() {
+        return server.getSchema().getPubSub();
     }
 
     public void expectArgumentsCount(int expect) {

@@ -5,6 +5,7 @@ import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 
 public class RedisOutputProtocol {
 
@@ -59,23 +60,32 @@ public class RedisOutputProtocol {
     }
 
     public static void writerMulti(JedisOutputStream out, byte[]... args) throws IOException {
-        out.write(Protocol.ASTERISK_BYTE);
+        writerComplex(out, args);
+    }
+
+    public static void writerComplex(JedisOutputStream out, Object... args) throws IOException {
         if (args == null) {
-            out.writeIntCrLf(-1);
+            writerNull(out);
             return;
         }
+        out.write(Protocol.ASTERISK_BYTE);
         out.writeIntCrLf(args.length);
 
-        for (byte[] val : args) {
-            if (val == null) {
-                out.write(Protocol.DOLLAR_BYTE);
-                out.writeIntCrLf(-1);
+        for (Object arg : args) {
+            if (arg == null) {
+                writerNull(out);
                 continue;
             }
-            out.write(Protocol.DOLLAR_BYTE);
-            out.writeIntCrLf(val.length);
-            out.write(val);
-            out.writeCrLf();
+            if (arg instanceof byte[]) {
+                byte[] val = (byte[]) arg;
+                writer(out, val);
+            } else if (arg instanceof Bytes) {
+                writer(out, ((Bytes) arg).getBytes());
+            } else if (arg instanceof Number) {
+                writer(out, ((Number) arg).longValue());
+            } else {
+                throw new UnsupportedEncodingException("Not support type: " + arg.getClass().getName());
+            }
         }
     }
 

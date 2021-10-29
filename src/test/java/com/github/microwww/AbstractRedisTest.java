@@ -7,9 +7,11 @@ import redis.clients.jedis.Jedis;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public abstract class AbstractRedisTest {
-
+    protected static final ExecutorService threads = Executors.newCachedThreadPool();
     protected Jedis jedis;
 
     public Jedis connection() throws IOException {

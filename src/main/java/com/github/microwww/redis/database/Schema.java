@@ -37,10 +37,11 @@ public class Schema implements Closeable {
             new TransactionOperation()
     };
 
+    private final Map<String, Invoker> invokers = new ConcurrentHashMap<>();
     private final int size;
     private final RedisDatabase[] redisDatabases;
     private final List<AbstractOperation> operations;
-    private final Map<String, Invoker> invokers = new ConcurrentHashMap<>();
+    private final PubSub pubSub = new PubSub();
 
     public Schema(int size, AbstractOperation... operations) {
         Assert.isTrue(size > 0, "Database SIZE > 0");
@@ -66,6 +67,10 @@ public class Schema implements Closeable {
 
     public RedisDatabase getRedisDatabases(int i) {
         return redisDatabases[i];
+    }
+
+    public PubSub getPubSub() {
+        return pubSub;
     }
 
     public int getSize() {

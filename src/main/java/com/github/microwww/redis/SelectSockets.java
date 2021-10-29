@@ -67,6 +67,7 @@ public class SelectSockets implements Closeable {
                         ChannelContext ctx = this.registerChannel(channel, SelectionKey.OP_READ);
                         ChannelSessionHandler channelHandler = factory.apply(ctx);
                         clients.add(ctx);
+                        ctx.addCloseListener(clients::remove);
                         ctx.setChannelHandler(channelHandler);
                         try {
                             channelHandler.registerHandler(ctx);
@@ -90,8 +91,11 @@ public class SelectSockets implements Closeable {
                 logger.debug("close client");
                 try {
                     ChannelContext attachment = (ChannelContext) key.attachment();
-                    clients.remove(attachment);
-                    attachment.getChannelHandler().close(attachment);
+                    try {
+                        attachment.getChannelHandler().close(attachment);
+                    } finally {
+                        attachment.close();
+                    }
                 } finally {
                     closeChannel(key);
                 }
