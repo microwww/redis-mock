@@ -20,11 +20,84 @@ public class PubSubOperationTest extends AbstractRedisTest {
     private static final Logger logger = LoggerFactory.getLogger(PubSubOperationTest.class);
 
     //PSUBSCRIBE
+    @Test(timeout = 1_000)
+    public void testPSUBSCRIBE() {
+        byte[][] channels = {"PSUBSCRIBE.*.test".getBytes(StandardCharsets.UTF_8),
+                "PSUBSCRIBE.test.*".getBytes(StandardCharsets.UTF_8)};
+        CountDownLatch down = new CountDownLatch(channels.length);
+        new Thread(() -> {
+            try {
+                down.await();
+                long cont = this.connection().publish("PSUBSCRIBE.test.1.test".getBytes(), UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+                Assert.assertEquals(2, cont);
+            } catch (Exception e) {
+            }
+        }).start();
+        // subscribe will block
+        jedis.psubscribe(new BinaryJedisPubSub() {
+            @Override
+            public void onPMessage(byte[] pattern, byte[] channel, byte[] message) {
+                logger.info("PMessage :{}, {}, {}", new String(pattern), new String(channel), new String(message));
+                this.punsubscribe(pattern);
+            }
+
+            @Override
+            public void onPSubscribe(byte[] pattern, int subscribedChannels) {
+                logger.info("PSubscribe :{}, {}, {}", new String(pattern), subscribedChannels);
+                down.countDown();
+            }
+
+            @Override
+            public void onPUnsubscribe(byte[] pattern, int subscribedChannels) {
+                logger.info("PUnsubscribe :{}, {}", new String(pattern), subscribedChannels);
+            }
+        }, channels);
+    }
+
     //PUBLISH
     //PUBSUB
     //PUNSUBSCRIBE
+    @Test(timeout = 1_000)
+    public void testPUNSUBSCRIBE() {
+        byte[][] channels = {"PUNSUBSCRIBE.*.test".getBytes(StandardCharsets.UTF_8),
+                "PUNSUBSCRIBE.test.*".getBytes(StandardCharsets.UTF_8)};
+        CountDownLatch down = new CountDownLatch(channels.length);
+        new Thread(() -> {
+            try {
+                down.await();
+                long cont = this.connection().publish("PUNSUBSCRIBE.test.1.test".getBytes(), UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+                Assert.assertEquals(2, cont);
+            } catch (Exception e) {
+            }
+        }).start();
+        // subscribe will block
+        jedis.psubscribe(new BinaryJedisPubSub() {
+            int i = 0;
+
+            @Override
+            public void onPMessage(byte[] pattern, byte[] channel, byte[] message) {
+                logger.info("PMessage :{}, {}, {}", new String(pattern), new String(channel), new String(message));
+                i++;
+                if (i == 2) {
+                    this.punsubscribe();
+                }
+            }
+
+            @Override
+            public void onPSubscribe(byte[] pattern, int subscribedChannels) {
+                logger.info("PSubscribe :{}, {}, {}", new String(pattern), subscribedChannels);
+                down.countDown();
+            }
+
+            @Override
+            public void onPUnsubscribe(byte[] pattern, int subscribedChannels) {
+                logger.info("PUnsubscribe :{}, {}", new String(pattern), subscribedChannels);
+            }
+        }, channels);
+    }
+
     //SUBSCRIBE
-    @Test
+    @Test(timeout = 1_000)
     public void testSUBSCRIBE() {
         byte[][] channels = {"test0".getBytes(StandardCharsets.UTF_8),
                 "test1".getBytes(StandardCharsets.UTF_8),

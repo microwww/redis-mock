@@ -29,15 +29,15 @@ public class PubSubOperation extends AbstractOperation {
         sub[0] = "psubscribe".getBytes(StandardCharsets.UTF_8);
         PubSub pubSub = request.getPubSub();
         for (ExpectRedisRequest arg : args) {
-            Bytes bytes = arg.toBytes();
-            PattenNotify notify = new PattenNotify(request.getContext(), bytes, pubSub);
+            Bytes patten = arg.toBytes();
+            NewChannelListener notify = new NewChannelListener(request.getContext(), patten, pubSub);
             try {
                 notify.subscribe();
             } catch (Exception e) {
                 log.warn("subscribe [{}] error", notify.patten, e);
                 notify.unsubscribe();
             }
-            sub[1] = bytes.getBytes();
+            sub[1] = patten.getBytes();
             sub[2] = request.getContext().getPattenSubscribe().subscribeChannels().size();
             RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
         }
@@ -56,6 +56,32 @@ public class PubSubOperation extends AbstractOperation {
 
     //PUBSUB
     //PUNSUBSCRIBE
+    public void punsubscribe(RedisRequest request) throws IOException {
+        ExpectRedisRequest[] args = request.getArgs();
+        Object[] uns = new Object[3];
+        uns[0] = SafeEncoder.encode("punsubscribe");
+        if (args.length == 0) {
+            Map<Bytes, Observer> mpa = request.getContext().getPattenSubscribe().subscribeChannels();
+            Iterator<Bytes> iterator = new HashSet<>(mpa.keySet()).iterator();
+            while (iterator.hasNext()) {
+                Bytes next = iterator.next();
+                uns[1] = next;
+                NewChannelListener.find(request.getContext(), next).ifPresent(NewChannelListener::unsubscribe);
+                uns[2] = request.getContext().getPattenSubscribe().subscribeChannels().size();
+                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+            }
+        } else {
+            for (ExpectRedisRequest arg : args) {
+                Bytes bytes = arg.toBytes();
+                uns[1] = bytes;
+                ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);
+                uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
+                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+            }
+        }
+        request.getOutputStream().flush();
+    }
+
     //SUBSCRIBE
     public void subscribe(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
@@ -65,12 +91,12 @@ public class PubSubOperation extends AbstractOperation {
         sub[0] = "subscribe".getBytes(StandardCharsets.UTF_8);
         for (ExpectRedisRequest arg : args) {
             Bytes bytes = arg.toBytes();
-            Notify notify = new Notify(request.getContext(), bytes, pubSub);
+            ChannelMessageListener channelMessageListener = new ChannelMessageListener(request.getContext(), bytes, pubSub);
             try {
-                notify.subscribe();
+                channelMessageListener.subscribe();
             } catch (Exception e) {
-                log.warn("subscribe [{}] error", notify.channel, e);
-                notify.unsubscribe();
+                log.warn("subscribe [{}] error", channelMessageListener.channel, e);
+                channelMessageListener.unsubscribe();
             }
             sub[1] = bytes.getBytes();
             sub[2] = request.getContext().getSubscribe().subscribeChannels().size();
@@ -89,7 +115,7 @@ public class PubSubOperation extends AbstractOperation {
             while (iterator.hasNext()) {
                 Bytes next = iterator.next();
                 uns[1] = next;
-                Notify.find(request.getContext(), next).ifPresent(Notify::unsubscribe);
+                ChannelMessageListener.find(request.getContext(), next).ifPresent(ChannelMessageListener::unsubscribe);
                 uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
@@ -97,7 +123,7 @@ public class PubSubOperation extends AbstractOperation {
             for (ExpectRedisRequest arg : args) {
                 Bytes bytes = arg.toBytes();
                 uns[1] = bytes;
-                Notify.find(request.getContext(), bytes).ifPresent(Notify::unsubscribe);
+                ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);
                 uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
@@ -105,15 +131,18 @@ public class PubSubOperation extends AbstractOperation {
         request.getOutputStream().flush();
     }
 
-    public static class PattenNotify implements Observer {
+    /**
+     * 单新建一个`消息通道`的时候会触发 update 方法, 如果匹配 patten, 则追加一个消息的监听
+     */
+    public static class NewChannelListener implements Observer {
         private final ChannelContext context;
         private final Bytes bytes;
         private final Pattern patten;
         private final PubSub pubSub;
         private final ChannelContext.CloseListener channelClose;
-        private final Map<Bytes, Notify> notifies = new HashMap<>();
+        private final Map<Bytes, ChannelMessageListener> notifies = new HashMap<>();
 
-        public PattenNotify(ChannelContext context, Bytes patten, PubSub pubSub) {
+        public NewChannelListener(ChannelContext context, Bytes patten, PubSub pubSub) {
             this.context = context;
             this.bytes = patten;
             this.patten = StringUtil.antPattern(SafeEncoder.encode(patten.getBytes()));
@@ -131,11 +160,13 @@ public class PubSubOperation extends AbstractOperation {
         @Override
         public void update(Observable o, Object arg) {
             Bytes channel = (Bytes) arg;
-            if (patten.matcher(SafeEncoder.encode(channel.getBytes())).matches()) {
+            String encode = SafeEncoder.encode(channel.getBytes());
+            if (patten.matcher(encode).matches()) { // 新的channel 是否配置 patten, 如果匹配则添加一个`通道的消息`的监听
                 notifies.computeIfAbsent(channel, k -> {
-                    Notify notify = new Notify(context, (Bytes) arg, pubSub);
-                    pubSub.subscribe(channel, notify);
-                    return notify;
+                    ChannelMessageListener channelMessageListener = new ChannelMessageListener(context, (Bytes) arg, pubSub);
+                    channelMessageListener.setPatten(this.bytes);
+                    pubSub.subscribe(channel, channelMessageListener);
+                    return channelMessageListener;
                 });
 
             }
@@ -151,23 +182,27 @@ public class PubSubOperation extends AbstractOperation {
         }
 
         public void subscribe() {
-            find(this.context, bytes).ifPresent(PattenNotify::unsubscribe); // 删除已经存在的
+            find(this.context, bytes).ifPresent(NewChannelListener::unsubscribe); // 删除已经存在的
             pubSub.newChannelNotify.subscribe(this);
             this.context.getPattenSubscribe().addSubscribe(bytes, this);
         }
 
-        public static Optional<PattenNotify> find(ChannelContext context, Bytes bytes) {
+        public static Optional<NewChannelListener> find(ChannelContext context, Bytes bytes) {
             return context.getPattenSubscribe().getSubscribe(bytes);
         }
     }
 
-    public static class Notify implements Observer {
+    /**
+     * publish 的消息的监听器
+     */
+    public static class ChannelMessageListener implements Observer {
         private final ChannelContext context;
+        private Bytes patten; // update 方法, 如果不为null 标识这是一个 `psubscribe`, 否则是 `subscribe`
         private final Bytes channel;
         private final PubSub pubSub;
         private final ChannelContext.CloseListener channelClose;
 
-        public Notify(ChannelContext context, Bytes channel, PubSub pubSub) {
+        public ChannelMessageListener(ChannelContext context, Bytes channel, PubSub pubSub) {
             this.context = context;
             this.channel = channel;
             this.pubSub = pubSub;
@@ -184,12 +219,17 @@ public class PubSubOperation extends AbstractOperation {
         @Override
         public void update(Observable o, Object arg) {
             try {
-                Object[] msg = new Object[3];
-                msg[0] = "message".getBytes(StandardCharsets.UTF_8);
-                msg[1] = channel;
+                List<Object> msg = new ArrayList<>(4);
+                if (this.getPatten().isPresent()) {
+                    msg.add(SafeEncoder.encode("pmessage"));
+                    msg.add(this.getPatten().get().getBytes());
+                } else {
+                    msg.add(SafeEncoder.encode("message"));
+                }
+                msg.add(channel);
                 Assert.isTrue(arg instanceof Bytes, "Observable publish must be `Bytes`");
-                msg[2] = arg;
-                RedisOutputProtocol.writerComplex(context.getOutputStream(), msg);
+                msg.add(arg);
+                RedisOutputProtocol.writerComplex(context.getOutputStream(), msg.toArray());
                 context.getOutputStream().flush();
             } catch (Exception e) {
                 log.warn("Notify subscriber error, ignore, {}", e);
@@ -203,13 +243,22 @@ public class PubSubOperation extends AbstractOperation {
         }
 
         public void subscribe() {
-            find(this.context, channel).ifPresent(Notify::unsubscribe); // 删除已经存在的
+            find(this.context, channel).ifPresent(ChannelMessageListener::unsubscribe); // 删除已经存在的
             this.context.getSubscribe().addSubscribe(channel, this);
             pubSub.subscribe(channel, this);
         }
 
-        public static Optional<Notify> find(ChannelContext context, Bytes bytes) {
+        public static Optional<ChannelMessageListener> find(ChannelContext context, Bytes bytes) {
             return context.getSubscribe().getSubscribe(bytes);
+        }
+
+        public ChannelMessageListener setPatten(Bytes patten) {
+            this.patten = patten;
+            return this;
+        }
+
+        public Optional<Bytes> getPatten() {
+            return Optional.ofNullable(patten);
         }
     }
 }
