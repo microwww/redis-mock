@@ -8,11 +8,12 @@ import java.util.Observable;
 import java.util.Observer;
 
 public class PubSub implements Closeable {
-    private Map<Bytes, NotifyObservable> channels = new HashMap<>();
+    public final NewChannelNotify newChannelNotify = new NewChannelNotify();
+    private Map<Bytes, MessageNotify> channels = new HashMap<>();
 
     public int publish(Bytes channel, Bytes message) {
         // channels.computeIfAbsent(channel, e -> new NotifyObservable(channel)).addObserver(o);
-        NotifyObservable notify = channels.get(channel);
+        MessageNotify notify = channels.get(channel);
         if (notify != null) {
             return notify.notify(message);
         }
@@ -20,7 +21,7 @@ public class PubSub implements Closeable {
     }
 
     public void subscribe(Bytes channel, Observer o) {
-        channels.computeIfAbsent(channel, e -> new NotifyObservable(channel)).addObserver(o);
+        channels.computeIfAbsent(channel, e -> new MessageNotify(channel)).addObserver(o);
     }
 
     public void unsubscribe(Bytes channel, Observer o) {
@@ -35,20 +36,31 @@ public class PubSub implements Closeable {
         channels.clear();
     }
 
-    public static class NotifyObservable extends Observable {
+    public class MessageNotify extends Observable {
         private final Bytes channel;
 
-        public NotifyObservable(Bytes channel) {
+        public MessageNotify(Bytes channel) {
             this.channel = channel;
+            // notify
+            newChannelNotify.notify(channel);
         }
 
         public Bytes getChannel() {
             return channel;
         }
 
-        public int notify(Bytes data) {
+        public int notify(Bytes message) {
             this.setChanged();
-            this.notifyObservers(data);
+            this.notifyObservers(message);
+            return this.countObservers();
+        }
+    }
+
+    public class NewChannelNotify extends Observable {
+
+        public int notify(Bytes channel) {
+            this.setChanged();
+            this.notifyObservers(channel);
             return this.countObservers();
         }
     }

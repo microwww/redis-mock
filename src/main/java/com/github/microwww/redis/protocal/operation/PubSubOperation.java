@@ -81,6 +81,12 @@ public class PubSubOperation extends AbstractOperation {
         request.getOutputStream().flush();
     }
 
+    public static class PattenNotify extends Notify {
+        public PattenNotify(ChannelContext context, Bytes bytes, PubSub pubSub) {
+            super(context, bytes, pubSub);
+        }
+    }
+
     public static class Notify implements Observer {
         private final ChannelContext context;
         private final Bytes bytes;
