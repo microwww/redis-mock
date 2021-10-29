@@ -8,6 +8,7 @@ import com.github.microwww.redis.protocal.*;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.SafeEncoder;
+import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
 import java.util.*;
@@ -80,7 +81,7 @@ public class KeyOperation extends AbstractOperation {
     public void keys(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
         String patten = request.getArgs()[0].getByteArray2string();
-        Pattern compile = ScanParams.toPattern(patten);
+        Pattern compile = StringUtil.antPattern(patten);
 
         List<byte[]> list = new ArrayList<>();
         for (HashKey s : request.getDatabase().getUnmodifiableMap().keySet()) {
@@ -356,12 +357,6 @@ public class KeyOperation extends AbstractOperation {
             this.pattern = pattern;
         }
 
-        public static Pattern toPattern(String pattern) {
-            String patten = pattern.replaceAll(Pattern.quote("*"), ".*");
-            patten = patten.replaceAll(Pattern.quote("?"), ".");
-            return Pattern.compile(patten);
-        }
-
         public int getCount() {
             return count;
         }
@@ -377,7 +372,7 @@ public class KeyOperation extends AbstractOperation {
         MATCH {
             @Override
             public int next(ScanParams params, ExpectRedisRequest[] args, int i) {
-                params.pattern = ScanParams.toPattern(args[i + 1].getByteArray2string());
+                params.pattern = StringUtil.antPattern(args[i + 1].getByteArray2string());
                 return i + 1;
             }
         },

@@ -4,6 +4,7 @@ import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 
 import java.nio.ByteBuffer;
+import java.util.regex.Pattern;
 
 public abstract class StringUtil {
 
@@ -35,5 +36,18 @@ public abstract class StringUtil {
             message = message.replaceAll("\\r", "");
         }
         return message;
+    }
+
+    /**
+     * 仅支持 * / ? 两个通配符
+     *
+     * @param format
+     * @return
+     */
+    public static Pattern antPattern(String format) {
+        String que = Pattern.quote(format).replaceAll(Pattern.quote("*") + "+", "\\\\E.*\\\\Q");
+        que = que.replaceAll(Pattern.quote("?"), "\\\\E.\\\\Q");
+        que = que.replaceAll("\\\\Q\\\\E", "");
+        return Pattern.compile(que);
     }
 }
