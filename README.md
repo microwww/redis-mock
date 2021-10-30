@@ -1,10 +1,10 @@
 # Redis-server
 Pure Java implementation redis-server. Embedded redis service when unit testing. You no longer need to Mock redis apis.
-Support redis api 2.8
 
-jedis-3.0+ api is changed, so you must update it to 0.1.0-3.0 if you are using the latest api
-
-version 0.2.0 , will remove jedis dependence, There is no need for any external dependencies.
+1. ~~Support redis api 2.8~~
+2. ~~jedis-3.0+ api is changed, so you must update it to 0.1.0-3.0 if you are using the latest api~~
+3. version 0.2.0 remove jedis dependence, There is no need for any external dependencies.
+4. version 0.2.2 support `PubSubOperation` 
 
 ## maven dependency
 
@@ -12,7 +12,7 @@ version 0.2.0 , will remove jedis dependence, There is no need for any external 
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.1.0-3.0</version>
+    <version>0.2.1</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -39,6 +39,15 @@ if you are using spring boot, you can start like this :
 ```
 server will run with spring config : `spring.redis.host`, `spring.redis.port`
 
+A better option is to add dependencies:
+```
+<dependency>
+    <groupId>com.github.microwww</groupId>
+    <artifactId>mocker-redis-spring-boot-starter</artifactId>
+    <version>5.0.1</version>
+</dependency>
+```
+
 ### Supported commands
 Supported redis commands :
 
@@ -54,7 +63,8 @@ KeyOperation
 ListOperation
 >  BLPOP, BRPOP, LINDEX, LINSERT, LLEN, LPOP, LPUSH, LPUSHX, LRANGE, LREM, LSET, LTRIM, RPOP, RPOPLPUSH, RPUSH, RPUSHX, 
 
-~~PubSubOperation~~
+PubSubOperation `<0.2.2+>`
+>  PSUBSCRIBE, PUBLISH, PUBSUB, PUNSUBSCRIBE, SUBSCRIBE, UNSUBSCRIBE, 
 
 ~~ScriptOperation~~
 
