@@ -33,14 +33,14 @@ public abstract class ChannelInputStream implements Closeable {
     public void write(ByteBuffer buffer) throws IOException {
         byte[] data = new byte[buffer.remaining()];
         buffer.get(data);
-        synchronized (this) {
+        synchronized (pout) {
             if (status == 0) {
                 status = 1;
                 threads.execute(() -> {
                     try {
                         while (true) {
                             this.readableHandler(pin);
-                            synchronized (this) {
+                            synchronized (pout) {
                                 if (pin.available() <= 0) {
                                     status = 0;
                                     break;
@@ -54,6 +54,7 @@ public abstract class ChannelInputStream implements Closeable {
                 });
             }
             pout.write(data);// pin.available()  是线程同步的
+            pout.flush();
         }
     }
 

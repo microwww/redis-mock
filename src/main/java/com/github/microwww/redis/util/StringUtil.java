@@ -11,9 +11,7 @@ import java.util.regex.Pattern;
 
 public abstract class StringUtil {
 
-    private static final Logger logger = LogFactory.getLogger(StringUtil.class);
-
-    public static void loggerBuffer(ByteBuffer buffer) {
+    public static void loggerBuffer(Logger log, ByteBuffer buffer) {
         byte[] bytes = new byte[buffer.remaining()];
         if (bytes.length == 0) {
             return;
@@ -30,7 +28,7 @@ public abstract class StringUtil {
                     sb.append((char) a);
             }
         }
-        logger.debug("Buffer [{}]: {}", bytes.length, sb);
+        log.debug("Buffer [{}]: {}", bytes.length, sb);
     }
 
     public static String redisErrorMessage(Exception ex) {

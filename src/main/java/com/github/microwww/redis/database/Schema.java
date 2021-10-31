@@ -86,8 +86,9 @@ public class Schema implements Closeable {
     }
 
     public void exec(RedisRequest request) throws IOException {
+        log.debug("Wait thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
         Future<String> submit = pool.submit(() -> {
-            log.debug("Ready to run {}", request.getCommand());
+            log.debug("Get thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
             this.run(request);
             return request.getCommand();
         });

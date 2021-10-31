@@ -6,6 +6,8 @@ import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.database.RedisDatabase;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
@@ -14,6 +16,7 @@ import com.github.microwww.redis.util.NotNull;
 import java.util.Arrays;
 
 public class RedisRequest {
+    private static final Logger log = LogFactory.getLogger(RedisRequest.class);
 
     private final ChannelContext context;
     private final String command;
@@ -21,6 +24,7 @@ public class RedisRequest {
     private final RedisServer server;
     private JedisInputStream inputStream;
     private ConsumerIO<Object> next = (r) -> {
+        log.debug("Flush outputStream");
         this.getOutputStream().flush();
     };
 

@@ -97,9 +97,9 @@ public class RedisServer implements Closeable {
         @Override
         public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
             if (log.isDebugEnabled()) {
-                StringUtil.loggerBuffer(buffer.asReadOnlyBuffer());
+                log.debug("Get a request: {}", context.getRemoteHost());
+                StringUtil.loggerBuffer(log, buffer.asReadOnlyBuffer());
             }
-            log.debug("Get a request: {}", context.getRemoteHost());
             channelInputStream.write(buffer);
         }
 
