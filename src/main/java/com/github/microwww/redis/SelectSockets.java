@@ -78,6 +78,7 @@ public class SelectSockets implements Closeable {
                         try {
                             channelHandler.registerHandler(ctx);
                         } catch (Exception ex) {
+                            logger.warn("Handler error, invoke Handler.exception", ex);
                             channelHandler.exception(ctx, ex);
                         }
                     }
@@ -89,6 +90,7 @@ public class SelectSockets implements Closeable {
                         try {
                             channelHandler.readableHandler(ctx, read);
                         } catch (Exception ex) {
+                            logger.warn("Handler error, invoke Handler.exception", ex);
                             channelHandler.exception(ctx, ex);
                         }
                     }

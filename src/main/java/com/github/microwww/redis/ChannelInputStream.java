@@ -1,11 +1,15 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
+
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public abstract class ChannelInputStream implements Closeable {
+    private static final Logger log = LogFactory.getLogger(ChannelInputStream.class);
     private final Executor threads;
     private final PipedOutputStream pout = new PipedOutputStream();
     private final PipedInputStream pin;
@@ -43,7 +47,8 @@ public abstract class ChannelInputStream implements Closeable {
                                 }
                             }
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
+                        log.warn("Handler error, invoke Handler.exception", e);
                         context.getChannelHandler().exception(context, e);
                     }
                 });
