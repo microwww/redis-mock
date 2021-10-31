@@ -1,21 +1,27 @@
 package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Bytes;
+import com.github.microwww.redis.exception.Run;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.RequestSession;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
+import com.github.microwww.redis.util.StringUtil;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.function.Consumer;
 
-public class ChannelContext implements Closeable {
+public class ChannelContext {
+    private static final Logger log = LogFactory.getLogger(ChannelContext.class);
     private static final String PUB_SUB_N_KEY = ChannelContext.class.getName() + ".channels.names";
     private static final String PUB_SUB_P_KEY = ChannelContext.class.getName() + ".channels.pattens";
 
-    private final CloseObservable listener = new CloseObservable();
+    private final String remoteHost;
+    private final CloseObservable listeners = new CloseObservable();
     private final SocketChannel channel;
     private final RequestSession sessions;
     private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
@@ -30,6 +36,7 @@ public class ChannelContext implements Closeable {
         this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel));
         subscribe = new Subscribe(PUB_SUB_N_KEY);
         pattenSubscribe = new Subscribe(PUB_SUB_P_KEY);
+        this.remoteHost = StringUtil.remoteHost(channel);
     }
 
     public ChannelSessionHandler getChannelHandler() {
@@ -40,8 +47,17 @@ public class ChannelContext implements Closeable {
         this.channelHandler = channelHandler;
     }
 
-    public SocketChannel getChannel() {
+    /**
+     * invoke Channel.close will make Exception, so not any one can get it
+     *
+     * @return SocketChannel
+     */
+    protected SocketChannel getChannel() {
         return channel;
+    }
+
+    public void closeChannel() throws IOException {
+        this.outputStream.close();
     }
 
     public RequestSession getSessions() {
@@ -72,27 +88,42 @@ public class ChannelContext implements Closeable {
 
     public CloseListener addCloseListener(Consumer<ChannelContext> notify) {
         CloseListener os = new CloseListener(notify);
-        listener.addObserver(os);
+        listeners.addObserver(os);
+        log.debug("Add close listener, now {}", listeners.countObservers());
         return os;
     }
 
     public void removeCloseListener(CloseListener listener) {
-        this.listener.deleteObserver(listener);
+        log.debug("Remove close listener, now {}", this.listeners.countObservers());
+        this.listeners.deleteObserver(listener);
     }
 
-    @Override
-    public void close() throws IOException {
-        listener.doClose();
-        Map<Bytes, Observer> subscribes = subscribe.subscribes();
-        if (subscribes != null) subscribes.clear(); // 多次 close 可能 NullPointerException
+    public String getRemoteHost() {
+        return remoteHost;
+    }
+
+    public InetSocketAddress getRemoteAddress() throws IOException {
+        return (InetSocketAddress) channel.getRemoteAddress();
+    }
+
+    /**
+     *
+     */
+    protected void close() {
+        Run.ignoreException(log, listeners::doClose);
+        Run.ignoreException(log, () -> this.channelHandler.close(this));
+        Run.ignoreException(log, () -> {
+            Map<Bytes, Observer> subscribes = subscribe.subscribes();
+            if (subscribes != null) subscribes.clear(); // 多次 close 可能 NullPointerException
+        });
         this.sessions.close();
     }
 
     public class CloseObservable extends Observable {
         public void doClose() {
             this.setChanged();
-            this.notifyObservers();
-            this.deleteObservers();
+            log.debug("Notify channel-context close listener - {}", listeners.countObservers());
+            this.notifyObservers(ChannelContext.this);
         }
     }
 
@@ -105,7 +136,7 @@ public class ChannelContext implements Closeable {
 
         @Override
         public void update(Observable o, Object arg) {
-            notify.accept(ChannelContext.this);
+            Run.ignoreException(log, () -> notify.accept(ChannelContext.this));
         }
     }
 

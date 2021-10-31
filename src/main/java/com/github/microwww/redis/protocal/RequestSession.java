@@ -53,7 +53,7 @@ public class RequestSession extends ConcurrentHashMap<String, Object> implements
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         this.clear();
     }
 }

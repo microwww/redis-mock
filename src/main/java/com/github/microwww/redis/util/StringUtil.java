@@ -3,7 +3,10 @@ package com.github.microwww.redis.util;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 import java.util.regex.Pattern;
 
 public abstract class StringUtil {
@@ -51,5 +54,14 @@ public abstract class StringUtil {
 
     public static boolean antPatternMatches(String patten, String str) {
         return antPattern(patten).matcher(str).matches();
+    }
+
+    public static String remoteHost(SocketChannel channel) {
+        try {
+            InetSocketAddress rm = (InetSocketAddress) channel.getRemoteAddress();
+            return rm.getHostName() + ":" + rm.getPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

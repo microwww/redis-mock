@@ -84,7 +84,8 @@ public class ServerOperation extends AbstractOperation {
     public void kill(RedisRequest request) {
         request.expectArgumentsCount(1);
         String address = request.getArgs()[0].getByteArray2string();
-        Run.ignoreException(log, () -> request.getContext().getChannel().close());
+        ChannelContext context = request.getContext();
+        Run.ignoreException(log, context::closeChannel);
         request.setNext(e -> log.info("USER KILL: " + address));
     }
 
@@ -120,7 +121,7 @@ public class ServerOperation extends AbstractOperation {
                 Set<ChannelContext> clients = request.getServer().getSockets().getClients();
                 StringBuilder ss = new StringBuilder();
                 for (ChannelContext client : clients) {
-                    InetSocketAddress addr = (InetSocketAddress) client.getChannel().getRemoteAddress();
+                    InetSocketAddress addr = client.getRemoteAddress();
                     ss.append("addr=").append(addr.getHostName()).append(":").append(addr.getPort()).append("\n");
                 }
                 RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
