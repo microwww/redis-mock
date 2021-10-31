@@ -60,7 +60,7 @@ public class PubSubOperationTest extends AbstractRedisTest {
 
     //PUBLISH
     //PUBSUB
-    @Test
+    @Test // TODO :: sometime TEST expected:<4> but was:<1>  ???
     public void testPUBSUB() throws IOException, InterruptedException {
         String[] r5 = new String[]{"PUB1SUB", "PUBSUB2", "PUB3SUB", "PUBSUB4", "PUBSUB5"};
         String[] r2 = new String[]{"PUB*", "SUB*", "test*", "sft"};
