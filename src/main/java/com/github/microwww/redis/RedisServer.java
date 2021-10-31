@@ -1,9 +1,6 @@
 package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Schema;
-import com.github.microwww.redis.filter.ChainFactory;
-import com.github.microwww.redis.filter.Filter;
-import com.github.microwww.redis.filter.FilterChain;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
@@ -18,8 +15,6 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,7 +22,6 @@ public class RedisServer implements Closeable {
     public static final Logger log = LogFactory.getLogger(RedisServer.class);
 
     private final ExecutorService pool;
-    private static final List<Filter> filters = new CopyOnWriteArrayList<>();
     private final SelectSockets sockets = new SelectSockets(this::handler);
     private Schema schema;
 
@@ -47,26 +41,6 @@ public class RedisServer implements Closeable {
     public void configScheme(int size, AbstractOperation... operation) {
         if (this.schema == null) {
             this.schema = new Schema(size, operation);
-        }
-    }
-
-    public void addFilter(Filter filter) {
-        synchronized (filters) {
-            filters.add(filter);
-        }
-    }
-
-    public void removeFilter(Filter filter) {
-        synchronized (filters) {
-            filters.remove(filter);
-        }
-    }
-
-    private Filter[] appendToArray(Filter f) {
-        synchronized (filters) {
-            Filter[] filters = RedisServer.filters.toArray(new Filter[RedisServer.filters.size() + 1]);
-            filters[filters.length - 1] = f;
-            return filters;
         }
     }
 
@@ -106,15 +80,16 @@ public class RedisServer implements Closeable {
         return sockets;
     }
 
-    public class InputStreamHandler extends ChannelSessionHandler.Adaptor implements Closeable {
+    public class InputStreamHandler extends ChannelSessionHandler.Adaptor {
 
         private final ChannelInputStream channelInputStream;
 
-        public InputStreamHandler(ChannelContext channelContext) {
-            this.channelInputStream = new ChannelInputStream(channelContext) {
+        public InputStreamHandler(ChannelContext context) {
+            this.channelInputStream = new ChannelInputStream(context) {
                 @Override
                 public void readableHandler(InputStream inputStream) throws IOException {
-                    InputStreamHandler.this.readableHandler(channelContext, inputStream);
+                    log.debug("Start a request: {}", context.getRemoteHost());
+                    InputStreamHandler.this.readableHandler(context, inputStream);
                 }
             };
         }
@@ -124,6 +99,7 @@ public class RedisServer implements Closeable {
             if (log.isDebugEnabled()) {
                 StringUtil.loggerBuffer(buffer.asReadOnlyBuffer());
             }
+            log.debug("Get a request: {}", context.getRemoteHost());
             channelInputStream.write(buffer);
         }
 
@@ -134,18 +110,17 @@ public class RedisServer implements Closeable {
                 ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
                 RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
                 redisRequest.setInputStream(in);
-                Filter[] filters = appendToArray((r, chain) -> {//
-                    RedisServer.this.getSchema().exec(redisRequest);
-                });
-                FilterChain<RedisRequest> fc = new ChainFactory<RedisRequest>(filters).create();
-                fc.doFilter(redisRequest);
+                log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
+                RedisServer.this.getSchema().exec(redisRequest);
+                log.debug("Over  [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
             }
         }
 
         @Override
-        public void close() throws IOException {
+        public void close(ChannelContext context) throws IOException {
             channelInputStream.close();
         }
+
     }
 
     @Override
