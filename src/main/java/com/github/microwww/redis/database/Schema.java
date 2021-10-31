@@ -180,6 +180,7 @@ public class Schema implements Closeable {
         public Invoker(Object instance, Method method) {
             this.instance = instance;
             this.method = method;
+            method.setAccessible(true);
         }
 
         public void invoke(Object... args) throws IOException {
