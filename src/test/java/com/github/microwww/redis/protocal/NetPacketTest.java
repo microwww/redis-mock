@@ -5,8 +5,9 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
-public class PrefixTest {
+public class NetPacketTest {
 
     @Test
     public void parseSTATUS() {
@@ -17,11 +18,11 @@ public class PrefixTest {
             buffer.put(v.substring(0, i).getBytes(StandardCharsets.UTF_8));
             buffer.flip();
             Assert.assertEquals('+', buffer.get());
-            int parse = Prefix.STATUS.read(buffer);
+            Optional<? extends NetPacket> parse = NetPacket.Type.STATUS.read(buffer);
             if (i != v.length()) {
-                Assert.assertEquals(-1, parse);
+                Assert.assertFalse(parse.isPresent());
             } else {
-                Assert.assertEquals(v.length(), parse);
+                Assert.assertTrue(parse.isPresent());
             }
         }
     }
@@ -35,22 +36,24 @@ public class PrefixTest {
             buffer.put(v.substring(0, i).getBytes(StandardCharsets.UTF_8));
             buffer.flip();
             Assert.assertEquals('*', buffer.get());
-            int parse = Prefix.MULTI.read(buffer);
+            Optional<? extends NetPacket> parse = NetPacket.Type.MULTI.read(buffer);
             if (i != v.length()) {
-                Assert.assertEquals(-1, parse);
+                Assert.assertFalse(parse.isPresent());
             } else {
-                Assert.assertEquals(v.length(), parse);
+                Assert.assertTrue(parse.isPresent());
             }
         }
         {
             buffer.clear();
             buffer.put("*-1\r\n".getBytes(StandardCharsets.UTF_8)).flip();
-            Assert.assertEquals(5, Prefix.parse(buffer));
+            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.MULTI.NULL);
+            Assert.assertEquals(5, buffer.position());
         }
         {
             buffer.clear();
             buffer.put("*0\r\n".getBytes(StandardCharsets.UTF_8)).flip();
-            Assert.assertEquals(4, Prefix.parse(buffer));
+            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.MULTI.BLANK);
+            Assert.assertEquals(4, buffer.position());
         }
     }
 
@@ -63,11 +66,11 @@ public class PrefixTest {
             buffer.put(v.substring(0, i).getBytes(StandardCharsets.UTF_8));
             buffer.flip();
             Assert.assertEquals('-', buffer.get());
-            int parse = Prefix.ERROR.read(buffer);
+            Optional<? extends NetPacket> parse = NetPacket.Type.ERROR.read(buffer);
             if (i != v.length()) {
-                Assert.assertEquals(-1, parse);
+                Assert.assertFalse(parse.isPresent());
             } else {
-                Assert.assertEquals(v.length(), parse);
+                Assert.assertTrue(parse.isPresent());
             }
         }
     }
@@ -78,7 +81,7 @@ public class PrefixTest {
         ByteBuffer buffer = ByteBuffer.allocate(10 * 1024);
         buffer.put(v.getBytes(StandardCharsets.UTF_8)).flip();
         Assert.assertEquals('-', buffer.get());
-        int parse = Prefix.readToCRLF(buffer);
+        int parse = NetPacket.gotoCRLF(buffer);
         Assert.assertEquals(20, parse);
     }
 
@@ -88,9 +91,8 @@ public class PrefixTest {
         ByteBuffer buffer = ByteBuffer.allocate(10 * 1024);
         buffer.put(v.getBytes(StandardCharsets.UTF_8)).flip();
         Assert.assertEquals('-', buffer.get());
-        int from = buffer.position();
-        int to = Prefix.ERROR.read(buffer);
-        byte[] bytes = Prefix.readDataSkipCRLF(buffer, from, to);
+        Optional<NetPacket.Error> to = (Optional<NetPacket.Error>) NetPacket.Type.ERROR.read(buffer);
+        byte[] bytes = to.get().getData();
         Assert.assertEquals("ERROR, \rNOT\n FIND", new String(bytes));
         // System.out.println(new BigInteger(bytes).toString(16));
         // System.out.println(SafeEncoder.encode(bytes));
