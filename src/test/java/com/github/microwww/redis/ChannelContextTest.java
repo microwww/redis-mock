@@ -26,7 +26,7 @@ public class ChannelContextTest {
             // test close
             public void echo(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(1);
-                byte[] echo = request.getArgs()[0].getByteArray();
+                byte[] echo = request.getParams()[0].getByteArray();
                 RedisOutputProtocol.writer(request.getOutputStream(), echo);
                 ChannelContext ctx = request.getContext();
                 ctx.addCloseListener(e -> {

@@ -2,8 +2,8 @@ package com.github.microwww.redis.protocal;
 
 import com.github.microwww.redis.ChannelContext;
 import com.github.microwww.redis.ConsumerIO;
-import com.github.microwww.redis.ExpectRedisRequest;
 import com.github.microwww.redis.RedisServer;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.logger.LogFactory;
@@ -20,7 +20,7 @@ public class RedisRequest {
 
     private final ChannelContext context;
     private final String command;
-    private final ExpectRedisRequest[] args;
+    private final RequestParams[] params;
     private final RedisServer server;
     private JedisInputStream inputStream;
     private ConsumerIO<Object> next = (r) -> {
@@ -28,28 +28,28 @@ public class RedisRequest {
         this.getOutputStream().flush();
     };
 
-    public static RedisRequest warp(RedisRequest request, ExpectRedisRequest[] requests) {
+    public static RedisRequest warp(RedisRequest request, RequestParams[] requests) {
         RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), requests);
         rq.setInputStream(request.getInputStream());
         return rq;
     }
 
-    public static RedisRequest warp(RedisRequest request, String cmd, ExpectRedisRequest[] params) {
+    public static RedisRequest warp(RedisRequest request, String cmd, RequestParams[] params) {
         RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), cmd, params);
         rq.setInputStream(request.getInputStream());
         return rq;
     }
 
-    public RedisRequest(RedisServer server, ChannelContext context, String command, ExpectRedisRequest[] params) {
+    public RedisRequest(RedisServer server, ChannelContext context, String command, RequestParams[] params) {
         this.server = server;
         this.context = context;
         this.command = command;
-        this.args = params;
+        this.params = params;
     }
 
-    public RedisRequest(RedisServer server, ChannelContext context, ExpectRedisRequest[] request) {
-        this(server, context, request[0].isNotNull().getByteArray2string(), new ExpectRedisRequest[request.length - 1]);
-        System.arraycopy(request, 1, this.args, 0, this.args.length);
+    public RedisRequest(RedisServer server, ChannelContext context, RequestParams[] request) {
+        this(server, context, request[0].isNotNull().getByteArray2string(), new RequestParams[request.length - 1]);
+        System.arraycopy(request, 1, this.params, 0, this.params.length);
     }
 
     public ChannelContext getContext() {
@@ -61,8 +61,8 @@ public class RedisRequest {
     }
 
     @NotNull
-    public ExpectRedisRequest[] getArgs() {
-        return Arrays.copyOf(args, args.length);
+    public RequestParams[] getParams() {
+        return Arrays.copyOf(params, params.length);
     }
 
     public JedisOutputStream getOutputStream() {
@@ -88,13 +88,13 @@ public class RedisRequest {
     }
 
     public void expectArgumentsCount(int expect) {
-        int count = this.getArgs().length;
+        int count = this.getParams().length;
         Assert.isTrue(count == expect,
                 String.format("The number of arguments is not as expected, expect: %d, BUT: %d", expect, count));
     }
 
     public void expectArgumentsCountBigger(int expect) {
-        int count = this.getArgs().length;
+        int count = this.getParams().length;
         Assert.isTrue(count > expect,
                 String.format("The number of arguments is not as expected, expect: > %d, BUT: = %d", expect, count));
     }
@@ -105,19 +105,19 @@ public class RedisRequest {
      * @param expect args count
      */
     public void expectArgumentsCountGE(int expect) {
-        int count = this.getArgs().length;
+        int count = this.getParams().length;
         Assert.isTrue(count >= expect,
                 String.format("The number of arguments is not as expected, expect: >= %d, BUT: = %d", expect, count));
     }
 
     public void expectArgumentsCountLitter(int expect) {
-        int count = this.getArgs().length;
+        int count = this.getParams().length;
         Assert.isTrue(count < expect,
                 String.format("The number of arguments is not as expected, expect: < %d, BUT: = %d", expect, count));
     }
 
     public void expectArgumentsCountLE(int expect) {
-        int count = this.getArgs().length;
+        int count = this.getParams().length;
         Assert.isTrue(count <= expect,
                 String.format("The number of arguments is not as expected, expect: <= %d, BUT: = %d", expect, count));
     }

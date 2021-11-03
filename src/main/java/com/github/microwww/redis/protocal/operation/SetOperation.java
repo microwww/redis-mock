@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
@@ -18,7 +18,7 @@ public class SetOperation extends AbstractOperation {
     //SADD
     public void sadd(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[0].byteArray2hashKey();
         SetData ss = request.getDatabase().getOrCreate(hk, SetData::new);
         Bytes[] ms = Arrays.stream(args, 1, args.length).map(e -> e.toBytes())
@@ -31,7 +31,7 @@ public class SetOperation extends AbstractOperation {
     //SCARD
     public void scard(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[0].byteArray2hashKey();
         Optional<SetData> ss = request.getDatabase().get(hk, SetData.class);
 
@@ -42,7 +42,7 @@ public class SetOperation extends AbstractOperation {
     //SDIFF
     public void sdiff(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         Optional<SetData> first = request.getDatabase().get(source, SetData.class);
 
@@ -60,7 +60,7 @@ public class SetOperation extends AbstractOperation {
     //SDIFFSTORE
     public void sdiffstore(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey[] keys = Arrays.stream(args, 2, args.length).map(e -> e.byteArray2hashKey())
                 .toArray(HashKey[]::new);
 
@@ -77,7 +77,7 @@ public class SetOperation extends AbstractOperation {
     //SINTER
     public void sinter(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
 
         HashKey[] keys = Arrays.stream(args).map(e -> e.byteArray2hashKey())
                 .toArray(HashKey[]::new);
@@ -90,7 +90,7 @@ public class SetOperation extends AbstractOperation {
     //SINTERSTORE
     public void sinterstore(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
 
         HashKey[] keys = Arrays.stream(args, 1, args.length).map(e -> e.byteArray2hashKey())
                 .toArray(HashKey[]::new);
@@ -108,7 +108,7 @@ public class SetOperation extends AbstractOperation {
     //SISMEMBER
     public void sismember(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[0].byteArray2hashKey();
 
         Optional<SetData> data = request.getDatabase().get(hk, SetData.class);
@@ -121,7 +121,7 @@ public class SetOperation extends AbstractOperation {
     //SMEMBERS
     public void smembers(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[0].byteArray2hashKey();
 
         Optional<SetData> data = request.getDatabase().get(hk, SetData.class);
@@ -139,7 +139,7 @@ public class SetOperation extends AbstractOperation {
     //SMOVE
     public void smove(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         HashKey dest = args[1].byteArray2hashKey();
         Bytes member = args[2].toBytes();
@@ -156,7 +156,7 @@ public class SetOperation extends AbstractOperation {
     //SPOP
     public void spop(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         Optional<SetData> data = request.getDatabase().get(source, SetData.class);
         if (args.length > 1) {
@@ -180,7 +180,7 @@ public class SetOperation extends AbstractOperation {
     //SRANDMEMBER
     public void srandmember(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         Optional<SetData> data = request.getDatabase().get(source, SetData.class);
 
@@ -210,7 +210,7 @@ public class SetOperation extends AbstractOperation {
     public void srem(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
 
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         Optional<SetData> data = request.getDatabase().get(source, SetData.class);
 
@@ -227,7 +227,7 @@ public class SetOperation extends AbstractOperation {
     //SUNION
     public void sunion(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey[] keys = Arrays.stream(args).map(e -> e.byteArray2hashKey())
                 .toArray(HashKey[]::new);
         Set<Bytes> union = new SetData().union(request.getDatabase(), keys);
@@ -238,7 +238,7 @@ public class SetOperation extends AbstractOperation {
     //SUNIONSTORE
     public void sunionstore(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         RedisDatabase db = request.getDatabase();
         SetData union = db.sync(() -> {
             HashKey[] keys = Arrays.stream(args, 1, args.length).map(e -> e.byteArray2hashKey())
@@ -254,7 +254,7 @@ public class SetOperation extends AbstractOperation {
 
     //SSCAN
     public void sscan(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey key = args[0].byteArray2hashKey();
         Optional<SetData> opt = request.getDatabase().get(key, SetData.class);
         Set<Bytes> hk = opt.map(e -> e.getData()).orElse(Collections.emptySet());
@@ -267,7 +267,7 @@ public class SetOperation extends AbstractOperation {
     }
 
     public SetData getOrCreate(RedisRequest request) {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey source = args[0].byteArray2hashKey();
         return request.getDatabase().getOrCreate(source, SetData::new);
     }

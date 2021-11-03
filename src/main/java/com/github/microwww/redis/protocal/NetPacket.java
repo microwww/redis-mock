@@ -3,6 +3,7 @@ package com.github.microwww.redis.protocal;
 import com.github.microwww.redis.util.Assert;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Optional;
 
 public abstract class NetPacket<T> {
@@ -28,6 +29,12 @@ public abstract class NetPacket<T> {
         public Error(byte[] data) {
             super(data, Type.ERROR);
         }
+
+        @Override
+        public byte[] getData() {
+            byte[] data = super.getData();
+            return Arrays.copyOf(data, data.length);
+        }
     }
 
     public static class BigInt extends NetPacket<Long> {
@@ -46,13 +53,19 @@ public abstract class NetPacket<T> {
             super(data, Type.BULK);
             Assert.isTrue(data != null, "Not null");
         }
+
+        @Override
+        public byte[] getData() {
+            byte[] data = super.getData();
+            return Arrays.copyOf(data, data.length);
+        }
     }
 
-    public static class Multi<T extends NetPacket> extends NetPacket<T[]> {
+    public static class Multi extends NetPacket<NetPacket[]> {
         public static final Multi NULL = new Multi(null);
         public static final Multi BLANK = new Multi(new NetPacket[]{});
 
-        public Multi(T[] data) {
+        public Multi(NetPacket[] data) {
             super(data, Type.MULTI);
         }
     }

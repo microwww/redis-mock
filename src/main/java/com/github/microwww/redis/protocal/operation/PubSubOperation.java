@@ -1,7 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ChannelContext;
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.logger.LogFactory;
@@ -25,11 +25,11 @@ public class PubSubOperation extends AbstractOperation {
     //PSUBSCRIBE
     public void psubscribe(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Object[] sub = new Object[3];
         sub[0] = "psubscribe".getBytes(StandardCharsets.UTF_8);
         PubSub pubSub = request.getPubSub();
-        for (ExpectRedisRequest arg : args) {
+        for (RequestParams arg : args) {
             Bytes patten = arg.toBytes();
             NewChannelListener notify = new NewChannelListener(request.getContext(), patten, pubSub);
             try {
@@ -48,7 +48,7 @@ public class PubSubOperation extends AbstractOperation {
     public void publish(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Bytes channel = args[0].toBytes();
         Bytes message = args[1].toBytes();
         int count = pubSub.publish(channel, message);
@@ -58,7 +58,7 @@ public class PubSubOperation extends AbstractOperation {
     //PUBSUB
     public void pubsub(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         String subcommand = args[0].getByteArray2string().toLowerCase();
         switch (subcommand) {
             case "channels":
@@ -78,8 +78,8 @@ public class PubSubOperation extends AbstractOperation {
     private void subChannels(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
         Stream<PubSub.MessageChannel> stream = pubSub.getChannels().values().stream().filter(PubSub.MessageChannel::isActive);
-        if (request.getArgs().length > 1) {
-            String patten = request.getArgs()[1].getByteArray2string();
+        if (request.getParams().length > 1) {
+            String patten = request.getParams()[1].getByteArray2string();
             stream = stream.filter(e -> StringUtil.antPatternMatches(patten, SafeEncoder.encode(e.getChannel().getBytes())));
         }
         Object[] objects = stream.map(PubSub.MessageChannel::getChannel).toArray(Object[]::new);
@@ -88,11 +88,11 @@ public class PubSubOperation extends AbstractOperation {
 
     private void subNumSub(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
-        int len = request.getArgs().length;
+        int len = request.getParams().length;
         List<Object> list = new ArrayList<>();
         if (len > 1) {
             for (int i = 1; i < len; i++) {
-                Bytes bytes = request.getArgs()[i].toBytes();
+                Bytes bytes = request.getParams()[i].toBytes();
                 list.add(bytes);
                 PubSub.MessageChannel mc = pubSub.getChannels().get(bytes);
                 if (mc == null) {
@@ -115,7 +115,7 @@ public class PubSubOperation extends AbstractOperation {
 
     //PUNSUBSCRIBE
     public void punsubscribe(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Object[] uns = new Object[3];
         uns[0] = SafeEncoder.encode("punsubscribe");
         if (args.length == 0) {
@@ -129,7 +129,7 @@ public class PubSubOperation extends AbstractOperation {
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         } else {
-            for (ExpectRedisRequest arg : args) {
+            for (RequestParams arg : args) {
                 Bytes bytes = arg.toBytes();
                 uns[1] = bytes;
                 ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);
@@ -144,10 +144,10 @@ public class PubSubOperation extends AbstractOperation {
     public void subscribe(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
         request.expectArgumentsCountGE(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Object[] sub = new Object[3];
         sub[0] = "subscribe".getBytes(StandardCharsets.UTF_8);
-        for (ExpectRedisRequest arg : args) {
+        for (RequestParams arg : args) {
             Bytes bytes = arg.toBytes();
             ChannelMessageListener channelMessageListener = new ChannelMessageListener(request.getContext(), bytes, pubSub);
             try {
@@ -164,7 +164,7 @@ public class PubSubOperation extends AbstractOperation {
 
     //UNSUBSCRIBE
     public void unsubscribe(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Object[] uns = new Object[3];
         uns[0] = "unsubscribe".getBytes(StandardCharsets.UTF_8);
         if (args.length == 0) {
@@ -178,7 +178,7 @@ public class PubSubOperation extends AbstractOperation {
                 RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
             }
         } else {
-            for (ExpectRedisRequest arg : args) {
+            for (RequestParams arg : args) {
                 Bytes bytes = arg.toBytes();
                 uns[1] = bytes;
                 ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);

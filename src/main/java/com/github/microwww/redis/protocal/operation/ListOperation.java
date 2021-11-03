@@ -1,7 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ConsumerIO;
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.ListData;
@@ -38,7 +38,7 @@ public class ListOperation extends AbstractOperation {
 
     private void blockPOP(RedisRequest request, Function<ListData, Optional<Bytes>> fetch) throws IOException {
         request.expectArgumentsCountGE(2);
-        this.block(request, request.getArgs(), fetch, (o) -> {
+        this.block(request, request.getParams(), fetch, (o) -> {
             Bytes[] bytes = o.orElse(new Bytes[]{});
             byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
             RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
@@ -48,7 +48,7 @@ public class ListOperation extends AbstractOperation {
 
     private void block(
             RedisRequest request,
-            ExpectRedisRequest[] args,
+            RequestParams[] args,
             Function<ListData, Optional<Bytes>> fetch, //
             ConsumerIO<Optional<Bytes[]>> done
     ) throws IOException {
@@ -63,7 +63,7 @@ public class ListOperation extends AbstractOperation {
         if (lost > 0) {
             CountDownLatch latch = new CountDownLatch(1);
             Bytes[] res = Arrays.stream(args, 0, args.length - 1)
-                    .map(ExpectRedisRequest::byteArray2hashKey) // key
+                    .map(RequestParams::byteArray2hashKey) // key
                     .map(e -> db.getOrCreate(e, ListData::new)) // create ListDate
                     .map(e -> e.blockPop(latch, fetch)) // add lock
                     .filter(Optional::isPresent).map(Optional::get)
@@ -74,13 +74,13 @@ public class ListOperation extends AbstractOperation {
                     try {
                         latch.await(lost, TimeUnit.MILLISECONDS);
                         log.debug("Release {}", this);
-                        ExpectRedisRequest[] na = r.getArgs();
+                        RequestParams[] na = r.getParams();
                         long next = (stopTime - System.currentTimeMillis()) / 1000;
                         if (next <= 0) { // timeout
                             done.accept(Optional.empty());
                             return;
                         }
-                        na[args.length - 1] = new ExpectRedisRequest(("" + next).getBytes());
+                        na[args.length - 1] = new RequestParams(("" + next).getBytes());
                         RedisRequest rq = RedisRequest.warp(r, r.getCommand(), na);
                         log.debug("And new command : " + r.getCommand());
                         // rq.setNext(r.getNext());
@@ -108,8 +108,8 @@ public class ListOperation extends AbstractOperation {
     public void brpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         //long start = System.currentTimeMillis();
-        this.block(request, new ExpectRedisRequest[]{request.getArgs()[0], request.getArgs()[2]}, ListData::rightPop, (o) -> {
-            HashKey hk = request.getArgs()[1].byteArray2hashKey();
+        this.block(request, new RequestParams[]{request.getParams()[0], request.getParams()[2]}, ListData::rightPop, (o) -> {
+            HashKey hk = request.getParams()[1].byteArray2hashKey();
             byte[] data = null;
             if (o.isPresent()) {
                 data = o.get()[0].getBytes();
@@ -126,7 +126,7 @@ public class ListOperation extends AbstractOperation {
     //LINDEX key index
     public void lindex(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             int index = Integer.parseInt(args[1].getByteArray2string());
@@ -140,7 +140,7 @@ public class ListOperation extends AbstractOperation {
     //LINSERT
     public void linsert(RedisRequest request) throws IOException {
         request.expectArgumentsCount(4);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             boolean before = false;
@@ -185,9 +185,9 @@ public class ListOperation extends AbstractOperation {
     public void lpush(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
         ListData data = this.getOrCreateList(request);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         byte[][] bytes = Arrays.stream(args, 1, args.length)
-                .map(ExpectRedisRequest::getByteArray)
+                .map(RequestParams::getByteArray)
                 .toArray(byte[][]::new);
         data.leftAdd(bytes);
         RedisOutputProtocol.writer(request.getOutputStream(), data.getData().size());
@@ -198,9 +198,9 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCountGE(2);
         Optional<ListData> opt = this.getList(request);
         if (opt.isPresent()) {
-            ExpectRedisRequest[] args = request.getArgs();
+            RequestParams[] args = request.getParams();
             byte[][] bytes = Arrays.stream(args, 1, args.length)
-                    .map(ExpectRedisRequest::getByteArray)
+                    .map(RequestParams::getByteArray)
                     .toArray(byte[][]::new);
             opt.get().leftAdd(bytes);
         }
@@ -213,7 +213,7 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = this.getList(request);
         byte[][] range = new byte[0][];
         if (opt.isPresent()) {
-            ExpectRedisRequest[] args = request.getArgs();
+            RequestParams[] args = request.getParams();
             range = opt.get().range(args[1].byteArray2int(), args[2].byteArray2int());
         }
         RedisOutputProtocol.writerMulti(request.getOutputStream(), range);
@@ -225,7 +225,7 @@ public class ListOperation extends AbstractOperation {
         Optional<ListData> opt = this.getList(request);
         int len = 0;
         if (opt.isPresent()) {
-            ExpectRedisRequest[] args = request.getArgs();
+            RequestParams[] args = request.getParams();
             len = opt.get().remove(args[1].byteArray2int(), args[2].getByteArray());
         }
         RedisOutputProtocol.writer(request.getOutputStream(), len);
@@ -235,7 +235,7 @@ public class ListOperation extends AbstractOperation {
     // 当 index 参数超出范围，或对一个空列表( key 不存在)进行 LSET 时，返回一个错误。
     public void lset(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<ListData> opt = getList(request);
         if (opt.isPresent()) {
             String index = args[1].getByteArray2string();
@@ -254,7 +254,7 @@ public class ListOperation extends AbstractOperation {
     public void ltrim(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
         Optional<ListData> opt = getList(request);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         opt.ifPresent(e -> {//
             e.trim(args[1].byteArray2int(), args[2].byteArray2int());
         });
@@ -279,7 +279,7 @@ public class ListOperation extends AbstractOperation {
     //RPOPLPUSH
     public void rpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey target = request.getArgs()[1].byteArray2hashKey();
+        HashKey target = request.getParams()[1].byteArray2hashKey();
         Optional<ListData> opt = this.getList(request);
         Bytes data = opt.flatMap(e -> { // doing
             return e.pop2push(request.getDatabase(), target);
@@ -291,9 +291,9 @@ public class ListOperation extends AbstractOperation {
     public void rpush(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(1);
         ListData list = this.getOrCreateList(request);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         byte[][] bytes = Arrays.stream(args, 1, args.length)
-                .map(ExpectRedisRequest::getByteArray)
+                .map(RequestParams::getByteArray)
                 .toArray(byte[][]::new);
         list.rightAdd(bytes);
         RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
@@ -303,7 +303,7 @@ public class ListOperation extends AbstractOperation {
     public void rpushx(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
         Optional<ListData> opt = this.getList(request);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         if (opt.isPresent()) {
             byte[] val = args[1].getByteArray();
             opt.get().rightAdd(val);
@@ -312,7 +312,7 @@ public class ListOperation extends AbstractOperation {
     }
 
     private Optional<ListData> getList(RedisRequest request) {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey key = new HashKey(args[0].getByteArray());
         RedisDatabase db = request.getDatabase();
         return db.get(key, ListData.class);
@@ -325,7 +325,7 @@ public class ListOperation extends AbstractOperation {
 
     @NotNull
     private ListData getOrCreateList(RedisRequest request, int index) {
-        HashKey key = new HashKey(request.getArgs()[index].getByteArray());
+        HashKey key = new HashKey(request.getParams()[index].getByteArray());
         Optional<ListData> opt = this.getList(request);
         if (!opt.isPresent()) {
             ListData d = new ListData();

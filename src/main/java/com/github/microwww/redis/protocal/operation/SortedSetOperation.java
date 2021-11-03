@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.Member;
 import com.github.microwww.redis.database.RedisDatabase;
@@ -25,7 +25,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZADD
     public void zadd(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         SortedSetData ss = getOrCreate(request);
         Member[] ms = new Member[args.length / 2];
         for (int i = 1, j = 0; i < args.length; i += 2, j++) {
@@ -48,7 +48,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZCOUNT
     public void zcount(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         int size = 0;
         if (ss.isPresent()) {
@@ -66,7 +66,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZINCRBY
     public void zincrby(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         SortedSetData ss = getOrCreate(request);
         BigDecimal inc = args[1].byteArray2decimal();
         byte[] val = args[2].getByteArray();
@@ -77,7 +77,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZRANGE
     public void zrange(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         List<byte[]> list = new ArrayList<>();
         if (ss.isPresent()) {
@@ -102,7 +102,7 @@ public class SortedSetOperation extends AbstractOperation {
 
     private void rangeByScore(RedisRequest request, boolean desc) throws IOException {
         request.expectArgumentsCountGE(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         List<byte[]> list = new ArrayList<>();
         if (ss.isPresent()) {
@@ -142,7 +142,7 @@ public class SortedSetOperation extends AbstractOperation {
 
     private void rank(RedisRequest request, boolean desc) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
@@ -162,7 +162,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZREM
     public void zrem(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         int count = 0;
         if (ss.isPresent()) {
@@ -178,7 +178,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZREMRANGEBYRANK
     public void zremrangebyrank(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         int count = 0;
         if (ss.isPresent()) {
@@ -190,7 +190,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZREMRANGEBYSCORE
     public void zremrangebyscore(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         int count = 0;
         if (ss.isPresent()) {
@@ -204,7 +204,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZREVRANGE
     public void zrevrange(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         List<byte[]> list = new ArrayList<>();
         if (ss.isPresent()) {
@@ -235,7 +235,7 @@ public class SortedSetOperation extends AbstractOperation {
     //ZSCORE
     public void zscore(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<SortedSetData> ss = getData(request);
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
@@ -255,7 +255,7 @@ public class SortedSetOperation extends AbstractOperation {
 
     public void storeFromSortedSet(RedisRequest request, BiFunction<RedisDatabase, UnionStore, Integer> fun) throws IOException {
         request.expectArgumentsCountGE(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         int i = 1;
         int num = args[i++].byteArray2int();
         Assert.isTrue(num + i <= args.length, "num-keys count error");
@@ -294,12 +294,12 @@ public class SortedSetOperation extends AbstractOperation {
 
     @NotNull
     private SortedSetData getOrCreate(RedisRequest request) {
-        HashKey key = new HashKey(request.getArgs()[0].getByteArray());
+        HashKey key = new HashKey(request.getParams()[0].getByteArray());
         return request.getDatabase().getOrCreate(key, SortedSetData::new);
     }
 
     private Optional<SortedSetData> getData(RedisRequest request) {
-        HashKey hk = request.getArgs()[0].byteArray2hashKey();
+        HashKey hk = request.getParams()[0].byteArray2hashKey();
         return request.getDatabase().get(hk, SortedSetData.class);
     }
 
@@ -359,21 +359,21 @@ public class SortedSetOperation extends AbstractOperation {
     public enum RangeByScoreParams {
         WITHSCORES {
             @Override
-            public int next(RangeByScore params, ExpectRedisRequest[] args, int i) {
+            public int next(RangeByScore params, RequestParams[] args, int i) {
                 params.withScores = true;
                 return i + 1;
             }
         },
         LIMIT {
             @Override
-            public int next(RangeByScore params, ExpectRedisRequest[] args, int i) {
+            public int next(RangeByScore params, RequestParams[] args, int i) {
                 params.offset = args[i + 1].byteArray2int();
                 params.count = args[i + 2].byteArray2int();
                 return i + 2;
             }
         };
 
-        public abstract int next(RangeByScore params, ExpectRedisRequest[] args, int i);
+        public abstract int next(RangeByScore params, RequestParams[] args, int i);
     }
 
     public static class UnionStore {
@@ -411,7 +411,7 @@ public class SortedSetOperation extends AbstractOperation {
     public enum UnionStoreParam {
         WEIGHTS {
             @Override
-            public int next(UnionStore params, ExpectRedisRequest[] args, int i) {
+            public int next(UnionStore params, RequestParams[] args, int i) {
                 Assert.isTrue(args.length > i + params.getHashKeys().length, "WEIGHTS  count error");
                 int[] w = new int[params.getHashKeys().length];
                 for (int j = 0; j < params.getHashKeys().length; j++, i++) {
@@ -423,14 +423,14 @@ public class SortedSetOperation extends AbstractOperation {
         },
         AGGREGATE {
             @Override
-            public int next(UnionStore params, ExpectRedisRequest[] args, int i) {
+            public int next(UnionStore params, RequestParams[] args, int i) {
                 Aggregate agg = Aggregate.valueOf(args[i + 1].getByteArray2string().toUpperCase());
                 params.setType(agg);
                 return i + 1;
             }
         };
 
-        public abstract int next(UnionStore params, ExpectRedisRequest[] args, int i);
+        public abstract int next(UnionStore params, RequestParams[] args, int i);
     }
 
     public enum Aggregate implements BinaryOperator<BigDecimal> {

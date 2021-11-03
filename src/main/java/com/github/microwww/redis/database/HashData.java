@@ -1,6 +1,6 @@
 package com.github.microwww.redis.database;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -80,7 +80,7 @@ public class HashData extends AbstractValueData<Map<HashKey, Bytes>> implements 
     //HLEN
     //HMGET
     //HMSET
-    public synchronized int multiSet(ExpectRedisRequest[] kvs, int offset) {
+    public synchronized int multiSet(RequestParams[] kvs, int offset) {
         for (int i = offset; i < kvs.length; i += 2) {
             this.origin.put(kvs[i].byteArray2hashKey(), kvs[i + 1].toBytes());
         }

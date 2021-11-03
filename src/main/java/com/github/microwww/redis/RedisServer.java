@@ -107,7 +107,7 @@ public class RedisServer implements Closeable {
             JedisInputStream in = new JedisInputStream(inputStream);
             while (in.available() > 0) {
                 Object read = in.readRedisData();
-                ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+                RequestParams[] req = RequestParams.parseRedisData(read);
                 RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
                 redisRequest.setInputStream(in);
                 log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());

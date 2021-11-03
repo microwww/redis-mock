@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.AbstractValueData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.logger.LogFactory;
@@ -104,7 +104,7 @@ public class TransactionOperation extends AbstractOperation {
                 }
 
                 Object read = request.getInputStream().readRedisData();
-                ExpectRedisRequest[] param = ExpectRedisRequest.parseRedisData(read);
+                RequestParams[] param = RequestParams.parseRedisData(read);
                 RedisRequest rr = RedisRequest.warp(request, param);
                 String cmd = rr.getCommand();
                 if ("exec".equalsIgnoreCase(cmd)) {
@@ -136,7 +136,7 @@ public class TransactionOperation extends AbstractOperation {
         request.expectArgumentsCountGE(1);
         request.getSessions().putIfAbsent(WATCH_SESSION_KEY, new HashMap<>());
         Map<HashKey, DV> watch = (Map<HashKey, DV>) request.getSessions().get(WATCH_SESSION_KEY);
-        for (ExpectRedisRequest arg : request.getArgs()) {
+        for (RequestParams arg : request.getParams()) {
             HashKey hk = arg.byteArray2hashKey();
             Optional<AbstractValueData<?>> val = request.getDatabase().get(hk);
             watch.put(hk, val.map(e -> new DV(e, e.getVersion().get())).orElse(new DV(null, null)));

@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashData;
 import com.github.microwww.redis.database.HashKey;
@@ -24,7 +24,7 @@ public class HashOperation extends AbstractOperation {
         int count = 0;
         if (data.isPresent()) {
             HashData e = data.get();
-            ExpectRedisRequest[] args = request.getArgs();
+            RequestParams[] args = request.getParams();
             for (int i = 1; i < args.length; i++) {
                 HashKey hk = args[i].byteArray2hashKey();
                 Bytes remove = e.remove(hk);
@@ -39,7 +39,7 @@ public class HashOperation extends AbstractOperation {
     //HEXISTS
     public void hexists(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[1].byteArray2hashKey();
         Optional<Map<HashKey, Bytes>> opt = this.getHashMap(request);
         if (opt.isPresent()) {
@@ -55,7 +55,7 @@ public class HashOperation extends AbstractOperation {
     //HGET
     public void hget(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey hk = args[1].byteArray2hashKey();
         Optional<HashData> opt = this.getHashData(request);
         if (opt.isPresent()) {
@@ -88,9 +88,9 @@ public class HashOperation extends AbstractOperation {
     //HINCRBY
     public void hincrby(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        HashKey hk = request.getArgs()[1].byteArray2hashKey();
-        int inc = request.getArgs()[2].byteArray2int();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        HashKey hk = request.getParams()[1].byteArray2hashKey();
+        int inc = request.getParams()[2].byteArray2int();
         HashData oc = this.getOrCreate(request);
         Bytes bytes = oc.incrBy(hk, inc);
         RedisOutputProtocol.writer(request.getOutputStream(), bytes.toLong());
@@ -99,9 +99,9 @@ public class HashOperation extends AbstractOperation {
     //HINCRBYFLOAT
     public void hincrbyfloat(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        HashKey hk = request.getArgs()[1].byteArray2hashKey();
-        BigDecimal inc = request.getArgs()[2].byteArray2decimal();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        HashKey hk = request.getParams()[1].byteArray2hashKey();
+        BigDecimal inc = request.getParams()[2].byteArray2decimal();
         HashData oc = this.getOrCreate(request);
         Bytes bytes = oc.incrByFloat(hk, inc);
         RedisOutputProtocol.writer(request.getOutputStream(), bytes);
@@ -130,7 +130,7 @@ public class HashOperation extends AbstractOperation {
     //HMGET
     public void hmget(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Optional<Map<HashKey, Bytes>> opt = this.getHashMap(request);
         byte[][] bytes = Arrays.stream(args, 1, args.length)
                 .map(e -> e.byteArray2hashKey())
@@ -144,7 +144,7 @@ public class HashOperation extends AbstractOperation {
     public void hmset(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(3);
         HashData oc = this.getOrCreate(request);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Assert.isTrue(args.length % 2 == 1, "k, k-v, k-v, k-v, ...");
         oc.multiSet(args, 1);
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name()); //  null ?
@@ -153,7 +153,7 @@ public class HashOperation extends AbstractOperation {
     //HSET
     public void hset(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
 
         HashData data = this.getOrCreate(request);
         byte[] hk = args[1].getByteArray();
@@ -168,7 +168,7 @@ public class HashOperation extends AbstractOperation {
     //HSETNX
     public void hsetnx(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
 
         HashData data = this.getOrCreate(request);
         byte[] hk = args[1].getByteArray();
@@ -210,13 +210,13 @@ public class HashOperation extends AbstractOperation {
     }
 
     private Optional<HashData> getHashData(RedisRequest request) {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey key = args[0].byteArray2hashKey();
         return request.getDatabase().get(key, HashData.class);
     }
 
     private HashData getOrCreate(RedisRequest request) {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         HashKey key = args[0].byteArray2hashKey();
         return request.getDatabase().getOrCreate(key, () -> {//
             return new HashData();

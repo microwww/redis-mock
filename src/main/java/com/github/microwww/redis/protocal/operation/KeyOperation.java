@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.AbstractValueData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
@@ -18,7 +18,7 @@ public class KeyOperation extends AbstractOperation {
 
     //EXPIRE
     public void expire(RedisRequest request) throws IOException {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         Assert.isTrue(args.length == 2, "Must has tow arguments");
         HashKey key = args[0].byteArray2hashKey();
         long exp = args[1].byteArray2long();
@@ -40,7 +40,7 @@ public class KeyOperation extends AbstractOperation {
     public void del(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(0);
         int count = 0;
-        for (ExpectRedisRequest arg : request.getArgs()) {
+        for (RequestParams arg : request.getParams()) {
             AbstractValueData<?> val = request.getDatabase().remove(arg.byteArray2hashKey());
             if (val != null) {
                 count++;
@@ -58,7 +58,7 @@ public class KeyOperation extends AbstractOperation {
     //EXISTS
     public void exists(RedisRequest request) throws IOException {
         request.expectArgumentsCountBigger(0);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         long count = Arrays.stream(args).map(e -> {
             HashKey key = e.byteArray2hashKey();
             return request.getDatabase().get(key);
@@ -71,8 +71,8 @@ public class KeyOperation extends AbstractOperation {
     //EXPIREAT
     public void expireat(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        int time = Integer.parseInt(request.getArgs()[1].getByteArray2string());
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        int time = Integer.parseInt(request.getParams()[1].getByteArray2string());
         long exp = time * 1000L;
         expMilliseconds(request, key, exp);
     }
@@ -80,7 +80,7 @@ public class KeyOperation extends AbstractOperation {
     //KEYS
     public void keys(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        String patten = request.getArgs()[0].getByteArray2string();
+        String patten = request.getParams()[0].getByteArray2string();
         Pattern compile = StringUtil.antPattern(patten);
 
         List<byte[]> list = new ArrayList<>();
@@ -98,8 +98,8 @@ public class KeyOperation extends AbstractOperation {
     //MOVE
     public void move(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        int index = request.getArgs()[1].byteArray2int();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        int index = request.getParams()[1].byteArray2int();
         RedisDatabase db = request.getDatabase();
         RedisDatabase rd = request.getServer().getSchema().getRedisDatabases(index);
         Integer sync = db.sync(() -> {// db1 lock
@@ -122,7 +122,7 @@ public class KeyOperation extends AbstractOperation {
     //PERSIST
     public void persist(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         Integer re = opt.map((e) -> {//
             return request.getDatabase().sync(() -> {
@@ -136,23 +136,23 @@ public class KeyOperation extends AbstractOperation {
     //PEXPIRE
     public void pexpire(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        long time = Long.parseLong(request.getArgs()[1].getByteArray2string());
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        long time = Long.parseLong(request.getParams()[1].getByteArray2string());
         expMilliseconds(request, key, System.currentTimeMillis() + time);
     }
 
     //PEXPIREAT
     public void pexpireat(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        long time = request.getArgs()[1].byteArray2long();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        long time = request.getParams()[1].byteArray2long();
         expMilliseconds(request, key, time);
     }
 
     //PTTL
     public void pttl(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         Long time = opt.map(e -> {
             long ex = e.getExpire();
@@ -185,8 +185,8 @@ public class KeyOperation extends AbstractOperation {
     //RENAME
     public void rename(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        HashKey target = request.getArgs()[1].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        HashKey target = request.getParams()[1].byteArray2hashKey();
         boolean ok = this.rename(request, key, target, true);
         Assert.isTrue(ok, "overwrite not false");
         RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
@@ -215,8 +215,8 @@ public class KeyOperation extends AbstractOperation {
     //RENAMENX
     public void renamenx(RedisRequest request) throws IOException {
         request.expectArgumentsCount(2);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
-        HashKey target = request.getArgs()[1].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
+        HashKey target = request.getParams()[1].byteArray2hashKey();
         boolean ok = this.rename(request, key, target, false);
         RedisOutputProtocol.writer(request.getOutputStream(), ok ? 1 : 0);
     }
@@ -231,7 +231,7 @@ public class KeyOperation extends AbstractOperation {
     //TTL
     public void ttl(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         Long time = opt.map(e -> {
             long ex = e.getExpire();
@@ -246,7 +246,7 @@ public class KeyOperation extends AbstractOperation {
     //TYPE
     public void type(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        HashKey key = request.getArgs()[0].byteArray2hashKey();
+        HashKey key = request.getParams()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         String type = opt.map(e -> e.getType()).orElse("none");
         RedisOutputProtocol.writer(request.getOutputStream(), type);
@@ -371,19 +371,19 @@ public class KeyOperation extends AbstractOperation {
     public enum Scan {
         MATCH {
             @Override
-            public int next(ScanParams params, ExpectRedisRequest[] args, int i) {
+            public int next(ScanParams params, RequestParams[] args, int i) {
                 params.pattern = StringUtil.antPattern(args[i + 1].getByteArray2string());
                 return i + 1;
             }
         },
         COUNT {
             @Override
-            public int next(ScanParams params, ExpectRedisRequest[] args, int i) {
+            public int next(ScanParams params, RequestParams[] args, int i) {
                 params.count = args[i + 1].byteArray2int();
                 return i + 1;
             }
         };
 
-        public abstract int next(ScanParams params, ExpectRedisRequest[] args, int i);
+        public abstract int next(ScanParams params, RequestParams[] args, int i);
     }
 }

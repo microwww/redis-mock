@@ -1,7 +1,7 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ChannelContext;
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.database.Schema;
 import com.github.microwww.redis.exception.Run;
@@ -26,7 +26,7 @@ public class ServerOperation extends AbstractOperation {
     //CLIENT GETNAME
     public void client(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
-        String cmd = request.getArgs()[0].getByteArray2string();
+        String cmd = request.getParams()[0].getByteArray2string();
         Client.valueOf(cmd.toUpperCase()).operation(request);
     }
 
@@ -83,7 +83,7 @@ public class ServerOperation extends AbstractOperation {
 
     public void kill(RedisRequest request) {
         request.expectArgumentsCount(1);
-        String address = request.getArgs()[0].getByteArray2string();
+        String address = request.getParams()[0].getByteArray2string();
         ChannelContext context = request.getContext();
         Run.ignoreException(log, context::closeChannel);
         request.setNext(e -> log.info("USER KILL: " + address));
@@ -105,8 +105,8 @@ public class ServerOperation extends AbstractOperation {
             @Override
             public void operation(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(2);
-                String addr = request.getArgs()[1].getByteArray2string();
-                ExpectRedisRequest[] err = {new ExpectRedisRequest(addr.getBytes())};
+                String addr = request.getParams()[1].getByteArray2string();
+                RequestParams[] err = {new RequestParams(addr.getBytes())};
                 RedisRequest rqu = RedisRequest.warp(request, "KILL", err);
                 RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
                 request.setNext(e -> {
@@ -131,7 +131,7 @@ public class ServerOperation extends AbstractOperation {
             @Override
             public void operation(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(2);
-                String name = request.getArgs()[1].getByteArray2string();
+                String name = request.getParams()[1].getByteArray2string();
                 request.getSessions().setName(name);
                 RedisOutputProtocol.writer(request.getOutputStream(), name);
             }

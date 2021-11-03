@@ -1,6 +1,6 @@
 package com.github.microwww.redis.database;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.protocal.operation.StringOperation;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
@@ -199,7 +199,7 @@ public abstract class StringData {
     }
     //MGET
     //MSET
-    public static int multiSet(RedisDatabase database, ExpectRedisRequest[] args, boolean overWrite) {
+    public static int multiSet(RedisDatabase database, RequestParams[] args, boolean overWrite) {
         Assert.isTrue(args.length % 2 == 0, "2x");
         return database.sync(() -> {
             if (!overWrite) {

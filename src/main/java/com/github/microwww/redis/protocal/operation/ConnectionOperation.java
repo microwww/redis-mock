@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.exception.RequestQuitException;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
@@ -28,7 +28,7 @@ public class ConnectionOperation extends AbstractOperation {
     //ECHO
     public void echo(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        byte[] echo = request.getArgs()[0].getByteArray();
+        byte[] echo = request.getParams()[0].getByteArray();
         RedisOutputProtocol.writer(request.getOutputStream(), echo);
     }
 
@@ -51,7 +51,7 @@ public class ConnectionOperation extends AbstractOperation {
     //SELECT
     public void select(RedisRequest request) throws IOException {
         request.expectArgumentsCount(1);
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         int index = Integer.parseInt(args[0].getByteArray2string());
         int db = request.getServer().getSchema().getSize();
         if (index >= db || index < 0) {

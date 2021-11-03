@@ -1,6 +1,6 @@
 package com.github.microwww.redis.protocal;
 
-import com.github.microwww.redis.ExpectRedisRequest;
+import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.protocal.operation.KeyOperation;
 
 import java.io.IOException;
@@ -16,13 +16,13 @@ public class ScanIterator<T> {
     protected final KeyOperation.ScanParams spm;
 
     public ScanIterator(RedisRequest request, int offset) {
-        ExpectRedisRequest[] args = request.getArgs();
+        RequestParams[] args = request.getParams();
         this.cursor = args[offset].byteArray2int();
         this.request = request;
         this.spm = parseParam(offset, args);
     }
 
-    private KeyOperation.ScanParams parseParam(int offset, ExpectRedisRequest[] args) {
+    private KeyOperation.ScanParams parseParam(int offset, RequestParams[] args) {
         KeyOperation.ScanParams spm = new KeyOperation.ScanParams();
         for (int i = offset + 1; i < args.length; i++) {
             String op = args[i].getByteArray2string();

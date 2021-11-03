@@ -54,7 +54,7 @@ public class SelectSocketsTest {
                 private void read(ChannelContext context, InputStream inputStream) throws IOException {
                     JedisInputStream in = new JedisInputStream(inputStream);
                     Object read = in.readRedisData();
-                    ExpectRedisRequest[] req = ExpectRedisRequest.parseRedisData(read);
+                    RequestParams[] req = RequestParams.parseRedisData(read);
                     bf.add(new String(req[0].isNotNull().getByteArray())); // 命令
                     d1.countDown();
                 }
