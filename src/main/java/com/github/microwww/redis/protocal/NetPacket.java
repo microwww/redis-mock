@@ -41,18 +41,18 @@ public abstract class NetPacket<T> {
         }
     }
 
-    public static class BULK extends NetPacket<byte[]> {
-        public BULK(byte[] data) {
+    public static class Bulk extends NetPacket<byte[]> {
+        public Bulk(byte[] data) {
             super(data, Type.BULK);
             Assert.isTrue(data != null, "Not null");
         }
     }
 
-    public static class MULTI<T extends NetPacket> extends NetPacket<T[]> {
-        public static final MULTI NULL = new MULTI(null);
-        public static final MULTI BLANK = new MULTI(new NetPacket[]{});
+    public static class Multi<T extends NetPacket> extends NetPacket<T[]> {
+        public static final Multi NULL = new Multi(null);
+        public static final Multi BLANK = new Multi(new NetPacket[]{});
 
-        public MULTI(T[] data) {
+        public Multi(T[] data) {
             super(data, Type.MULTI);
         }
     }
@@ -76,7 +76,7 @@ public abstract class NetPacket<T> {
             }
         }, BULK('$') {
             @Override
-            public Optional<BULK> read(ByteBuffer bytes) {
+            public Optional<Bulk> read(ByteBuffer bytes) {
                 final int from = bytes.position();
                 Optional<BigInt> to = (Optional<NetPacket.BigInt>) BigInt.read(bytes);
                 if (to.isPresent()) {
@@ -87,7 +87,7 @@ public abstract class NetPacket<T> {
                         Assert.isTrue(CR == bytes.get(), "$ end with CR LF");
                         Assert.isTrue(LF == bytes.get(), "$ end with CR LF");
                         byte[] bts = NetPacket.getDataSkipCRLF(bytes, position, bytes.position());
-                        return Optional.of(new BULK(bts));
+                        return Optional.of(new Bulk(bts));
                     }
                 }
                 bytes.position(from);
@@ -95,16 +95,16 @@ public abstract class NetPacket<T> {
             }
         }, MULTI('*') {
             @Override
-            public Optional<MULTI> read(ByteBuffer bytes) {
+            public Optional<Multi> read(ByteBuffer bytes) {
                 final int from = bytes.position();
                 Optional<BigInt> to = (Optional<NetPacket.BigInt>) BigInt.read(bytes);
                 if (to.isPresent()) {
                     int count = to.get().toInt();
                     // Assert.isTrue(count >= 0, "`*` length < 0");
                     if (count == -1) {
-                        return Optional.of(NetPacket.MULTI.NULL);
+                        return Optional.of(Multi.NULL);
                     } else if (count == 0) {
-                        return Optional.of(NetPacket.MULTI.BLANK);
+                        return Optional.of(Multi.BLANK);
                     }
                     NetPacket[] pks = new NetPacket[count];
                     for (int i = 0; ; i++) {
@@ -116,7 +116,7 @@ public abstract class NetPacket<T> {
                         }
                         if (i + 1 == count) {
                             // success
-                            return Optional.of(new MULTI(pks));
+                            return Optional.of(new Multi(pks));
                         }
                     }
                 }

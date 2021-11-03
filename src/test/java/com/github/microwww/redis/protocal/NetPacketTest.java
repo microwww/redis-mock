@@ -46,13 +46,13 @@ public class NetPacketTest {
         {
             buffer.clear();
             buffer.put("*-1\r\n".getBytes(StandardCharsets.UTF_8)).flip();
-            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.MULTI.NULL);
+            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.Multi.NULL);
             Assert.assertEquals(5, buffer.position());
         }
         {
             buffer.clear();
             buffer.put("*0\r\n".getBytes(StandardCharsets.UTF_8)).flip();
-            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.MULTI.BLANK);
+            Assert.assertEquals(NetPacket.parse(buffer).get(), NetPacket.Multi.BLANK);
             Assert.assertEquals(4, buffer.position());
         }
     }
