@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 
 public class ChannelContext {
     private static final Logger log = LogFactory.getLogger(ChannelContext.class);
+    private static final int DEF_CAPACITY = 8 * 1024;
     private static final String PUB_SUB_N_KEY = ChannelContext.class.getName() + ".channels.names";
     private static final String PUB_SUB_P_KEY = ChannelContext.class.getName() + ".channels.pattens";
 
@@ -24,7 +25,7 @@ public class ChannelContext {
     private final CloseObservable listeners = new CloseObservable();
     private final SocketChannel channel;
     private final RequestSession sessions;
-    private final ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
+    private ByteBuffer buffer = newByteBuffer();
     private final Subscribe subscribe;
     private final Subscribe pattenSubscribe;
     private JedisOutputStream outputStream;
@@ -65,13 +66,30 @@ public class ChannelContext {
     }
 
     public ByteBuffer readChannel() throws IOException {
-        buffer.clear();
         int read = channel.read(buffer);
         if (read < 0) {
             throw new IOException("EOF");
         }
         buffer.flip();
         return buffer.asReadOnlyBuffer();
+    }
+
+    void readOver(ByteBuffer residue) throws IOException {
+        if (residue.remaining() > 0) {
+            if (residue.remaining() >= buffer.capacity()) {
+                buffer = ByteBuffer.allocate(buffer.capacity() * 2);
+            }
+            buffer.clear();
+            this.buffer.put(residue);
+        } else if (buffer.capacity() == DEF_CAPACITY) {
+            buffer.clear();
+        } else {
+            buffer = newByteBuffer();
+        }
+    }
+
+    private static ByteBuffer newByteBuffer() {// netty is POOL
+        return ByteBuffer.allocate(1 * 1024);
     }
 
     public JedisOutputStream getOutputStream() {

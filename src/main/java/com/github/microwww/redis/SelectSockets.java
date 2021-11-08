@@ -89,6 +89,7 @@ public class SelectSockets implements Closeable {
                         ChannelSessionHandler channelHandler = ctx.getChannelHandler();
                         try {
                             channelHandler.readableHandler(ctx, read);
+                            ctx.readOver(read);
                         } catch (Exception ex) {
                             logger.warn("Handler error, invoke Handler.exception", ex);
                             channelHandler.exception(ctx, ex);
