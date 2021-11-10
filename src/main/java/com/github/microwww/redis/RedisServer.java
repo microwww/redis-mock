@@ -36,6 +36,7 @@ public class RedisServer implements Closeable {
 
     public RedisServer(ExecutorService pool) {
         this.pool = pool;
+        this.schema = new Schema(Schema.DEFAULT_SCHEMA_SIZE);
     }
 
     public void configScheme(int size, AbstractOperation... operation) {
