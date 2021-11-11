@@ -26,7 +26,7 @@ public class Server {
     public static String[] random(int count) {
         String[] res = new String[count];
         for (int i = 0; i < count; i++) {
-            res[i] = UUID.randomUUID().toString();
+            res[i] = i + "--" + UUID.randomUUID().toString().replaceAll("-", "");
         }
         return res;
     }

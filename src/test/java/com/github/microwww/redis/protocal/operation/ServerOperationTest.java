@@ -93,7 +93,7 @@ public class ServerOperationTest extends AbstractRedisTest {
         assertTrue(Integer.parseInt(time.get(1)) <= 999_999);
     }
 
-    @Test
+    @Test(timeout = 1000)
     public void testClient() throws Exception {
         jedis = connection();
         String time = jedis.clientList();
@@ -106,9 +106,9 @@ public class ServerOperationTest extends AbstractRedisTest {
 
         jedis.clientKill(ip);
         try {
-            Thread.sleep(1000);
-            jedis.ping();
-            fail();
+            while (true) {
+                jedis.ping();
+            }
         } catch (JedisConnectionException ex) {
             assertNotNull(ex);
         }

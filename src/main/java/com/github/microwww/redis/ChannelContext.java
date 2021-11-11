@@ -40,7 +40,7 @@ public class ChannelContext {
         this.remoteHost = StringUtil.remoteHost(channel);
     }
 
-    public ChannelSessionHandler getChannelHandler() {
+    ChannelSessionHandler getChannelHandler() {
         return channelHandler;
     }
 

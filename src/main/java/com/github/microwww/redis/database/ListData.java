@@ -4,15 +4,12 @@ import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ListData extends AbstractValueData<List<Bytes>> implements DataLock {
     private static final Logger log = LogFactory.getLogger(ListData.class);
 
-    private final List<CountDownLatch> latches = new LinkedList<>(); // !! 该对象需要现成安全 !!!
+    private final ChangeObservable addEvent = new ChangeObservable();
     private final List<Bytes> origin;
 
     public ListData() {
@@ -20,7 +17,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     }
 
     public ListData(int exp) {
-        this(new CopyOnWriteArrayList<>(), exp);
+        this(new ArrayList<>(), exp);
     }
 
     public ListData(List<Bytes> origin, int exp) {
@@ -34,21 +31,15 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         return "list";
     }
 
-    //BLPOP
-    public synchronized Optional<Bytes> blockPop(CountDownLatch latch, Function<ListData, Optional<Bytes>> fun) {
-        if (origin.isEmpty()) {
-            if (!this.latches.contains(latch)) {
-                this.latches.add(latch);
-                log.debug("Lock {}", this);
-            }
-            return Optional.empty();
-        }
-        return fun.apply(this);
+    public void subscribe(Observer sub) {
+        addEvent.subscribe(sub);
     }
 
-    public synchronized void removeCountDownLatch(CountDownLatch latch) {
-        this.latches.remove(latch);
+    public void unsubscribe(Observer sub) {
+        addEvent.deleteObserver(sub);
     }
+
+    //BLPOP
     //BRPOP
     //BRPOPLPUSH
 
@@ -68,7 +59,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         if (index >= 0) {
             this.origin.add(index + offset, new Bytes(value));
             this.version.incrementAndGet();
-            this.latch();
+            addEvent.publish(this);
             return true;
         }
         return false;
@@ -110,7 +101,7 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
         if (bytes.length > 0) {
             this.version.incrementAndGet();
         }
-        this.latch();
+        addEvent.publish(this);
     }
 
     //LPUSHX
@@ -228,17 +219,18 @@ public class ListData extends AbstractValueData<List<Bytes>> implements DataLock
     public synchronized void rightAdd(byte[]... bytes) {
         this.origin.addAll(Arrays.stream(bytes).map(Bytes::new).collect(Collectors.toList()));
         this.version.incrementAndGet();
-        this.latch();
+        this.addEvent.publish(this);
     }
     //RPUSHX
 
-    private synchronized void latch() {
-        log.debug("Try Release {}, {}", this, latches.size());
-        if (!latches.isEmpty()) {
-            try {
-                latches.remove(0).countDown();
-            } catch (Exception e) { // ignore
-            }
+    public static class ChangeObservable extends Observable {
+        public void publish(ListData list) {
+            this.setChanged();
+            this.notifyObservers(list);
+        }
+
+        public void subscribe(Observer o) {
+            this.addObserver(o);
         }
     }
 }

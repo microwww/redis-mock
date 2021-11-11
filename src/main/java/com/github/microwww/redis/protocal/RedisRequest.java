@@ -28,12 +28,6 @@ public class RedisRequest {
         this.getOutputStream().flush();
     };
 
-    public static RedisRequest warp(RedisRequest request, RequestParams[] requests) {
-        RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), requests);
-        rq.setInputStream(request.getInputStream());
-        return rq;
-    }
-
     public static RedisRequest warp(RedisRequest request, String cmd, RequestParams[] params) {
         RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), cmd, params);
         rq.setInputStream(request.getInputStream());

@@ -1,7 +1,6 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.ChannelContext;
-import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.database.Schema;
 import com.github.microwww.redis.exception.Run;
@@ -81,14 +80,6 @@ public class ServerOperation extends AbstractOperation {
         RedisOutputProtocol.writerMulti(request.getOutputStream(), (seconds + "").getBytes(), (micro + "000").getBytes());
     }
 
-    public void kill(RedisRequest request) {
-        request.expectArgumentsCount(1);
-        String address = request.getParams()[0].getByteArray2string();
-        ChannelContext context = request.getContext();
-        Run.ignoreException(log, context::closeChannel);
-        request.setNext(e -> log.info("USER KILL: " + address));
-    }
-
     public enum Client {
         GETNAME {
             @Override
@@ -105,13 +96,11 @@ public class ServerOperation extends AbstractOperation {
             @Override
             public void operation(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(2);
-                String addr = request.getParams()[1].getByteArray2string();
-                RequestParams[] err = {new RequestParams(addr.getBytes())};
-                RedisRequest rqu = RedisRequest.warp(request, "KILL", err);
                 RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
                 request.setNext(e -> {
                     request.getOutputStream().flush();
-                    request.getServer().getSchema().submit(rqu);// new thread
+                    ChannelContext context = request.getContext();
+                    Run.ignoreException(log, context::closeChannel);
                 });
             }
         },

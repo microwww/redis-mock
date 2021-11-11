@@ -6,7 +6,6 @@ import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.ListData;
 import com.github.microwww.redis.database.RedisDatabase;
-import com.github.microwww.redis.exception.RequestInterruptedException;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
@@ -16,17 +15,14 @@ import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.NotNull;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 import java.util.function.Function;
 
 public class ListOperation extends AbstractOperation {
     private static final long MAX_WAIT_SECONDS = 60 * 60 * 24 * 365;// max one year !
     private static final Logger log = LogFactory.getLogger(ListOperation.class);
 
-    //BLPOP
+    //BLPOP LIST1 LIST2 .. LISTN TIMEOUT
     public void blpop(RedisRequest request) throws IOException {
         blockPOP(request, ListData::leftPop);
     }
@@ -36,91 +32,151 @@ public class ListOperation extends AbstractOperation {
         blockPOP(request, ListData::rightPop);
     }
 
-    private void blockPOP(RedisRequest request, Function<ListData, Optional<Bytes>> fetch) throws IOException {
-        request.expectArgumentsCountGE(2);
-        this.block(request, request.getParams(), fetch, (o) -> {
-            Bytes[] bytes = o.orElse(new Bytes[]{});
-            byte[][] res = Arrays.stream(bytes).map(Bytes::getBytes).toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
-            request.getOutputStream().flush();
-        });
+    public void pop_close(AddListener listener) throws IOException {
+        // 2+ is [], 6 is null
+        RedisRequest request = listener.request;
+        RedisOutputProtocol.writerMulti(request.getOutputStream());
+        request.getOutputStream().flush();
     }
 
-    private void block(
-            RedisRequest request,
-            RequestParams[] args,
-            Function<ListData, Optional<Bytes>> fetch, //
-            ConsumerIO<Optional<Bytes[]>> done
-    ) throws IOException {
-        //ExpectRedisRequest[] args = request.getArgs();
-        RedisDatabase db = request.getDatabase();
+    private void blockPOP(RedisRequest request, Function<ListData, Optional<Bytes>> pop) throws IOException {
+        RequestParams[] args = request.getParams();
         long timeoutSeconds = args[args.length - 1].byteArray2long();
-        if (timeoutSeconds <= 0) {
-            timeoutSeconds = MAX_WAIT_SECONDS;
-        }
-        long stopTime = System.currentTimeMillis() + timeoutSeconds * 1000;
-        long lost = stopTime - System.currentTimeMillis();
-        if (lost > 0) {
-            CountDownLatch latch = new CountDownLatch(1);
-            Bytes[] res = Arrays.stream(args, 0, args.length - 1)
-                    .map(RequestParams::byteArray2hashKey) // key
-                    .map(e -> db.getOrCreate(e, ListData::new)) // create ListDate
-                    .map(e -> e.blockPop(latch, fetch)) // add lock
-                    .filter(Optional::isPresent).map(Optional::get)
-                    .toArray(Bytes[]::new);
-            request.setNext((o) -> {
-                RedisRequest r = request;
-                if (res.length <= 0) { // lock !
-                    try {
-                        latch.await(lost, TimeUnit.MILLISECONDS);
-                        log.debug("Release {}", this);
-                        RequestParams[] na = r.getParams();
-                        long next = (stopTime - System.currentTimeMillis()) / 1000;
-                        if (next <= 0) { // timeout
-                            done.accept(Optional.empty());
-                            return;
-                        }
-                        na[args.length - 1] = new RequestParams(("" + next).getBytes());
-                        RedisRequest rq = RedisRequest.warp(r, r.getCommand(), na);
-                        log.debug("And new command : " + r.getCommand());
-                        // rq.setNext(r.getNext());
-                        request.getServer().getSchema().exec(rq);
-                    } catch (InterruptedException e) {
-                        boolean st = Thread.interrupted();
-                        throw new RequestInterruptedException("List Operation Interrupted: " + st, e);
-                    } finally {
-                        for (int i = 1; i < args.length - 1; i++) {
-                            HashKey key = args[i].byteArray2hashKey();
-                            db.getOrCreate(key, ListData::new).removeCountDownLatch(latch);
-                        }
-                    }
-                } else {
-                    done.accept(Optional.of(res));
+        blockPOP(request, timeoutSeconds, pop);
+    }
+
+    private AddListener blockPOP(RedisRequest request, long timeoutSeconds, Function<ListData, Optional<Bytes>> pop) throws IOException {
+        request.expectArgumentsCountGE(2);
+        RequestParams[] args = request.getParams();
+        AddListener listener = new AddListener(request, timeoutSeconds) {
+            @Override
+            public void changeRunning(long time) {
+                try {
+                    ListOperation.this.blockPOP(request, timeoutSeconds, pop);
+                    request.getOutputStream().flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
-            });
-        } else {
-            done.accept(Optional.empty());
+            }
+        };
+        for (int i = 0; i < args.length - 1; i++) {
+            RequestParams param = request.getParams()[i];
+            ListData list = this.getOrCreateList(request, i);
+            listener.subscribe(list);
+            Optional<Bytes> bytes = pop.apply(list);// list.blockLPOP(listener);
+            if (bytes.isPresent()) {
+                listener.clear();
+                RedisOutputProtocol.writerMulti(request.getOutputStream(), param.getByteArray(), bytes.get().getBytes());
+                return listener;
+            }
         }
-        // return res.stream().map(Bytes::getBytes).toArray(byte[][]::new);
+        if (timeoutSeconds > 0) {
+            listener.timerSchedule(this::pop_close);
+        }
+        return listener;
+    }
+
+    public abstract class AddListener implements Observer {
+        private final Timer timer = new Timer();
+        RedisRequest request;
+        List<ListData> listeners = new ArrayList<>();
+        private boolean over = false;
+        private final Date timeoutAT;
+
+        public AddListener(RedisRequest request, long timeoutSeconds) {
+            this.timeoutAT = new Date(System.currentTimeMillis() + timeoutSeconds * 1000);
+            this.request = RedisRequest.warp(request, request.getCommand(), request.getParams());
+        }
+
+        @Override
+        public void update(Observable o, Object arg) {
+            if (!over) {
+                long time = timeoutAT.getTime() - System.currentTimeMillis();
+                if (time > 0) {
+                    over = true;
+                    request.getServer().getSchema().nowSubmit(() -> this.changeRunning(time));
+                    this.clear();
+                }
+            }
+        }
+
+        public abstract void changeRunning(long remainTime);
+
+        public void clear() {
+            listeners.forEach(e -> e.unsubscribe(this));
+            over = true;
+        }
+
+        public AddListener subscribe(ListData listener) {
+            listeners.add(listener);
+            listener.subscribe(this);
+            return this;
+        }
+
+        /**
+         * 防止多行程操作 使用  `Schema.submit`
+         */
+        public void timerSchedule(ConsumerIO<AddListener> consumer) {
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    if (!over) try {
+                        over = true;
+                        consumer.accept(AddListener.this);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Write time out `NULL` error!", e);
+                    } finally {
+                        AddListener.this.clear();
+                    }
+                }
+            }, timeoutAT);
+        }
     }
 
     //BRPOPLPUSH
     public void brpoplpush(RedisRequest request) throws IOException {
         request.expectArgumentsCount(3);
-        //long start = System.currentTimeMillis();
-        this.block(request, new RequestParams[]{request.getParams()[0], request.getParams()[2]}, ListData::rightPop, (o) -> {
-            HashKey hk = request.getParams()[1].byteArray2hashKey();
-            byte[] data = null;
-            if (o.isPresent()) {
-                data = o.get()[0].getBytes();
-                ListData oc = request.getDatabase().getOrCreate(hk, ListData::new);
-                oc.leftAdd(data);
+        long timeoutSeconds = request.getParams()[2].byteArray2long();
+        brpoplpush(request, timeoutSeconds);
+    }
+
+    private void brpoplpush(RedisRequest request, long timeoutSeconds) throws IOException {
+        AddListener listener = new AddListener(request, timeoutSeconds) {
+            @Override
+            public void changeRunning(long remainTime) {
+                try {
+                    brpoplpush(request, remainTime);
+                    request.getOutputStream().flush();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-            //double using = (System.currentTimeMillis() - start) / 1000.0;
-            //String val = BigDecimal.valueOf(using).setScale(3, BigDecimal.ROUND_HALF_DOWN).toPlainString();
-            RedisOutputProtocol.writer(request.getOutputStream(), data);
-            request.getOutputStream().flush();
-        });
+        };
+        {
+            ListData list = this.getOrCreateList(request, 0);
+            listener.subscribe(list);
+            Optional<Bytes> bytes = list.rightPop();
+            if (bytes.isPresent()) {
+                listener.clear();
+                ListData target = this.getOrCreateList(request, 1);
+                byte[] val = bytes.get().getBytes();
+                target.leftAdd(val);
+                RedisOutputProtocol.writer(request.getOutputStream(), val);
+                return;
+            }
+        }
+        if (timeoutSeconds > 0) {
+            listener.timerSchedule(this::brpoplpush_close);
+        }
+    }
+
+    public void brpoplpush_close(AddListener listener) {
+        RedisRequest request = listener.request;
+        try {
+            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     //LINDEX key index

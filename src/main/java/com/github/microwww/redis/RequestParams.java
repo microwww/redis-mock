@@ -7,10 +7,15 @@ import com.github.microwww.redis.util.SafeEncoder;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class RequestParams {
-    private final Object origin;
+    private final NetPacket origin;
+
+    public RequestParams(byte[] origin) {
+        this.origin = new NetPacket.Bulk(origin);
+    }
 
     public RequestParams(NetPacket origin) {
         Object data = origin.getData();
@@ -19,7 +24,7 @@ public class RequestParams {
         } else if (data instanceof NetPacket[]) {
             throw new IllegalArgumentException("To ExpectRedisRequest[]");
         }
-        this.origin = data;
+        this.origin = origin;
     }
 
     public static RequestParams[] convert(NetPacket packet) {
@@ -27,20 +32,17 @@ public class RequestParams {
         if (data == null) {
             throw new IllegalArgumentException("Request is NULL");
         }
-        if (data instanceof NetPacket.Multi) {
-            NetPacket[] nps = ((NetPacket.Multi) data).getData();
+        if (data instanceof NetPacket[]) {
+            NetPacket[] nps = (NetPacket[]) data;
             return Arrays.stream(nps).map(RequestParams::new).toArray(RequestParams[]::new);
         }
         return new RequestParams[]{new RequestParams(packet)};
     }
 
-    public RequestParams(Object origin) {
-        this.origin = origin;
-    }
-
     public byte[] getByteArray() {
+        Object origin = this.origin.getData();
         if (origin instanceof byte[]) {
-            byte[] ts = (byte[]) this.origin;
+            byte[] ts = (byte[]) origin;
             return Arrays.copyOf(ts, ts.length);
         }
         throw new IllegalArgumentException("Not your expect type : " + origin);
@@ -67,12 +69,12 @@ public class RequestParams {
     }
 
     public Bytes toBytes() {
-        return new Bytes((byte[]) this.origin);
+        return new Bytes((byte[]) this.origin.getData());
     }
 
     public Long getLong() {
-        if (origin instanceof Long) {
-            return (Long) origin;
+        if (origin instanceof NetPacket.BigInt) {
+            return (Long) origin.getData();
         }
         throw new IllegalArgumentException("Not your expect type : " + origin);
     }
@@ -98,7 +100,7 @@ public class RequestParams {
         RequestParams[] res = {null};
         if (o == null) {
             return res;
-        } else if (o instanceof List) {
+        } else if (o instanceof Collection) {
             List<?> list = (List<?>) o;
             res = new RequestParams[list.size()];
             for (int i = 0; i < list.size(); i++) {
@@ -110,9 +112,9 @@ public class RequestParams {
             }
             return res;
         } else if (o instanceof byte[]) {
-            res[0] = new RequestParams(o);
+            res[0] = new RequestParams((byte[]) o);
         } else if (o instanceof Long) {
-            res[0] = new RequestParams(o);
+            res[0] = new RequestParams(new NetPacket.BigInt((Long) o));
         } else {
             throw new IllegalArgumentException("Not support Expect type : " + o);
         }
@@ -121,6 +123,7 @@ public class RequestParams {
 
     @Override
     public String toString() {
+        Object origin = this.origin.getData();
         if (origin instanceof byte[]) {
             return SafeEncoder.encode((byte[]) origin);
         }

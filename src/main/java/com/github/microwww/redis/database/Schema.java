@@ -81,6 +81,10 @@ public class Schema implements Closeable {
         return operations;
     }
 
+    public void nowSubmit(Runnable run) {
+        pool.execute(run);
+    }
+
     public void submit(RedisRequest request) throws IOException {
         this.exec(request);
     }
@@ -89,7 +93,13 @@ public class Schema implements Closeable {
         log.debug("Wait thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
         Future<String> submit = pool.submit(() -> {
             log.debug("Get thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
-            this.run(request);
+            Optional<Transaction> tx = Transaction.ifTransaction(request.getContext());
+            if (tx.isPresent() && tx.get().isEnable()) {
+                log.debug("Transaction run {}", request.getCommand());
+                tx.get().exec(request);
+            } else {
+                this.run(request);
+            }
             return request.getCommand();
         });
         try {
@@ -98,7 +108,7 @@ public class Schema implements Closeable {
         } catch (ExecutionException | InterruptedException e) {
             Throwable cause = e.getCause();
             if (cause != null) {
-                log.error("Run commend error : {}", cause.getMessage());
+                log.error("Run command {} error", request.getCommand(), cause);
                 if (cause instanceof IOException) {
                     throw (IOException) cause;
                 }

@@ -4,17 +4,17 @@ import com.github.microwww.redis.database.Schema;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
+import com.github.microwww.redis.protocal.NetPacket;
 import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -61,8 +61,8 @@ public class RedisServer implements Closeable {
         pool.execute(sockets::sync);
     }
 
-    private InputStreamHandler handler(ChannelContext context) {
-        return new InputStreamHandler(context); // this
+    private RedisHandler handler(ChannelContext context) {
+        return new RedisHandler(); // this
     }
 
     public Schema getSchema() {
@@ -80,19 +80,7 @@ public class RedisServer implements Closeable {
         return sockets;
     }
 
-    public class InputStreamHandler extends ChannelSessionHandler.Adaptor {
-
-        private final ChannelInputStream channelInputStream;
-
-        public InputStreamHandler(ChannelContext context) {
-            this.channelInputStream = new ChannelInputStream(context) {
-                @Override
-                public void readableHandler(InputStream inputStream) throws IOException {
-                    log.debug("Start a request: {}", context.getRemoteHost());
-                    InputStreamHandler.this.readableHandler(context, inputStream);
-                }
-            };
-        }
+    public class RedisHandler extends ChannelSessionHandler.Adaptor {
 
         @Override
         public void readableHandler(ChannelContext context, ByteBuffer buffer) throws IOException {
@@ -100,27 +88,22 @@ public class RedisServer implements Closeable {
                 log.debug("Get a request: {}", context.getRemoteHost());
                 StringUtil.loggerBuffer(log, buffer.asReadOnlyBuffer());
             }
-            channelInputStream.write(buffer);
-        }
-
-        private void readableHandler(ChannelContext context, InputStream inputStream) throws IOException {
-            JedisInputStream in = new JedisInputStream(inputStream);
-            while (in.available() > 0) {
-                Object read = in.readRedisData();
-                RequestParams[] req = RequestParams.parseRedisData(read);
-                RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
-                redisRequest.setInputStream(in);
-                log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
-                RedisServer.this.getSchema().exec(redisRequest);
-                log.debug("Over  [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
+            while (true) {
+                Optional<? extends NetPacket> parse = NetPacket.parse(buffer);
+                if (parse.isPresent()) {
+                    this.readableHandler(context, parse.get());
+                } else break;
             }
         }
 
-        @Override
-        public void close(ChannelContext context) throws IOException {
-            channelInputStream.close();
+        private void readableHandler(ChannelContext context, NetPacket netPacket) throws IOException {
+            RequestParams[] req = RequestParams.convert(netPacket);
+            RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
+            log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
+            //Object o = context.getSessions().get(Transaction.class.getName());
+            RedisServer.this.getSchema().exec(redisRequest);
+            log.debug("Over  [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
         }
-
     }
 
     @Override
