@@ -1,7 +1,6 @@
 package com.github.microwww.redis.protocal;
 
 import com.github.microwww.redis.ChannelContext;
-import com.github.microwww.redis.ConsumerIO;
 import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.PubSub;
@@ -11,6 +10,7 @@ import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
+import com.github.microwww.redis.util.IoRunnable;
 import com.github.microwww.redis.util.NotNull;
 
 import java.util.Arrays;
@@ -23,8 +23,8 @@ public class RedisRequest {
     private final RequestParams[] params;
     private final RedisServer server;
     private JedisInputStream inputStream;
-    private ConsumerIO<Object> next = (r) -> {
-        log.debug("Flush outputStream");
+    private IoRunnable next = () -> {
+        log.debug("Flush {} outputStream {}", this.getCommand(), this.getContext().getRemoteHost());
         this.getOutputStream().flush();
     };
 
@@ -120,7 +120,7 @@ public class RedisRequest {
         return server;
     }
 
-    public ConsumerIO<Object> getNext() {
+    public IoRunnable getNext() {
         return next;
     }
 
@@ -129,7 +129,7 @@ public class RedisRequest {
      *
      * @param next In request thread running
      */
-    public void setNext(ConsumerIO<Object> next) {
+    public void setNext(IoRunnable next) {
         this.next = next;
     }
 

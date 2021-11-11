@@ -101,7 +101,7 @@ public class RedisServer implements Closeable {
             RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
             log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
             //Object o = context.getSessions().get(Transaction.class.getName());
-            RedisServer.this.getSchema().exec(redisRequest);
+            RedisServer.this.getSchema().execute(redisRequest);
             log.debug("Over  [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
         }
     }

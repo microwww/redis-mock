@@ -81,15 +81,11 @@ public class Schema implements Closeable {
         return operations;
     }
 
-    public void nowSubmit(Runnable run) {
+    public void submit(Runnable run) {
         pool.execute(run);
     }
 
-    public void submit(RedisRequest request) throws IOException {
-        this.exec(request);
-    }
-
-    public void exec(RedisRequest request) throws IOException {
+    public void execute(RedisRequest request) throws IOException {
         log.debug("Wait thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
         Future<String> submit = pool.submit(() -> {
             log.debug("Get thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
@@ -104,7 +100,7 @@ public class Schema implements Closeable {
         });
         try {
             submit.get();
-            request.getNext().accept(null);
+            request.getNext().run();
         } catch (ExecutionException | InterruptedException e) {
             Throwable cause = e.getCause();
             if (cause != null) {
@@ -121,7 +117,7 @@ public class Schema implements Closeable {
     public void run(RedisRequest request) throws IOException {
         String cmd = request.getCommand();
         try {
-            this.exec(cmd, request);
+            this.execute(cmd, request);
         } catch (RedisArgumentsException error) {
             RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {
@@ -132,7 +128,7 @@ public class Schema implements Closeable {
         }
     }
 
-    public void exec(String cmd, RedisRequest request) throws IOException {
+    void execute(String cmd, RedisRequest request) throws IOException {
         Invoker invoker = invokers.get(cmd);
         if (invoker == null) {
             tryInvoke(cmd);

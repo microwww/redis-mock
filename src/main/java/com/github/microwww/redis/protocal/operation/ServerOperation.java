@@ -97,7 +97,7 @@ public class ServerOperation extends AbstractOperation {
             public void operation(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(2);
                 RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
-                request.setNext(e -> {
+                request.setNext(() -> {
                     request.getOutputStream().flush();
                     ChannelContext context = request.getContext();
                     Run.ignoreException(log, context::closeChannel);

@@ -1,6 +1,5 @@
 package com.github.microwww.redis.protocal.operation;
 
-import com.github.microwww.redis.ConsumerIO;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
@@ -12,6 +11,7 @@ import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.Protocol;
+import com.github.microwww.redis.util.IoConsumer;
 import com.github.microwww.redis.util.NotNull;
 
 import java.io.IOException;
@@ -94,7 +94,7 @@ public class ListOperation extends AbstractOperation {
                 long time = timeoutAT.getTime() - System.currentTimeMillis();
                 if (time > 0) {
                     over = true;
-                    request.getServer().getSchema().nowSubmit(() -> this.changeRunning(time));
+                    request.getServer().getSchema().submit(() -> this.changeRunning(time));
                     this.clear();
                 }
             }
@@ -116,7 +116,7 @@ public class ListOperation extends AbstractOperation {
         /**
          * 防止多行程操作 使用  `Schema.submit`
          */
-        public void timerSchedule(ConsumerIO<AddListener> consumer) {
+        public void timerSchedule(IoConsumer<AddListener> consumer) {
             timer.schedule(new TimerTask() {
                 @Override
                 public void run() {
