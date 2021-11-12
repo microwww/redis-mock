@@ -1,11 +1,13 @@
 package com.github.microwww;
 
+import com.github.microwww.redis.RedisServer;
 import org.junit.Assert;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
 import redis.clients.jedis.exceptions.JedisDataException;
 
+import java.io.IOException;
 import java.util.List;
 
 public class DatabaseTest extends AbstractRedisTest {
@@ -49,5 +51,12 @@ public class DatabaseTest extends AbstractRedisTest {
         jd.auth("123456");
         String result = jd.ping();
         String ss = jd.get("---");
+    }
+
+    @Test
+    public void testConnectDisconnect() throws IOException {
+        RedisServer server = new RedisServer();
+        server.listener("127.0.0.1", 46379);
+        server.close();
     }
 }
