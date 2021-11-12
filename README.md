@@ -5,6 +5,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 2. ~~jedis-3.0+ api is changed, so you must update it to 0.1.0-3.0 if you are using the latest api~~
 3. version 0.2.0 remove jedis dependence, There is no need for any external dependencies.
 4. version 0.2.2 support `PubSubOperation` 
+5. version 0.2.3 ChannelInputStream to `ByteBuffer`, it is non blocking.
 
 ## maven dependency
 
@@ -12,7 +13,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.2.1</version>
+    <version>0.2.3</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -44,7 +45,7 @@ A better option is to add dependencies:
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.0.1</version>
+    <version>5.0.3</version>
 </dependency>
 ```
 
