@@ -1,0 +1,33 @@
+##
+branches:
+  only:
+    - master
+image: ubuntu
+
+version: 0.2.4-{build}-SNAPSHOT
+os: Visual Studio 2014 CTP4
+
+environment:
+  matrix:
+    # 64 bit
+    - PLATFORM: x64
+      CONFIGURATION: Release
+      JAVA_HOME: C:\Program Files\Java\jdk1.8.0
+      RDP: "no"
+
+install:
+  - set PATH=%PATH%
+
+build_script:
+
+  # Build Java
+  - cd maven
+  - mvn -v
+  - mvn clean install -Dmaven.test.failure.ignore=true -Dplatform.dependency=false
+
+on_failure:
+
+  # Display error log file if generated
+  - if exist *.log type *.log
+
+test_script: [ ]
