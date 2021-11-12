@@ -56,7 +56,7 @@ public class DatabaseTest extends AbstractRedisTest {
     @Test
     public void testConnectDisconnect() throws IOException {
         RedisServer server = new RedisServer();
-        server.listener("127.0.0.1", 46379);
+        server.listener("127.0.0.1", 0);
         server.close();
     }
 }

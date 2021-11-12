@@ -36,13 +36,11 @@ public class RedisServer implements Closeable {
 
     public RedisServer(ExecutorService pool) {
         this.pool = pool;
-        this.schema = new Schema(Schema.DEFAULT_SCHEMA_SIZE);
     }
 
     public void configScheme(int size, AbstractOperation... operation) {
-        if (this.schema == null) {
-            this.schema = new Schema(size, operation);
-        }
+        Assert.isTrue(this.schema == null, "Server is running, you can not modify it, please invoke it before `getSchema`");
+        this.schema = new Schema(size, operation);
     }
 
     public void listener(String host, int port) throws IOException {
@@ -113,7 +111,7 @@ public class RedisServer implements Closeable {
             this.sockets.close();
         } finally {
             try {
-                schema.close();
+                if (schema != null) schema.close();
             } finally {
                 pool.shutdown();
             }
