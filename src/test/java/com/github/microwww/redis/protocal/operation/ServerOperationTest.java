@@ -2,6 +2,7 @@ package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
 import org.junit.Test;
+import redis.clients.jedis.Jedis;
 import redis.clients.jedis.args.FlushMode;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
@@ -93,14 +94,14 @@ public class ServerOperationTest extends AbstractRedisTest {
         assertTrue(Integer.parseInt(time.get(1)) <= 999_999);
     }
 
-    @Test(timeout = 1000)
+    @Test
     public void testClient() throws Exception {
-        jedis = connection();
-        String time = jedis.clientList();
+        // jedis = connection();
+        String clients = jedis.clientList();
         Socket socket = jedis.getClient().getSocket();
         InetSocketAddress add = (InetSocketAddress) socket.getLocalSocketAddress();
         String ip = add.getHostName() + ":" + add.getPort();
-        assertTrue(time.contains(ip));
+        assertTrue(clients.contains(ip));
         jedis.clientSetname("test");
         assertEquals("test", jedis.clientGetname());
 
@@ -112,5 +113,8 @@ public class ServerOperationTest extends AbstractRedisTest {
         } catch (JedisConnectionException ex) {
             assertNotNull(ex);
         }
+        Jedis j2 = connection();
+        clients = j2.clientList();
+        assertFalse(clients.contains(ip));
     }
 }

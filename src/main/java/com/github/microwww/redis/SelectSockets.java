@@ -84,7 +84,7 @@ public class SelectSockets implements Closeable {
                     }
                     if (key.isReadable()) {
                         ChannelContext ctx = (ChannelContext) key.attachment();
-                        Assert.isTrue(key.channel() == ctx.getChannel(), "-");
+                        ctx.assertChannel(key.channel());
                         ByteBuffer read = ctx.readChannel();
                         ChannelSessionHandler channelHandler = ctx.getChannelHandler();
                         try {
@@ -96,16 +96,18 @@ public class SelectSockets implements Closeable {
                         }
                     }
                 }
-            } catch (IOException ex) { // 远程强制关闭了一个连接
-                logger.debug("close client");
-                try {
-                    ChannelContext attachment = (ChannelContext) key.attachment();
+            } catch (Exception ex) {
+                ChannelContext context = (ChannelContext) key.attachment();
+                if (context != null) {
+                    logger.info("IOException: {}, and Go to close client: {}", ex.getMessage(), context.getRemoteHost());
                     try {
-                        attachment.getChannelHandler().close(attachment);
+                        context.getChannelHandler().close(context);
                     } finally {
-                        attachment.close();
+                        context.closeChannel();
+                        Assert.isTrue(!key.channel().isOpen(), "Must close channel");
+                        logger.info("Remote channel {} , is closed", context.getRemoteHost());
                     }
-                } finally {
+                } else {
                     closeChannel(key);
                 }
             } finally {
@@ -129,7 +131,7 @@ public class SelectSockets implements Closeable {
         if (channel instanceof SocketChannel) {
             this.closeChannel((SocketChannel) channel);
         }
-        key.cancel();
+        key.cancel();// not need !
     }
 
     public void closeChannel(SocketChannel channel) throws IOException {

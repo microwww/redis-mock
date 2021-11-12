@@ -7,7 +7,6 @@ import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.jedis.JedisInputStream;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.IoRunnable;
@@ -22,16 +21,13 @@ public class RedisRequest {
     private final String command;
     private final RequestParams[] params;
     private final RedisServer server;
-    private JedisInputStream inputStream;
     private IoRunnable next = () -> {
         log.debug("Flush {} outputStream {}", this.getCommand(), this.getContext().getRemoteHost());
         this.getOutputStream().flush();
     };
 
     public static RedisRequest warp(RedisRequest request, String cmd, RequestParams[] params) {
-        RedisRequest rq = new RedisRequest(request.getServer(), request.getContext(), cmd, params);
-        rq.setInputStream(request.getInputStream());
-        return rq;
+        return new RedisRequest(request.getServer(), request.getContext(), cmd, params);
     }
 
     public RedisRequest(RedisServer server, ChannelContext context, String command, RequestParams[] params) {
@@ -61,15 +57,6 @@ public class RedisRequest {
 
     public JedisOutputStream getOutputStream() {
         return this.context.getOutputStream();
-    }
-
-    public JedisInputStream getInputStream() {
-        return inputStream;
-    }
-
-    public void setInputStream(JedisInputStream inputStream) {
-        Assert.isTrue(this.inputStream == null, "Not allowed to reset input !");
-        this.inputStream = inputStream;
     }
 
     public RedisDatabase getDatabase() {

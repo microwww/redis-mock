@@ -110,8 +110,12 @@ public class ServerOperation extends AbstractOperation {
                 Set<ChannelContext> clients = request.getServer().getSockets().getClients();
                 StringBuilder ss = new StringBuilder();
                 for (ChannelContext client : clients) {
-                    InetSocketAddress addr = client.getRemoteAddress();
-                    ss.append("addr=").append(addr.getHostName()).append(":").append(addr.getPort()).append("\n");
+                    try {
+                        InetSocketAddress addr = client.getRemoteAddress();
+                        ss.append("addr=").append(addr.getHostName()).append(":").append(addr.getPort()).append("\n");
+                    } catch (Exception ex) {// ignore
+                        log.debug("List client error", ex);
+                    }
                 }
                 RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
             }

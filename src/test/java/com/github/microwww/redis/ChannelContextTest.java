@@ -6,6 +6,7 @@ import com.github.microwww.redis.protocal.RedisRequest;
 import org.junit.Test;
 import org.mockito.Mockito;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,15 +14,13 @@ import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.*;
 
 public class ChannelContextTest {
 
-    @Test
+    @Test(timeout = 1000)
     public void testChannelContextCloseListener() throws IOException, InterruptedException {
-        AtomicInteger c = new AtomicInteger(0);
         CountDownLatch d1 = new CountDownLatch(1);
         CountDownLatch d2 = new CountDownLatch(1);
         RedisServer server = new RedisServer();
@@ -32,14 +31,18 @@ public class ChannelContextTest {
                 byte[] echo = request.getParams()[0].getByteArray();
                 RedisOutputProtocol.writer(request.getOutputStream(), echo);
                 ChannelContext ctx = request.getContext();
-                ctx.addCloseListener(e -> {
-                    c.incrementAndGet();
-                    d1.countDown();
-                });
-                if ("server-close".equals(new String(echo))) {
-                    ctx.closeChannel();
-                    c.incrementAndGet();
-                    d2.countDown();
+                if ("client-close".equals(new String(echo))) {
+                    ctx.addCloseListener0(() -> {
+                        d1.countDown();
+                    });
+                } else if ("server-close".equals(new String(echo))) {
+                    try {
+                        request.setNext(() -> {
+                        });
+                        ctx.closeChannel();
+                    } finally {
+                        d2.countDown();
+                    }
                 }
             }
         });
@@ -48,16 +51,21 @@ public class ChannelContextTest {
         InetSocketAddress address = (InetSocketAddress) addr;
         {
             Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
-            jedis.echo("i will close");
+            jedis.echo("client-close");
             jedis.close();
-            d1.await();
-            assertEquals(1, c.get());
+            d1.await(); // close 方法会被调用
         }
         {
             Jedis jedis = new Jedis(address.getHostName(), address.getPort(), 60_000);
-            jedis.echo("server-close");
-            d2.await();
-            assertEquals(2, c.get());
+            String sc = "server-close";
+            String echo = jedis.echo(sc);
+            d2.await(); // 可正常返回
+            assertEquals(sc, echo);
+            try {
+                jedis.echo(sc);
+                fail();
+            } catch (JedisConnectionException e) {
+            }
         }
     }
 

@@ -6,11 +6,13 @@ import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.RequestSession;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
+import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,6 +25,12 @@ public class ChannelContext {
 
     private final String remoteHost;
     private final CloseObservable listeners = new CloseObservable();
+
+    /**
+     * channel.close 可能无法获取关闭事件, 从而导致 ChannelContext 无法正确的回收 切忌!切忌!切忌!
+     * <br />
+     * invoke Channel.close will make some out of memory, so not any one can get it.
+     */
     private final SocketChannel channel;
     private final RequestSession sessions;
     private ByteBuffer buffer = newByteBuffer();
@@ -34,7 +42,12 @@ public class ChannelContext {
     public ChannelContext(SocketChannel channel) {
         this.channel = channel;
         this.sessions = new RequestSession(channel);
-        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel));
+        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel) {
+            @Override
+            public void close() {
+                throw new UnsupportedOperationException("Not invoke it!, By `closeChannel`");
+            }
+        });
         subscribe = new Subscribe(PUB_SUB_N_KEY);
         pattenSubscribe = new Subscribe(PUB_SUB_P_KEY);
         this.remoteHost = StringUtil.remoteHost(channel);
@@ -48,17 +61,19 @@ public class ChannelContext {
         this.channelHandler = channelHandler;
     }
 
-    /**
-     * invoke Channel.close will make Exception, so not any one can get it
-     *
-     * @return SocketChannel
-     */
-    protected SocketChannel getChannel() {
-        return channel;
+    public ChannelContext assertChannel(SelectableChannel channel) {
+        Assert.isTrue(this.channel == channel, "Channel not equal");
+        return this;
     }
 
     public void closeChannel() throws IOException {
-        this.outputStream.close();
+        try {
+            this.outputStream.flush();
+        } catch (IOException ex) {// ignore
+        } finally {
+            this.close();
+            this.channel.close();
+        }
     }
 
     public RequestSession getSessions() {
@@ -105,6 +120,12 @@ public class ChannelContext {
     }
 
     public CloseListener addCloseListener(Consumer<ChannelContext> notify) {
+        return addCloseListener0(() -> {
+            notify.accept(this);
+        });
+    }
+
+    public CloseListener addCloseListener0(Runnable notify) {
         CloseListener os = new CloseListener(notify);
         listeners.addObserver(os);
         log.debug("Add close listener, now {}", listeners.countObservers());
@@ -124,13 +145,12 @@ public class ChannelContext {
         return (InetSocketAddress) channel.getRemoteAddress();
     }
 
-    /**
-     *
-     */
     protected void close() {
+        log.warn("CLOSE {}", this.getRemoteHost());
         Run.ignoreException(log, listeners::doClose);
         Run.ignoreException(log, () -> this.channelHandler.close(this));
         Run.ignoreException(log, () -> {
+            subscribe.removeSubscribe();
             Map<Bytes, Observer> subscribes = subscribe.subscribes();
             if (subscribes != null) subscribes.clear(); // 多次 close 可能 NullPointerException
         });
@@ -146,15 +166,15 @@ public class ChannelContext {
     }
 
     public class CloseListener implements Observer {
-        private final Consumer<ChannelContext> notify;
+        private final Runnable notify;
 
-        public CloseListener(Consumer<ChannelContext> notify) {
+        public CloseListener(Runnable notify) {
             this.notify = notify;
         }
 
         @Override
         public void update(Observable o, Object arg) {
-            Run.ignoreException(log, () -> notify.accept(ChannelContext.this));
+            Run.ignoreException(log, () -> notify.run());
         }
     }
 
