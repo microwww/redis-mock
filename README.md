@@ -1,4 +1,4 @@
-# Redis-server
+# Redis-server [![Build status](https://ci.appveyor.com/api/projects/status/fu71vlj9n9bixadg/branch/dev?svg=true)](https://ci.appveyor.com/project/lichangshu/redis-mock)
 Pure Java implementation redis-server. Embedded redis service when unit testing. You no longer need to Mock redis apis.
 
 1. ~~Support redis api 2.8~~
