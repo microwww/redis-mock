@@ -33,16 +33,16 @@ public class Transaction implements Closeable {
         String cmd = request.getCommand();
         if ("multi".equalsIgnoreCase(cmd)) {
             requests.add(request);
-            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+            request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
         } else if ("exec".equalsIgnoreCase(cmd)) {
             schema.run(request);// same Thread run
         } else if ("discard".equalsIgnoreCase(cmd)) {
             schema.run(request);// same Thread run
         } else if ("watch".equalsIgnoreCase(cmd)) {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "WATCH inside MULTI is not allowed");
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "WATCH inside MULTI is not allowed");
         } else {
             requests.add(request);
-            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.QUEUED.raw);
+            request.getOutputProtocol().writer(Protocol.Keyword.QUEUED.raw);
         }
     }
 

@@ -119,11 +119,11 @@ public class Schema implements Closeable {
         try {
             this.execute(cmd, request);
         } catch (RedisArgumentsException error) {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, error.getMessage());
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {
             String message = StringUtil.redisErrorMessage(e);
             log.error("Server error ! {}", message, e);
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR,
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR,
                     String.format("Server run error ! : %s, %s", e.getClass().getName(), message));
         }
     }
@@ -159,7 +159,7 @@ public class Schema implements Closeable {
     }
 
     public void unsupportedOperation(RedisRequest request) throws IOException {
-        RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "unsupported operation now :" + request.getCommand());
+        request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "unknown command '" + request.getCommand() + "'");
     }
 
     public synchronized void clearDatabase() {

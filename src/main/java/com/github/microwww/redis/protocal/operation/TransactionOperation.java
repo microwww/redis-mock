@@ -15,7 +15,9 @@ import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class TransactionOperation extends AbstractOperation {
 
@@ -24,7 +26,7 @@ public class TransactionOperation extends AbstractOperation {
     //DISCARD
     public void discard(RedisRequest request) throws IOException {
         try {
-            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+            request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
         } finally {
             Transaction.getTransaction(request).close();
         }
@@ -44,7 +46,7 @@ public class TransactionOperation extends AbstractOperation {
         List<RedisRequest> rqs = transaction.getRequests();
         Assert.isNotEmpty(rqs, "Must start with MULTI, But not find command");
         Assert.isTrue("multi".equalsIgnoreCase(rqs.get(0).getCommand()), "Must start with MULTI");
-        JedisOutputStream out = request.getOutputStream();
+        JedisOutputStream out = request.getOutputProtocol().getOut();
 
         Map<HashKey, DV> watch = transaction.getWatches();
         if (watch != null) {
@@ -54,7 +56,7 @@ public class TransactionOperation extends AbstractOperation {
                 return !ver.eq(ov); // not equal
             }).findAny();
             if (notEqual.isPresent()) {
-                RedisOutputProtocol.writerMulti(out, (byte[][]) null);
+                request.getOutputProtocol().writerMulti((byte[][]) null);
                 return;
             }
         }
@@ -65,7 +67,7 @@ public class TransactionOperation extends AbstractOperation {
         for (int i = 1; i < rqs.size(); i++) {
             try {
                 if ("unwatch".equalsIgnoreCase(request.getCommand())) { // ignore , client 2.9 will error !
-                    RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+                    request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
                     continue;
                 }
                 request.getServer().getSchema().run(rqs.get(i)); // same thread !
@@ -75,16 +77,16 @@ public class TransactionOperation extends AbstractOperation {
                 // write error, not flush
                 out.write(Protocol.MINUS_BYTE);
                 out.writeAsciiCrLf(message);
-                // RedisOutputProtocol.writerError(out, RedisOutputProtocol.Level.ERR, message);
+                // request.getOutputProtocol().writerError(out, RedisOutputProtocol.Level.ERR, message);
             }
         }
     }
 
     private void exec(RedisRequest request, List<RedisRequest> requests) throws IOException {
         for (RedisRequest r : requests) {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Not support MULTI : " + r.getCommand());
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "Not support MULTI : " + r.getCommand());
         }
-        request.getOutputStream().flush();
+        request.getOutputProtocol().flush();
     }
 
     //MULTI
@@ -99,7 +101,7 @@ public class TransactionOperation extends AbstractOperation {
     public void unwatch(RedisRequest request) throws IOException {
         request.expectArgumentsCount(0);
         Transaction.getTransaction(request).clearWatches();
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
     }
 
     //WATCH
@@ -111,7 +113,7 @@ public class TransactionOperation extends AbstractOperation {
             Optional<AbstractValueData<?>> val = request.getDatabase().get(hk);
             watch.putWatch(hk, val.map(e -> new DV(e, e.getVersion().get())).orElse(new DV(null, null)));
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
     }
 
     public static class DV {

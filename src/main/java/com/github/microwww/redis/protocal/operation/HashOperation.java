@@ -5,7 +5,6 @@ import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashData;
 import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.ScanIterator;
 import com.github.microwww.redis.protocal.jedis.Protocol;
@@ -33,7 +32,7 @@ public class HashOperation extends AbstractOperation {
                 }
             }
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //HEXISTS
@@ -45,11 +44,11 @@ public class HashOperation extends AbstractOperation {
         if (opt.isPresent()) {
             boolean exist = opt.get().containsKey(hk);
             if (exist) {
-                RedisOutputProtocol.writer(request.getOutputStream(), 1);
+                request.getOutputProtocol().writer(1);
                 return;
             }
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), 0);
+        request.getOutputProtocol().writer(0);
     }
 
     //HGET
@@ -61,11 +60,11 @@ public class HashOperation extends AbstractOperation {
         if (opt.isPresent()) {
             Bytes dh = opt.get().getData().get(hk);
             if (dh != null) {
-                RedisOutputProtocol.writer(request.getOutputStream(), dh);
+                request.getOutputProtocol().writer(dh);
                 return;
             }
         }
-        RedisOutputProtocol.writerNull(request.getOutputStream());
+        request.getOutputProtocol().writerNull();
     }
 
     //HGETALL
@@ -79,9 +78,9 @@ public class HashOperation extends AbstractOperation {
                 list.add(k.getBytes());
                 list.add(v.getBytes());
             });
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+            request.getOutputProtocol().writerMulti(list.toArray(new byte[list.size()][]));
         } else {
-            RedisOutputProtocol.writerMulti(request.getOutputStream()); //  null ?
+            request.getOutputProtocol().writerMulti(); //  null ?
         }
     }
 
@@ -93,7 +92,7 @@ public class HashOperation extends AbstractOperation {
         int inc = request.getParams()[2].byteArray2int();
         HashData oc = this.getOrCreate(request);
         Bytes bytes = oc.incrBy(hk, inc);
-        RedisOutputProtocol.writer(request.getOutputStream(), bytes.toLong());
+        request.getOutputProtocol().writer(bytes.toLong());
     }
 
     //HINCRBYFLOAT
@@ -104,7 +103,7 @@ public class HashOperation extends AbstractOperation {
         BigDecimal inc = request.getParams()[2].byteArray2decimal();
         HashData oc = this.getOrCreate(request);
         Bytes bytes = oc.incrByFloat(hk, inc);
-        RedisOutputProtocol.writer(request.getOutputStream(), bytes);
+        request.getOutputProtocol().writer(bytes);
     }
 
     //HKEYS
@@ -113,9 +112,9 @@ public class HashOperation extends AbstractOperation {
         Optional<Map<HashKey, Bytes>> map = this.getHashMap(request);
         if (map.isPresent()) {
             byte[][] ks = map.get().keySet().stream().map(HashKey::getBytes).toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
+            request.getOutputProtocol().writerMulti(ks);
         } else {
-            RedisOutputProtocol.writerMulti(request.getOutputStream());
+            request.getOutputProtocol().writerMulti();
         }
     }
 
@@ -124,7 +123,7 @@ public class HashOperation extends AbstractOperation {
         request.expectArgumentsCount(1);
         Optional<Map<HashKey, Bytes>> map = this.getHashMap(request);
         int count = map.map(e -> e.size()).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //HMGET
@@ -137,7 +136,7 @@ public class HashOperation extends AbstractOperation {
                 .map(e -> {//
                     return opt.flatMap(e1 -> Optional.ofNullable(e1.get(e))).map(Bytes::getBytes).orElse(null);
                 }).toArray(byte[][]::new);
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), bytes); //  null ?
+        request.getOutputProtocol().writerMulti(bytes); //  null ?
     }
 
     //HMSET
@@ -147,7 +146,7 @@ public class HashOperation extends AbstractOperation {
         RequestParams[] args = request.getParams();
         Assert.isTrue(args.length % 2 == 1, "k, k-v, k-v, k-v, ...");
         oc.multiSet(args, 1);
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name()); //  null ?
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name()); //  null ?
     }
 
     //HSET
@@ -162,7 +161,7 @@ public class HashOperation extends AbstractOperation {
         Bytes origin = data.put(new HashKey(hk), val);
 
         // new: 1, over-write: 0
-        RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
+        request.getOutputProtocol().writer(origin == null ? 1 : 0);
     }
 
     //HSETNX
@@ -176,7 +175,7 @@ public class HashOperation extends AbstractOperation {
 
         Bytes origin = data.putIfAbsent(new HashKey(hk), val);
 
-        RedisOutputProtocol.writer(request.getOutputStream(), origin == null ? 1 : 0);
+        request.getOutputProtocol().writer(origin == null ? 1 : 0);
     }
 
     //HVALS
@@ -185,9 +184,9 @@ public class HashOperation extends AbstractOperation {
         Optional<Map<HashKey, Bytes>> map = this.getHashMap(request);
         if (map.isPresent()) {
             byte[][] ks = map.get().values().stream().map(Bytes::getBytes).toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), ks);
+            request.getOutputProtocol().writerMulti(ks);
         } else {
-            RedisOutputProtocol.writerMulti(request.getOutputStream());
+            request.getOutputProtocol().writerMulti();
         }
     }
 

@@ -33,7 +33,7 @@ public class KeyOperation extends AbstractOperation {
         RedisDatabase db = request.getDatabase();
         Optional<?> opt = db.setExpire(key, exp <= 0 ? 0 : exp);
         int exist = opt.map((e) -> 1).orElse(0).intValue();
-        RedisOutputProtocol.writer(request.getOutputStream(), exist);
+        request.getOutputProtocol().writer(exist);
     }
 
     //DEL
@@ -46,7 +46,7 @@ public class KeyOperation extends AbstractOperation {
                 count++;
             }
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     // UNLINK // it is not blocking, BUT for simple we will sync !
@@ -65,7 +65,7 @@ public class KeyOperation extends AbstractOperation {
         })//
                 .filter(Optional::isPresent) //
                 .count();
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //EXPIREAT
@@ -91,7 +91,7 @@ public class KeyOperation extends AbstractOperation {
                 list.add(k);
             }
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        request.getOutputProtocol().writerMulti(list.toArray(new byte[list.size()][]));
     }
 
     //MIGRATE
@@ -115,7 +115,7 @@ public class KeyOperation extends AbstractOperation {
                 return 0;
             });
         });
-        RedisOutputProtocol.writer(request.getOutputStream(), sync.intValue());
+        request.getOutputProtocol().writer(sync.intValue());
     }
 
     //OBJECT
@@ -130,7 +130,7 @@ public class KeyOperation extends AbstractOperation {
                 return 1;
             });
         }).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), re.intValue());
+        request.getOutputProtocol().writer(re.intValue());
     }
 
     //PEXPIRE
@@ -161,7 +161,7 @@ public class KeyOperation extends AbstractOperation {
             }
             return -1L;
         }).orElse(-2L);
-        RedisOutputProtocol.writer(request.getOutputStream(), time);
+        request.getOutputProtocol().writer(time);
     }
 
     //RANDOMKEY
@@ -170,7 +170,7 @@ public class KeyOperation extends AbstractOperation {
         Map<HashKey, AbstractValueData<?>> map = request.getDatabase().getUnmodifiableMap();
         Set<HashKey> ks = map.keySet();
         if (ks.isEmpty()) {
-            RedisOutputProtocol.writerNull(request.getOutputStream());
+            request.getOutputProtocol().writerNull();
             return;
         }
         int v = ((int) (Math.random() * Integer.MAX_VALUE)) % ks.size();
@@ -179,7 +179,7 @@ public class KeyOperation extends AbstractOperation {
         for (int i = 0; i < v && iterator.hasNext(); i++) {
             val = iterator.next();
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), val == null ? null : val.getBytes());
+        request.getOutputProtocol().writer(val == null ? null : val.getBytes());
     }
 
     //RENAME
@@ -189,7 +189,7 @@ public class KeyOperation extends AbstractOperation {
         HashKey target = request.getParams()[1].byteArray2hashKey();
         boolean ok = this.rename(request, key, target, true);
         Assert.isTrue(ok, "overwrite not false");
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
     }
 
     public boolean rename(RedisRequest request, HashKey key, HashKey target, boolean overwrite) throws RedisArgumentsException {
@@ -218,14 +218,14 @@ public class KeyOperation extends AbstractOperation {
         HashKey key = request.getParams()[0].byteArray2hashKey();
         HashKey target = request.getParams()[1].byteArray2hashKey();
         boolean ok = this.rename(request, key, target, false);
-        RedisOutputProtocol.writer(request.getOutputStream(), ok ? 1 : 0);
+        request.getOutputProtocol().writer(ok ? 1 : 0);
     }
 
     //RESTORE
     //SORT
     // SORT key [BY pattern] [LIMIT offset count] [GET pattern [GET pattern ...]] [ASC | DESC] [ALPHA] [STORE destination]
     public void sort(RedisRequest request) throws IOException {
-        RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Not support !");
+        request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "Not support !");
     }
 
     //TTL
@@ -240,7 +240,7 @@ public class KeyOperation extends AbstractOperation {
             }
             return -1L;
         }).orElse(-2L);
-        RedisOutputProtocol.writer(request.getOutputStream(), time.intValue());
+        request.getOutputProtocol().writer(time.intValue());
     }
 
     //TYPE
@@ -249,7 +249,7 @@ public class KeyOperation extends AbstractOperation {
         HashKey key = request.getParams()[0].byteArray2hashKey();
         Optional<AbstractValueData<?>> opt = request.getDatabase().get(key);
         String type = opt.map(e -> e.getType()).orElse("none");
-        RedisOutputProtocol.writer(request.getOutputStream(), type);
+        request.getOutputProtocol().writer(type);
     }
 
     //SCAN

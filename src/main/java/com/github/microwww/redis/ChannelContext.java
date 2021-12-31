@@ -4,7 +4,9 @@ import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.exception.Run;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
+import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RequestSession;
+import com.github.microwww.redis.protocal.RespV2;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
@@ -36,18 +38,19 @@ public class ChannelContext {
     private ByteBuffer buffer = newByteBuffer();
     private final Subscribe subscribe;
     private final Subscribe pattenSubscribe;
-    private JedisOutputStream outputStream;
+    private RedisOutputProtocol protocol;
     private ChannelSessionHandler channelHandler;
 
     public ChannelContext(SocketChannel channel) {
         this.channel = channel;
         this.sessions = new RequestSession(channel);
-        this.outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel) {
+        JedisOutputStream outputStream = new JedisOutputStream(new ChannelOutputStream(this.channel) {
             @Override
             public void close() {
                 throw new UnsupportedOperationException("Not invoke it!, By `closeChannel`");
             }
         });
+        protocol = new RespV2(outputStream);
         subscribe = new Subscribe(PUB_SUB_N_KEY);
         pattenSubscribe = new Subscribe(PUB_SUB_P_KEY);
         this.remoteHost = StringUtil.remoteHost(channel);
@@ -68,7 +71,7 @@ public class ChannelContext {
 
     public void closeChannel() throws IOException {
         try {
-            this.outputStream.flush();
+            this.protocol.getOut().flush();
         } catch (IOException ex) {// ignore
         } finally {
             this.close();
@@ -107,8 +110,12 @@ public class ChannelContext {
         return ByteBuffer.allocate(1 * 1024);
     }
 
-    public JedisOutputStream getOutputStream() {
-        return outputStream;
+    public RedisOutputProtocol getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(RedisOutputProtocol protocol) {
+        this.protocol = protocol;
     }
 
     public Subscribe getSubscribe() {

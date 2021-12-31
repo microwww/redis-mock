@@ -35,8 +35,8 @@ public class ListOperation extends AbstractOperation {
     public void pop_close(AddListener listener) throws IOException {
         // 2+ is [], 6 is null
         RedisRequest request = listener.request;
-        RedisOutputProtocol.writerMulti(request.getOutputStream());
-        request.getOutputStream().flush();
+        request.getOutputProtocol().writerMulti();
+        request.getOutputProtocol().flush();
     }
 
     private void blockPOP(RedisRequest request, Function<ListData, Optional<Bytes>> pop) throws IOException {
@@ -53,7 +53,7 @@ public class ListOperation extends AbstractOperation {
             public void changeRunning(long time) {
                 try {
                     ListOperation.this.blockPOP(request, timeoutSeconds, pop);
-                    request.getOutputStream().flush();
+                    request.getOutputProtocol().flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -66,7 +66,7 @@ public class ListOperation extends AbstractOperation {
             Optional<Bytes> bytes = pop.apply(list);// list.blockLPOP(listener);
             if (bytes.isPresent()) {
                 listener.clear();
-                RedisOutputProtocol.writerMulti(request.getOutputStream(), param.getByteArray(), bytes.get().getBytes());
+                request.getOutputProtocol().writerMulti(param.getByteArray(), bytes.get().getBytes());
                 return listener;
             }
         }
@@ -146,7 +146,7 @@ public class ListOperation extends AbstractOperation {
             public void changeRunning(long remainTime) {
                 try {
                     brpoplpush(request, remainTime);
-                    request.getOutputStream().flush();
+                    request.getOutputProtocol().flush();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -161,7 +161,7 @@ public class ListOperation extends AbstractOperation {
                 ListData target = this.getOrCreateList(request, 1);
                 byte[] val = bytes.get().getBytes();
                 target.leftAdd(val);
-                RedisOutputProtocol.writer(request.getOutputStream(), val);
+                request.getOutputProtocol().writer(val);
                 return;
             }
         }
@@ -173,7 +173,7 @@ public class ListOperation extends AbstractOperation {
     public void brpoplpush_close(AddListener listener) {
         RedisRequest request = listener.request;
         try {
-            RedisOutputProtocol.writer(request.getOutputStream(), new byte[]{});
+            request.getOutputProtocol().writer(new byte[]{});
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -187,9 +187,9 @@ public class ListOperation extends AbstractOperation {
         if (opt.isPresent()) {
             int index = Integer.parseInt(args[1].getByteArray2string());
             byte[][] bt = opt.get().range(index, index);
-            RedisOutputProtocol.writer(request.getOutputStream(), bt.length == 0 ? null : bt[0]);
+            request.getOutputProtocol().writer(bt.length == 0 ? null : bt[0]);
         } else {
-            RedisOutputProtocol.writerNull(request.getOutputStream());
+            request.getOutputProtocol().writerNull();
         }
     }
 
@@ -211,9 +211,9 @@ public class ListOperation extends AbstractOperation {
             if (insert) {
                 len = opt.get().getData().size();
             }
-            RedisOutputProtocol.writer(request.getOutputStream(), len);
+            request.getOutputProtocol().writer(len);
         } else {
-            RedisOutputProtocol.writer(request.getOutputStream(), 0);
+            request.getOutputProtocol().writer(0);
         }
     }
 
@@ -222,7 +222,7 @@ public class ListOperation extends AbstractOperation {
         request.expectArgumentsCount(1);
         Optional<ListData> opt = getList(request);
         int size = opt.map(e -> e.getData().size()).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), size);
+        request.getOutputProtocol().writer(size);
     }
 
     //LPOP
@@ -234,7 +234,7 @@ public class ListOperation extends AbstractOperation {
             Optional<Bytes> bytes = opt.get().leftPop();
             data = bytes.orElse(null);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), data);
+        request.getOutputProtocol().writer(data);
     }
 
     //LPUSH
@@ -246,7 +246,7 @@ public class ListOperation extends AbstractOperation {
                 .map(RequestParams::getByteArray)
                 .toArray(byte[][]::new);
         data.leftAdd(bytes);
-        RedisOutputProtocol.writer(request.getOutputStream(), data.getData().size());
+        request.getOutputProtocol().writer(data.getData().size());
     }
 
     //LPUSHX
@@ -260,7 +260,7 @@ public class ListOperation extends AbstractOperation {
                     .toArray(byte[][]::new);
             opt.get().leftAdd(bytes);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), opt.map(e -> e.getData().size()).orElse(0));
+        request.getOutputProtocol().writer(opt.map(e -> e.getData().size()).orElse(0));
     }
 
     //LRANGE
@@ -272,7 +272,7 @@ public class ListOperation extends AbstractOperation {
             RequestParams[] args = request.getParams();
             range = opt.get().range(args[1].byteArray2int(), args[2].byteArray2int());
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), range);
+        request.getOutputProtocol().writerMulti(range);
     }
 
     //LREM
@@ -284,7 +284,7 @@ public class ListOperation extends AbstractOperation {
             RequestParams[] args = request.getParams();
             len = opt.get().remove(args[1].byteArray2int(), args[2].getByteArray());
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), len);
+        request.getOutputProtocol().writer(len);
     }
 
     //LSET
@@ -297,12 +297,12 @@ public class ListOperation extends AbstractOperation {
             String index = args[1].getByteArray2string();
             try {
                 opt.get().getData().set(Integer.parseInt(index), args[2].toBytes());
-                RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+                request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
             } catch (ArrayIndexOutOfBoundsException e) {
-                RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "Array Index Out Of Bounds");
+                request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "Array Index Out Of Bounds");
             }
         } else {
-            RedisOutputProtocol.writerError(request.getOutputStream(), RedisOutputProtocol.Level.ERR, "NO LIST");
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "NO LIST");
         }
     }
 
@@ -314,7 +314,7 @@ public class ListOperation extends AbstractOperation {
         opt.ifPresent(e -> {//
             e.trim(args[1].byteArray2int(), args[2].byteArray2int());
         });
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
     }
 
     //RPOP
@@ -324,12 +324,12 @@ public class ListOperation extends AbstractOperation {
         if (opt.isPresent()) {
             try {
                 Optional<Bytes> rm = opt.get().rightPop();
-                RedisOutputProtocol.writer(request.getOutputStream(), rm.orElse(null));
+                request.getOutputProtocol().writer(rm.orElse(null));
                 return;
             } catch (IndexOutOfBoundsException i) {// ignore
             }
         }
-        RedisOutputProtocol.writerNull(request.getOutputStream());
+        request.getOutputProtocol().writerNull();
     }
 
     //RPOPLPUSH
@@ -340,7 +340,7 @@ public class ListOperation extends AbstractOperation {
         Bytes data = opt.flatMap(e -> { // doing
             return e.pop2push(request.getDatabase(), target);
         }).orElse(null);
-        RedisOutputProtocol.writer(request.getOutputStream(), data);
+        request.getOutputProtocol().writer(data);
     }
 
     //RPUSH
@@ -352,7 +352,7 @@ public class ListOperation extends AbstractOperation {
                 .map(RequestParams::getByteArray)
                 .toArray(byte[][]::new);
         list.rightAdd(bytes);
-        RedisOutputProtocol.writer(request.getOutputStream(), list.getData().size());
+        request.getOutputProtocol().writer(list.getData().size());
     }
 
     //RPUSHX
@@ -364,7 +364,7 @@ public class ListOperation extends AbstractOperation {
             byte[] val = args[1].getByteArray();
             opt.get().rightAdd(val);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), opt.map(e -> e.getData().size()).orElse(0));
+        request.getOutputProtocol().writer(opt.map(e -> e.getData().size()).orElse(0));
     }
 
     private Optional<ListData> getList(RedisRequest request) {

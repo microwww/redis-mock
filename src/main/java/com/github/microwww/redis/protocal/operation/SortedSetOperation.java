@@ -6,7 +6,6 @@ import com.github.microwww.redis.database.Member;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.database.SortedSetData;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.ScanIterator;
 import com.github.microwww.redis.util.Assert;
@@ -34,7 +33,7 @@ public class SortedSetOperation extends AbstractOperation {
             ms[j] = new Member(ba, dec);
         }
         int count = ss.addOrReplace(ms);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //ZCARD
@@ -42,7 +41,7 @@ public class SortedSetOperation extends AbstractOperation {
         request.expectArgumentsCountGE(1);
         Optional<SortedSetData> ss = getData(request);
         int size = ss.map(e -> e.getData().size()).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), size);
+        request.getOutputProtocol().writer(size);
     }
 
     //ZCOUNT
@@ -60,7 +59,7 @@ public class SortedSetOperation extends AbstractOperation {
                     .filter(e -> min.filterEqual(e)).filter(e -> max.filterEqual(e)).count();
             size = (int) count;
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), size);
+        request.getOutputProtocol().writer(size);
     }
 
     //ZINCRBY
@@ -71,7 +70,7 @@ public class SortedSetOperation extends AbstractOperation {
         BigDecimal inc = args[1].byteArray2decimal();
         byte[] val = args[2].getByteArray();
         Member mem = ss.inc(val, inc);
-        RedisOutputProtocol.writer(request.getOutputStream(), mem.getScore().toPlainString());
+        request.getOutputProtocol().writer(mem.getScore().toPlainString());
     }
 
     //ZRANGE
@@ -92,7 +91,7 @@ public class SortedSetOperation extends AbstractOperation {
                 }
             }
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        request.getOutputProtocol().writerMulti(list.toArray(new byte[list.size()][]));
     }
 
     //ZRANGEBYSCORE
@@ -132,7 +131,7 @@ public class SortedSetOperation extends AbstractOperation {
                         }
                     });
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        request.getOutputProtocol().writerMulti(list.toArray(new byte[list.size()][]));
     }
 
     //ZRANK, rank from 0
@@ -152,11 +151,11 @@ public class SortedSetOperation extends AbstractOperation {
                     members = members.descendingSet();
                 }
                 int i = members.headSet(member.get()).size();
-                RedisOutputProtocol.writer(request.getOutputStream(), i);
+                request.getOutputProtocol().writer(i);
                 return;
             }
         }
-        RedisOutputProtocol.writerNull(request.getOutputStream());
+        request.getOutputProtocol().writerNull();
     }
 
     //ZREM
@@ -172,7 +171,7 @@ public class SortedSetOperation extends AbstractOperation {
             }
             count = ss.get().removeAll(list);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //ZREMRANGEBYRANK
@@ -184,7 +183,7 @@ public class SortedSetOperation extends AbstractOperation {
         if (ss.isPresent()) {
             count = ss.get().remRangeByRank(args[1].byteArray2int(), args[2].byteArray2int());
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //ZREMRANGEBYSCORE
@@ -198,7 +197,7 @@ public class SortedSetOperation extends AbstractOperation {
             Interval max = new Interval(args[2].getByteArray());
             count = ss.get().remRangeByScore(min, max);
         }
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //ZREVRANGE
@@ -219,7 +218,7 @@ public class SortedSetOperation extends AbstractOperation {
                 }
             }
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), list.toArray(new byte[list.size()][]));
+        request.getOutputProtocol().writerMulti(list.toArray(new byte[list.size()][]));
     }
 
     //ZREVRANGEBYSCORE
@@ -240,11 +239,11 @@ public class SortedSetOperation extends AbstractOperation {
         if (ss.isPresent()) {
             Optional<Member> member = ss.get().member(args[1].byteArray2hashKey());
             if (member.isPresent()) {
-                RedisOutputProtocol.writer(request.getOutputStream(), member.get().getScore().toPlainString());
+                request.getOutputProtocol().writer(member.get().getScore().toPlainString());
                 return;
             }
         }
-        RedisOutputProtocol.writerNull(request.getOutputStream());
+        request.getOutputProtocol().writerNull();
     }
 
     //ZUNIONSTORE
@@ -269,7 +268,7 @@ public class SortedSetOperation extends AbstractOperation {
             i = UnionStoreParam.valueOf(op.toUpperCase()).next(us, args, i);
         }
         int count = fun.apply(request.getDatabase(), us); // 并或交集
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //ZINTERSTORE

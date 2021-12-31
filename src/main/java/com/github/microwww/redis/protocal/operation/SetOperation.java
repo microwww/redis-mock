@@ -6,7 +6,6 @@ import com.github.microwww.redis.database.HashKey;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.database.SetData;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.ScanIterator;
 
@@ -25,7 +24,7 @@ public class SetOperation extends AbstractOperation {
                 .toArray(Bytes[]::new);
 
         int count = ss.add(ms);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //SCARD
@@ -36,7 +35,7 @@ public class SetOperation extends AbstractOperation {
         Optional<SetData> ss = request.getDatabase().get(hk, SetData.class);
 
         int size = ss.map(e -> e.getData().size()).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), size);
+        request.getOutputProtocol().writer(size);
     }
 
     //SDIFF
@@ -54,7 +53,7 @@ public class SetOperation extends AbstractOperation {
             res = first.get().diff(request.getDatabase(), keys) //
                     .stream().map(Bytes::getBytes).toArray(byte[][]::new);
         }
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
+        request.getOutputProtocol().writerMulti(res);
     }
 
     //SDIFFSTORE
@@ -71,7 +70,7 @@ public class SetOperation extends AbstractOperation {
             res = data.getData();
         }
 
-        RedisOutputProtocol.writer(request.getOutputStream(), res.size());
+        request.getOutputProtocol().writer(res.size());
     }
 
     //SINTER
@@ -84,7 +83,7 @@ public class SetOperation extends AbstractOperation {
         Set<Bytes> bytes = new SetData().interStore(request.getDatabase(), keys);
         byte[][] res = bytes.stream().map(Bytes::getBytes).toArray(byte[][]::new);
 
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), res);
+        request.getOutputProtocol().writerMulti(res);
     }
 
     //SINTERSTORE
@@ -102,7 +101,7 @@ public class SetOperation extends AbstractOperation {
             return oc;
         });
 
-        RedisOutputProtocol.writer(request.getOutputStream(), dat.getData().size());
+        request.getOutputProtocol().writer(dat.getData().size());
     }
 
     //SISMEMBER
@@ -115,7 +114,7 @@ public class SetOperation extends AbstractOperation {
         Bytes bts = new Bytes(args[1].getByteArray());
         boolean exist = data.map(e -> e.getData().contains(bts)).orElse(false);
 
-        RedisOutputProtocol.writer(request.getOutputStream(), exist ? 1 : 0);
+        request.getOutputProtocol().writer(exist ? 1 : 0);
     }
 
     //SMEMBERS
@@ -133,7 +132,7 @@ public class SetOperation extends AbstractOperation {
                     .toArray(byte[][]::new);
         }
 
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), bytes);
+        request.getOutputProtocol().writerMulti(bytes);
     }
 
     //SMOVE
@@ -150,7 +149,7 @@ public class SetOperation extends AbstractOperation {
             move = data.get().move(request.getDatabase(), dest, member);
         }
 
-        RedisOutputProtocol.writer(request.getOutputStream(), move ? 1 : 0);
+        request.getOutputProtocol().writer(move ? 1 : 0);
     }
 
     //SPOP
@@ -165,7 +164,7 @@ public class SetOperation extends AbstractOperation {
                     .orElse(Collections.emptyList())
                     .stream().map(Bytes::getBytes)
                     .toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), bytes);
+            request.getOutputProtocol().writerMulti(bytes);
         } else {
             Optional<Bytes> bytes = data.map(e -> e.pop(1)).flatMap(e -> {
                 if (e.isEmpty()) {
@@ -173,7 +172,7 @@ public class SetOperation extends AbstractOperation {
                 }
                 return Optional.of(e.get(0));
             });
-            RedisOutputProtocol.writer(request.getOutputStream(), bytes.map(Bytes::getBytes).orElse(null));
+            request.getOutputProtocol().writer(bytes.map(Bytes::getBytes).orElse(null));
         }
     }
 
@@ -193,7 +192,7 @@ public class SetOperation extends AbstractOperation {
                 list = data.map(e -> e.random(0 - count)).orElse(Collections.emptyList());
             }
             byte[][] bytes = list.stream().map(Bytes::getBytes).toArray(byte[][]::new);
-            RedisOutputProtocol.writerMulti(request.getOutputStream(), bytes);
+            request.getOutputProtocol().writerMulti(bytes);
         } else {
             Optional<Bytes> bytes = data.map(e -> e.randMember(1)).flatMap(e -> {
                 if (e.isEmpty()) {
@@ -201,7 +200,7 @@ public class SetOperation extends AbstractOperation {
                 }
                 return Optional.of(e.get(0));
             });
-            RedisOutputProtocol.writer(request.getOutputStream(), bytes.map(Bytes::getBytes).orElse(null));
+            request.getOutputProtocol().writer(bytes.map(Bytes::getBytes).orElse(null));
         }
 
     }
@@ -221,7 +220,7 @@ public class SetOperation extends AbstractOperation {
             count = data.get().removeAll(bts);
         }
 
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //SUNION
@@ -232,7 +231,7 @@ public class SetOperation extends AbstractOperation {
                 .toArray(HashKey[]::new);
         Set<Bytes> union = new SetData().union(request.getDatabase(), keys);
 
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), union.stream().map(Bytes::getBytes).toArray(byte[][]::new));
+        request.getOutputProtocol().writerMulti(union.stream().map(Bytes::getBytes).toArray(byte[][]::new));
     }
 
     //SUNIONSTORE
@@ -249,7 +248,7 @@ public class SetOperation extends AbstractOperation {
             return dest;
         });
 
-        RedisOutputProtocol.writer(request.getOutputStream(), union.getData().size());
+        request.getOutputProtocol().writer(union.getData().size());
     }
 
     //SSCAN

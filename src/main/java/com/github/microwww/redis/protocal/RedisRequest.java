@@ -7,7 +7,6 @@ import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.database.RedisDatabase;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.IoRunnable;
 import com.github.microwww.redis.util.NotNull;
@@ -23,7 +22,7 @@ public class RedisRequest {
     private final RedisServer server;
     private IoRunnable next = () -> {
         log.debug("Flush {} outputStream {}", this.getCommand(), this.getContext().getRemoteHost());
-        this.getOutputStream().flush();
+        this.getOutputProtocol().flush();
     };
 
     public static RedisRequest warp(RedisRequest request, String cmd, RequestParams[] params) {
@@ -55,8 +54,8 @@ public class RedisRequest {
         return Arrays.copyOf(params, params.length);
     }
 
-    public JedisOutputStream getOutputStream() {
-        return this.context.getOutputStream();
+    public RedisOutputProtocol getOutputProtocol() {
+        return this.context.getProtocol();
     }
 
     public RedisDatabase getDatabase() {

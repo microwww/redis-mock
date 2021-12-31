@@ -8,37 +8,42 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 public class RedisOutputProtocol {
+    protected final JedisOutputStream out;
 
-    public static void writer(JedisOutputStream out, String simple) throws IOException {
+    public RedisOutputProtocol(JedisOutputStream out) {
+        this.out = out;
+    }
+
+    public void writer(String simple) throws IOException {
         out.write(Protocol.PLUS_BYTE);
         out.writeAsciiCrLf(simple);
     }
 
-    public static void writerError(JedisOutputStream out, Level level, String simple) throws IOException {
+    public void writerError(Level level, String simple) throws IOException {
         out.write(Protocol.MINUS_BYTE);
         out.writeAsciiCrLf(level.name() + " " + simple);
     }
 
-    public static void writer(JedisOutputStream out, int val) throws IOException {
+    public void writer(int val) throws IOException {
         out.write(Protocol.COLON_BYTE);
         out.writeIntCrLf(val);
     }
 
-    public static void writer(JedisOutputStream out, long val) throws IOException {
+    public void writer(long val) throws IOException {
         out.write(Protocol.COLON_BYTE);
         out.writeAsciiCrLf(val + "");
     }
 
-    public static void writerNull(JedisOutputStream out) throws IOException {
+    public void writerNull() throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         out.writeIntCrLf(-1);
     }
 
-    public static void writer(JedisOutputStream out, Bytes val) throws IOException {
-        writer(out, val == null ? null : val.getBytes());
+    public void writer(Bytes val) throws IOException {
+        writer(val == null ? null : val.getBytes());
     }
 
-    public static void writer(JedisOutputStream out, byte[] val) throws IOException {
+    public void writer(byte[] val) throws IOException {
         out.write(Protocol.DOLLAR_BYTE);
         if (val == null) {
             out.writeIntCrLf(-1);
@@ -49,23 +54,27 @@ public class RedisOutputProtocol {
         }
     }
 
-    public static void writerNested(JedisOutputStream out, byte[] start, byte[][] args) throws IOException {
+    public void writerNested(byte[] start, byte[][] args) throws IOException {
         out.write(Protocol.ASTERISK_BYTE);
         out.writeIntCrLf(2);
         out.write(Protocol.DOLLAR_BYTE);
         out.writeIntCrLf(start.length);
         out.write(start);
         out.writeCrLf();
-        writerMulti(out, args);
+        writerMulti(args);
     }
 
-    public static void writerMulti(JedisOutputStream out, byte[]... args) throws IOException {
-        writerComplex(out, args);
+    public void writerMulti(byte[]... args) throws IOException {
+        writerComplex(args);
     }
 
-    public static void writerComplex(JedisOutputStream out, Object... args) throws IOException {
+    public void sendSubscribe(Object... args) throws IOException {
+        writerComplex(args);
+    }
+
+    public void writerComplex(Object... args) throws IOException {
         if (args == null) {
-            writerNull(out);
+            writerNull();
             return;
         }
         out.write(Protocol.ASTERISK_BYTE);
@@ -73,23 +82,31 @@ public class RedisOutputProtocol {
 
         for (Object arg : args) {
             if (arg == null) {
-                writerNull(out);
+                writerNull();
                 continue;
             }
             if (arg instanceof byte[]) {
                 byte[] val = (byte[]) arg;
-                writer(out, val);
+                writer(val);
             } else if (arg instanceof Bytes) {
-                writer(out, ((Bytes) arg).getBytes());
+                writer(((Bytes) arg).getBytes());
             } else if (arg instanceof Number) {
-                writer(out, ((Number) arg).longValue());
+                writer(((Number) arg).longValue());
             } else {
                 throw new UnsupportedEncodingException("Not support type: " + arg.getClass().getName());
             }
         }
     }
 
+    public void flush() throws IOException {
+        out.flush();
+    }
+
+    public JedisOutputStream getOut() {
+        return out;
+    }
+
     public enum Level {
-        ERR, WARN, FAIL
+        ERR, NOPROTO, WARN, FAIL
     }
 }

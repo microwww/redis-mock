@@ -3,7 +3,6 @@ package com.github.microwww.redis.protocal.operation;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.database.*;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.util.Assert;
@@ -24,9 +23,9 @@ public class StringOperation extends AbstractOperation {
         RedisDatabase db = request.getDatabase();
         Optional<ByteData> val = db.get(key, ByteData.class);
         if (val.isPresent()) {
-            RedisOutputProtocol.writer(request.getOutputStream(), val.get().getData());
+            request.getOutputProtocol().writer(val.get().getData());
         } else {
-            RedisOutputProtocol.writerNull(request.getOutputStream());
+            request.getOutputProtocol().writerNull();
         }
     }
 
@@ -38,7 +37,7 @@ public class StringOperation extends AbstractOperation {
         byte[] data = request.getParams()[1].getByteArray();
         RedisDatabase db = request.getDatabase();
         ByteData append = StringData.append(db, key, data);
-        RedisOutputProtocol.writer(request.getOutputStream(), append.getData().length);
+        request.getOutputProtocol().writer(append.getData().length);
     }
 
     //BITCOUNT
@@ -56,7 +55,7 @@ public class StringOperation extends AbstractOperation {
         }
         RedisDatabase db = request.getDatabase();
         int count = StringData.bitCount(db, key, start, end);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //BITOP
@@ -71,7 +70,7 @@ public class StringOperation extends AbstractOperation {
                 .toArray(HashKey[]::new);
         StringData.ByteOpt bo = StringData.ByteOpt.valueOf(opt.toUpperCase());
         ByteData res = StringData.bitOperation(request.getDatabase(), bo, dest, hks);
-        RedisOutputProtocol.writer(request.getOutputStream(), res.getData().length * 8);
+        request.getOutputProtocol().writer(res.getData().length * 8);
     }
 
     //DECR
@@ -80,7 +79,7 @@ public class StringOperation extends AbstractOperation {
         RequestParams[] args = request.getParams();
         HashKey key = args[0].byteArray2hashKey();
         int val = StringData.increase(request.getDatabase(), key, -1);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //DECRBY
@@ -90,7 +89,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = args[0].byteArray2hashKey();
         int decrement = args[1].byteArray2int();
         int val = StringData.increase(request.getDatabase(), key, 0 - decrement);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //GET
@@ -101,7 +100,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = args[0].byteArray2hashKey();
         int offset = args[1].byteArray2int();
         int val = StringData.getBIT(request.getDatabase(), key, offset);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //GETRANGE
@@ -112,7 +111,7 @@ public class StringOperation extends AbstractOperation {
         int start = args[1].byteArray2int();
         int end = args[2].byteArray2int();
         byte[] val = StringData.subString(request.getDatabase(), key, start, end);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //GETSET
@@ -123,9 +122,9 @@ public class StringOperation extends AbstractOperation {
         byte[] bytes = args[1].getByteArray();
         Optional<ByteData> val = StringData.getSet(request.getDatabase(), key, bytes);
         if (val.isPresent()) {
-            RedisOutputProtocol.writer(request.getOutputStream(), val.get().getData());
+            request.getOutputProtocol().writer(val.get().getData());
         } else {
-            RedisOutputProtocol.writerNull(request.getOutputStream());
+            request.getOutputProtocol().writerNull();
         }
     }
 
@@ -135,7 +134,7 @@ public class StringOperation extends AbstractOperation {
         RequestParams[] args = request.getParams();
         HashKey key = args[0].byteArray2hashKey();
         int val = StringData.increase(request.getDatabase(), key, 1);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //INCRBY
@@ -145,7 +144,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = args[0].byteArray2hashKey();
         int add = args[1].byteArray2int();
         int val = StringData.increase(request.getDatabase(), key, add);
-        RedisOutputProtocol.writer(request.getOutputStream(), val);
+        request.getOutputProtocol().writer(val);
     }
 
     //INCRBYFLOAT
@@ -155,7 +154,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = args[0].byteArray2hashKey();
         double add = Double.parseDouble(args[1].getByteArray2string());
         BigDecimal val = StringData.increase(request.getDatabase(), key, add);
-        RedisOutputProtocol.writer(request.getOutputStream(), val.toPlainString());
+        request.getOutputProtocol().writer(val.toPlainString());
     }
 
     //MGET
@@ -169,7 +168,7 @@ public class StringOperation extends AbstractOperation {
             list.add(abs.map(ByteData::getData).orElse(null));
         }
         byte[][] bytes = list.toArray(new byte[list.size()][]);
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), bytes);
+        request.getOutputProtocol().writerMulti(bytes);
     }
 
     //MSET
@@ -178,7 +177,7 @@ public class StringOperation extends AbstractOperation {
         RequestParams[] args = request.getParams();
         Assert.isTrue(args.length % 2 == 0, "key value, key value, key value");
         StringData.multiSet(request.getDatabase(), args, true);
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
     }
 
     //MSETNX
@@ -187,7 +186,7 @@ public class StringOperation extends AbstractOperation {
         RequestParams[] args = request.getParams();
         Assert.isTrue(args.length % 2 == 0, "key value, key value, key value");
         int count = StringData.multiSet(request.getDatabase(), args, false);
-        RedisOutputProtocol.writer(request.getOutputStream(), count > 0 ? 1 : 0);
+        request.getOutputProtocol().writer(count > 0 ? 1 : 0);
     }
 
     //PSETEX
@@ -198,7 +197,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = new HashKey(args[0].getByteArray());
         long ex = args[1].byteArray2long();
         db.put(key, new ByteData(args[2].getByteArray(), System.currentTimeMillis() + ex));
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
     }
 
     //SET
@@ -222,9 +221,9 @@ public class StringOperation extends AbstractOperation {
 
         boolean set = StringData.set(db, spm, key, new ByteData(val, time));
         if (set) {
-            RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+            request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
         } else {
-            RedisOutputProtocol.writerNull(request.getOutputStream());
+            request.getOutputProtocol().writerNull();
         }
     }
 
@@ -237,7 +236,7 @@ public class StringOperation extends AbstractOperation {
         int off = args[1].byteArray2int();
         int val = args[2].byteArray2int();
         boolean count = StringData.setBit(db, key, off, val != 0);
-        RedisOutputProtocol.writer(request.getOutputStream(), count ? 1 : 0);
+        request.getOutputProtocol().writer(count ? 1 : 0);
     }
 
     //SETEX
@@ -248,7 +247,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = new HashKey(args[0].getByteArray());
         long ex = args[1].byteArray2long();
         db.put(key, new ByteData(args[2].getByteArray(), System.currentTimeMillis() + ex * 1000));
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.name());
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
     }
 
     //SETNX
@@ -258,7 +257,7 @@ public class StringOperation extends AbstractOperation {
         RedisDatabase db = request.getDatabase();
         HashKey key = new HashKey(args[0].getByteArray());
         ByteData bt = db.putIfAbsent(key, new ByteData(args[1].getByteArray(), AbstractValueData.NEVER_EXPIRE));
-        RedisOutputProtocol.writer(request.getOutputStream(), bt == null ? 1 : 0);
+        request.getOutputProtocol().writer(bt == null ? 1 : 0);
     }
 
     //SETRANGE
@@ -269,7 +268,7 @@ public class StringOperation extends AbstractOperation {
         int off = args[1].byteArray2int();
         byte[] val = args[2].getByteArray();
         ByteData data = StringData.setRange(request.getDatabase(), key, off, val);
-        RedisOutputProtocol.writer(request.getOutputStream(), data.getData().length);
+        request.getOutputProtocol().writer(data.getData().length);
     }
 
     //STRLEN
@@ -280,7 +279,7 @@ public class StringOperation extends AbstractOperation {
         HashKey key = new HashKey(args[0].getByteArray());
         int len = db.get(key, ByteData.class)
                 .map(e -> e.getData().length).orElse(0);
-        RedisOutputProtocol.writer(request.getOutputStream(), len);
+        request.getOutputProtocol().writer(len);
     }
 
     public static class Params {

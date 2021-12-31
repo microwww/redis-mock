@@ -7,7 +7,6 @@ import com.github.microwww.redis.database.PubSub;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.SafeEncoder;
@@ -40,7 +39,7 @@ public class PubSubOperation extends AbstractOperation {
             }
             sub[1] = patten.getBytes();
             sub[2] = request.getContext().getPattenSubscribe().subscribeChannels().size();
-            RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
+            request.getOutputProtocol().writerComplex(sub);
         }
     }
 
@@ -52,7 +51,7 @@ public class PubSubOperation extends AbstractOperation {
         Bytes channel = args[0].toBytes();
         Bytes message = args[1].toBytes();
         int count = pubSub.publish(channel, message);
-        RedisOutputProtocol.writer(request.getOutputStream(), count);
+        request.getOutputProtocol().writer(count);
     }
 
     //PUBSUB
@@ -83,7 +82,7 @@ public class PubSubOperation extends AbstractOperation {
             stream = stream.filter(e -> StringUtil.antPatternMatches(patten, SafeEncoder.encode(e.getChannel().getBytes())));
         }
         Object[] objects = stream.map(PubSub.MessageChannel::getChannel).toArray(Object[]::new);
-        RedisOutputProtocol.writerComplex(request.getOutputStream(), objects);
+        request.getOutputProtocol().writerComplex(objects);
     }
 
     private void subNumSub(RedisRequest request) throws IOException {
@@ -103,14 +102,14 @@ public class PubSubOperation extends AbstractOperation {
             }
         }
         // 不指定 channel 则返回空的列表
-        RedisOutputProtocol.writerComplex(request.getOutputStream(), list.toArray());
+        request.getOutputProtocol().writerComplex(list.toArray());
     }
 
     // TODO :: 这个有出入, 不同的客户端对相同的 patten 是否认为是唯一的 ???
     private void subNumPat(RedisRequest request) throws IOException {
         PubSub pubSub = request.getPubSub();
-        // RedisOutputProtocol.writer(request.getOutputStream(), pubSub.newChannelNotify.countObservers());
-        RedisOutputProtocol.writer(request.getOutputStream(), new HashSet<>(pubSub.newChannelNotify.getPattens()).size());
+        // request.getOutputProtocol().writer( pubSub.newChannelNotify.countObservers());
+        request.getOutputProtocol().writer(new HashSet<>(pubSub.newChannelNotify.getPattens()).size());
     }
 
     //PUNSUBSCRIBE
@@ -126,7 +125,7 @@ public class PubSubOperation extends AbstractOperation {
                 uns[1] = next;
                 NewChannelListener.find(request.getContext(), next).ifPresent(NewChannelListener::unsubscribe);
                 uns[2] = request.getContext().getPattenSubscribe().subscribeChannels().size();
-                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+                request.getOutputProtocol().writerComplex(uns);
             }
         } else {
             for (RequestParams arg : args) {
@@ -134,10 +133,10 @@ public class PubSubOperation extends AbstractOperation {
                 uns[1] = bytes;
                 ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);
                 uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
-                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+                request.getOutputProtocol().writerComplex(uns);
             }
         }
-        request.getOutputStream().flush();
+        request.getOutputProtocol().flush();
     }
 
     //SUBSCRIBE
@@ -158,7 +157,7 @@ public class PubSubOperation extends AbstractOperation {
             }
             sub[1] = bytes.getBytes();
             sub[2] = request.getContext().getSubscribe().subscribeChannels().size();
-            RedisOutputProtocol.writerComplex(request.getOutputStream(), sub);
+            request.getOutputProtocol().writerComplex(sub);
         }
     }
 
@@ -175,7 +174,7 @@ public class PubSubOperation extends AbstractOperation {
                 uns[1] = next;
                 ChannelMessageListener.find(request.getContext(), next).ifPresent(ChannelMessageListener::unsubscribe);
                 uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
-                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+                request.getOutputProtocol().writerComplex(uns);
             }
         } else {
             for (RequestParams arg : args) {
@@ -183,10 +182,10 @@ public class PubSubOperation extends AbstractOperation {
                 uns[1] = bytes;
                 ChannelMessageListener.find(request.getContext(), bytes).ifPresent(ChannelMessageListener::unsubscribe);
                 uns[2] = request.getContext().getSubscribe().subscribeChannels().size();
-                RedisOutputProtocol.writerComplex(request.getOutputStream(), uns);
+                request.getOutputProtocol().writerComplex(uns);
             }
         }
-        request.getOutputStream().flush();
+        request.getOutputProtocol().flush();
     }
 
     /**
@@ -291,8 +290,8 @@ public class PubSubOperation extends AbstractOperation {
                 msg.add(channel);
                 Assert.isTrue(arg instanceof Bytes, "Observable publish must be `Bytes`");
                 msg.add(arg);
-                RedisOutputProtocol.writerComplex(context.getOutputStream(), msg.toArray());
-                context.getOutputStream().flush();
+                context.getProtocol().writerComplex(msg.toArray());
+                context.getProtocol().flush();
             } catch (Exception e) {
                 log.warn("Notify subscriber error, ignore, {}", e);
             }

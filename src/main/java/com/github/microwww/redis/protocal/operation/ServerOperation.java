@@ -7,7 +7,6 @@ import com.github.microwww.redis.exception.Run;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 
@@ -41,7 +40,7 @@ public class ServerOperation extends AbstractOperation {
         request.expectArgumentsCount(0);
         int index = request.getSessions().getDatabase();
         int size = request.getServer().getSchema().getRedisDatabases(index).getMapSize();
-        RedisOutputProtocol.writer(request.getOutputStream(), size);
+        request.getOutputProtocol().writer(size);
     }
 
     //DEBUG OBJECT
@@ -51,7 +50,7 @@ public class ServerOperation extends AbstractOperation {
         request.expectArgumentsCountLE(1);// ASYNC|SYNC
         Schema db = request.getServer().getSchema();
         db.clearDatabase();
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
     }
 
     //FLUSHDB
@@ -59,7 +58,7 @@ public class ServerOperation extends AbstractOperation {
         request.expectArgumentsCountLE(1);// ASYNC|SYNC
         RedisDatabase db = request.getDatabase();
         db.clear();
-        RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
     }
 
     //INFO
@@ -77,7 +76,7 @@ public class ServerOperation extends AbstractOperation {
         long time = System.currentTimeMillis();
         long seconds = time / 1_000;
         long micro = time % 1_000;
-        RedisOutputProtocol.writerMulti(request.getOutputStream(), (seconds + "").getBytes(), (micro + "000").getBytes());
+        request.getOutputProtocol().writerMulti((seconds + "").getBytes(), (micro + "000").getBytes());
     }
 
     public enum Client {
@@ -86,9 +85,9 @@ public class ServerOperation extends AbstractOperation {
             public void operation(RedisRequest request) throws IOException {
                 Optional<String> name = request.getSessions().getName();
                 if (name.isPresent()) {
-                    RedisOutputProtocol.writer(request.getOutputStream(), name.get());
+                    request.getOutputProtocol().writer(name.get());
                 } else {
-                    RedisOutputProtocol.writerNull(request.getOutputStream());
+                    request.getOutputProtocol().writerNull();
                 }
             }
         },
@@ -96,9 +95,9 @@ public class ServerOperation extends AbstractOperation {
             @Override
             public void operation(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(2);
-                RedisOutputProtocol.writer(request.getOutputStream(), Protocol.Keyword.OK.raw);
+                request.getOutputProtocol().writer(Protocol.Keyword.OK.raw);
                 request.setNext(() -> {
-                    request.getOutputStream().flush();
+                    request.getOutputProtocol().flush();
                     ChannelContext context = request.getContext();
                     Run.ignoreException(log, context::closeChannel);
                 });
@@ -117,7 +116,7 @@ public class ServerOperation extends AbstractOperation {
                         log.debug("List client error", ex);
                     }
                 }
-                RedisOutputProtocol.writer(request.getOutputStream(), ss.toString());
+                request.getOutputProtocol().writer(ss.toString());
             }
         },
         SETNAME {
@@ -126,7 +125,7 @@ public class ServerOperation extends AbstractOperation {
                 request.expectArgumentsCount(2);
                 String name = request.getParams()[1].getByteArray2string();
                 request.getSessions().setName(name);
-                RedisOutputProtocol.writer(request.getOutputStream(), name);
+                request.getOutputProtocol().writer(name);
             }
         };
 

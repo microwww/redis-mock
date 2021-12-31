@@ -53,7 +53,7 @@ public class ScanIterator<T> {
         int cursor = iterator.hasNext() ? i : 0;
         byte[][] arrays = list.toArray(new byte[list.size()][]);
 
-        RedisOutputProtocol.writerNested(request.getOutputStream(), (cursor + "").getBytes(), arrays);
+        request.getOutputProtocol().writerNested((cursor + "").getBytes(), arrays);
     }
 
 }
