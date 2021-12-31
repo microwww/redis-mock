@@ -130,6 +130,10 @@ public class PubSub implements Closeable {
 
         public void subscribe(Observer o) {
             newChannelNotify.addObserver(o);
+            // 已存在的历史 直接通知
+            channels.values().forEach(e -> {
+                o.update(this, e.channel);
+            });
         }
 
         public void unsubscribe(Observer o) {
