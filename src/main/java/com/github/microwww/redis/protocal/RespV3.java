@@ -15,4 +15,8 @@ public class RespV3 extends RedisOutputProtocol {
         out.write(Type.NULL.prefix);
         out.writeCrLf();
     }
+
+    public void sendToSubscribe(Object... args) throws IOException {
+        writerComplexData((byte) Type.PUSH.prefix, args);
+    }
 }

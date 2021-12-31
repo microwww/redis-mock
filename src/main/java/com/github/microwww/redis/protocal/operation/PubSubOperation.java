@@ -290,7 +290,8 @@ public class PubSubOperation extends AbstractOperation {
                 msg.add(channel);
                 Assert.isTrue(arg instanceof Bytes, "Observable publish must be `Bytes`");
                 msg.add(arg);
-                context.getProtocol().writerComplex(msg.toArray());
+                log.debug("send subscribe TO {}", context.getRemoteHost());
+                context.getProtocol().sendToSubscribe(msg.toArray());
                 context.getProtocol().flush();
             } catch (Exception e) {
                 log.warn("Notify subscriber error, ignore, {}", e);

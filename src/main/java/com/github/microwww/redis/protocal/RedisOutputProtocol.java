@@ -68,16 +68,20 @@ public class RedisOutputProtocol {
         writerComplex(args);
     }
 
-    public void sendSubscribe(Object... args) throws IOException {
-        writerComplex(args);
+    public void sendToSubscribe(Object... args) throws IOException {
+        writerComplexData(Protocol.ASTERISK_BYTE, args);
     }
 
     public void writerComplex(Object... args) throws IOException {
+        writerComplexData(Protocol.ASTERISK_BYTE, args);
+    }
+
+    protected void writerComplexData(byte prefix, Object... args) throws IOException {
         if (args == null) {
             writerNull();
             return;
         }
-        out.write(Protocol.ASTERISK_BYTE);
+        out.write(prefix);
         out.writeIntCrLf(args.length);
 
         for (Object arg : args) {

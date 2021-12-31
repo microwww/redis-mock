@@ -1,7 +1,6 @@
 package com.github.microwww.redis;
 
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -29,7 +28,7 @@ public class ChannelContextTest {
             public void echo(RedisRequest request) throws IOException {
                 request.expectArgumentsCount(1);
                 byte[] echo = request.getParams()[0].getByteArray();
-                RedisOutputProtocol.writer(request.getOutputStream(), echo);
+                request.getOutputProtocol().writer(echo);
                 ChannelContext ctx = request.getContext();
                 if ("client-close".equals(new String(echo))) {
                     ctx.addCloseListener0(() -> {

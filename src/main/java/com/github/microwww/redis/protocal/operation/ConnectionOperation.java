@@ -42,7 +42,7 @@ public class ConnectionOperation extends AbstractOperation {
             "proto".getBytes(StandardCharsets.UTF_8),
             "2".getBytes(StandardCharsets.UTF_8),
             "id".getBytes(StandardCharsets.UTF_8),
-            "2".getBytes(StandardCharsets.UTF_8),
+            "3".getBytes(StandardCharsets.UTF_8),
             "mode".getBytes(StandardCharsets.UTF_8),
             "standalone".getBytes(StandardCharsets.UTF_8),
             "role".getBytes(StandardCharsets.UTF_8),
@@ -58,6 +58,7 @@ public class ConnectionOperation extends AbstractOperation {
         if (request.getParams().length >= 1) {
             RequestParams param = request.getParams()[i];
             int ver = param.byteArray2int();
+            logger.debug("REPS protocol version is `{}`", ver);
             if (ver == 2) {
                 JedisOutputStream out = request.getContext().getProtocol().getOut();
                 request.getContext().setProtocol(new RespV2(out));
