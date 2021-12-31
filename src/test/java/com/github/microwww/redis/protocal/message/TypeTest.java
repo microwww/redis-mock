@@ -1,5 +1,6 @@
 package com.github.microwww.redis.protocal.message;
 
+import com.github.microwww.redis.protocal.HalfPackException;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -229,5 +230,29 @@ public class TypeTest {
         Map<String, RedisMessage> map = rm.getRedisMessages()[2].getAttr().mapString();
         Assert.assertEquals("3600", map.get("ttl").toString());
         Assert.assertEquals(bytes.length, bf.position());
+    }
+
+    @Test
+    public void testHalfPackage() {
+        byte[] bytes = ("$?\r\n;4\r\nHell\r\n;5\r\no wor\r\n;1\r\nd\r\n;0\r\n" +
+                "|1\r\n+key-popularity\r\n%2\r\n$1\r\na\r\n,0.1923\r\n$1\r\nb\r\n,0.0012\r\n:100\r\n").getBytes(StandardCharsets.UTF_8);
+        ByteBuffer bf = ByteBuffer.allocate(1024);
+
+        boolean pass = false;
+        for (int i = 0; i <= bytes.length; i++) {
+            bf.clear();
+            bf.put(bytes, 0, i);
+            bf.flip();
+            try {
+                RedisMessage rm = Type.parseOne(bf);
+                Assert.assertTrue(StringMessage.class.isInstance(rm));
+                rm = Type.parseOne(bf);
+                Assert.assertTrue(LongMessage.class.isInstance(rm));
+                Assert.assertEquals(bf.remaining(), 0);
+                pass = true;
+            } catch (HalfPackException ex) {
+            }
+        }
+        Assert.assertTrue(pass);
     }
 }

@@ -1,5 +1,6 @@
 package com.github.microwww.redis.protocal.message;
 
+import com.github.microwww.redis.protocal.HalfPackException;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.NotNull;
 import com.github.microwww.redis.util.Nullable;
@@ -39,9 +40,9 @@ public enum Type {
         }
     }, GO_ON(';') {
         @Override
-        public BytesMessage read(ByteBuffer bytes) {
+        public RedisMessage read(ByteBuffer bytes) {
             int len = Integer.parseInt(SafeEncoder.encode(readInt(bytes)));
-            if (len <= 0) return new BytesMessage(this, new byte[]{});
+            if (len <= 0) return new EOFMessage(this);
             byte[] bts = readDataSkipCRLF(bytes, len);
             return new BytesMessage(this, bts);
         }
@@ -53,8 +54,9 @@ public enum Type {
                 // $?<CR><LF>;4<CR><LF>Hell<CR><LF>;5<CR><LF>o wor<CR><LF>;1<CR><LF>d<CR><LF>;0<CR><LF>
                 StringBuilder sb = new StringBuilder();
                 while (true) {
+                    assertNotHalf(bytes, "$? GO-ON");
                     RedisMessage r = Type.parseOne(bytes);
-                    if (r.isEmpty()) {
+                    if (r instanceof EOFMessage) {
                         break;
                     }
                     Assert.isTrue(r instanceof BytesMessage, ";<NUMBER><CR><LF>");
@@ -78,6 +80,7 @@ public enum Type {
                 // *?<CR><LF>:4<CR><LF>Hell<CR><LF>:5<CR><LF>o wor<CR><LF>:1<CR><LF>d<CR><LF>.<CR><LF>
                 List<RedisMessage> list = new ArrayList<>();
                 while (true) {
+                    assertNotHalf(bytes, "*? GO-ON");
                     RedisMessage r = Type.parseOne(bytes);
                     if (r instanceof EOFMessage) {
                         break;
@@ -156,9 +159,7 @@ public enum Type {
         public RedisMessage read(ByteBuffer bytes) {
             RedisMessage m = MAP.read(bytes);
             AttrMessage arr = new AttrMessage(this, m.getRedisMessages());
-            if (bytes.remaining() <= 0) {
-                throw new IllegalStateException("Attr must has next data");
-            }
+            assertNotHalf(bytes, "Attr must has next data");
             RedisMessage one = Type.parseOne(bytes);
             return one.setAttr(arr);
         }
@@ -182,7 +183,14 @@ public enum Type {
     public static final char CR = '\r';
     public static final char LF = '\n';
 
+    public static void assertNotHalf(ByteBuffer bytes, String message) {
+        if (bytes.remaining() <= 0) {
+            throw new HalfPackException(message);
+        }
+    }
+
     public static RedisMessage parseOne(ByteBuffer bytes) {
+        assertNotHalf(bytes, "No data to parse");
         byte bt = bytes.get();
         for (Type parse : Type.values()) {
             if (parse.prefix == bt) {
@@ -198,7 +206,7 @@ public enum Type {
      * @param bytes sources
      * @return -1 or end-position
      */
-    public static int gotoCRLF(ByteBuffer bytes) {
+    public static int gotoCRLF(ByteBuffer bytes) throws HalfPackException {
         while (bytes.remaining() > 0) {
             byte bt = bytes.get();
             while (bt == CR && bytes.remaining() > 0) {
@@ -212,7 +220,7 @@ public enum Type {
                 }
             }
         }
-        throw new IllegalStateException("Not find CR/LF");
+        throw new HalfPackException();
     }
 
     @Nullable
@@ -222,8 +230,7 @@ public enum Type {
         if (to < 0) {
             return null;
         }
-        byte[] data = Type.getData(bytes, start, to - 2);
-        return data;
+        return Type.getData(bytes, start, to - 2);
     }
 
     @Nullable
@@ -234,7 +241,7 @@ public enum Type {
     }
 
     public static byte[] readDataSkipCRLF(ByteBuffer bytes, int length) {
-        Assert.isTrue(bytes.remaining() >= length + 2, "Full buffer");
+        if (bytes.remaining() < length + 2) throw new HalfPackException("Read length: " + length);
 
         int pt = bytes.position();
         byte[] data = getData(bytes, pt, pt + length);
@@ -246,11 +253,6 @@ public enum Type {
         return data;
     }
 
-    public static byte[] getDataSkipCRLF_(ByteBuffer bytes, int from, int to) {
-        Assert.isTrue(to - from >= 2, "len < 2");
-        return getData(bytes, from, to - 2);
-    }
-
     /**
      * do not modify position !
      *
@@ -260,6 +262,9 @@ public enum Type {
      * @return from - to, byte array
      */
     public static byte[] getData(ByteBuffer bytes, int from, int to) {
+        if (bytes.limit() < to) {
+            throw new HalfPackException();
+        }
         byte[] bs = new byte[to - from];
         for (int i = 0; i < bs.length; i++) {
             bs[i] = bytes.get(from + i);
