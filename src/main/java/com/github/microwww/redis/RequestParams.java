@@ -2,7 +2,7 @@ package com.github.microwww.redis;
 
 import com.github.microwww.redis.database.Bytes;
 import com.github.microwww.redis.database.HashKey;
-import com.github.microwww.redis.protocal.NetPacket;
+import com.github.microwww.redis.protocal.message.*;
 import com.github.microwww.redis.util.SafeEncoder;
 
 import java.math.BigDecimal;
@@ -11,41 +11,27 @@ import java.util.Collection;
 import java.util.List;
 
 public class RequestParams {
-    private final NetPacket origin;
+    private final RedisMessage origin;
 
-    public RequestParams(byte[] origin) {
-        this.origin = new NetPacket.Bulk(origin);
-    }
-
-    public RequestParams(NetPacket origin) {
-        Object data = origin.getData();
-        if (data == null) {
-            throw new IllegalArgumentException("Request is NULL");
-        } else if (data instanceof NetPacket[]) {
-            throw new IllegalArgumentException("To ExpectRedisRequest[]");
-        }
+    public RequestParams(RedisMessage origin) {
         this.origin = origin;
     }
 
-    public static RequestParams[] convert(NetPacket packet) {
-        Object data = packet.getData();
-        if (data == null) {
-            throw new IllegalArgumentException("Request is NULL");
+    public static RequestParams[] convert(RedisMessage packet) {
+        RedisMessage[] rm = packet.getRedisMessages();
+        RequestParams[] rs = new RequestParams[rm.length];
+        for (int i = 0; i < rm.length; i++) {
+            rs[i] = new RequestParams(rm[i]);
         }
-        if (data instanceof NetPacket[]) {
-            NetPacket[] nps = (NetPacket[]) data;
-            return Arrays.stream(nps).map(RequestParams::new).toArray(RequestParams[]::new);
-        }
-        return new RequestParams[]{new RequestParams(packet)};
+        return rs;
     }
 
     public byte[] getByteArray() {
-        Object origin = this.origin.getData();
-        if (origin instanceof byte[]) {
-            byte[] ts = (byte[]) origin;
-            return Arrays.copyOf(ts, ts.length);
+        byte[] origin = this.origin.getBytes();
+        if (origin == null) {
+            return null;
         }
-        throw new IllegalArgumentException("Not your expect type : " + origin);
+        return Arrays.copyOf(origin, origin.length);
     }
 
     public String getByteArray2string() {
@@ -69,24 +55,18 @@ public class RequestParams {
     }
 
     public Bytes toBytes() {
-        return new Bytes((byte[]) this.origin.getData());
+        return new Bytes(this.origin.getBytes());
     }
 
     public Long getLong() {
-        if (origin instanceof NetPacket.BigInt) {
-            return (Long) origin.getData();
+        if (origin instanceof LongMessage) {
+            return ((LongMessage) origin).toLong();
         }
         throw new IllegalArgumentException("Not your expect type : " + origin);
     }
 
-    public void isNull() {
-        if (origin != null) {
-            throw new IllegalArgumentException("Not your expect type : " + origin);
-        }
-    }
-
     public RequestParams isNotNull() {
-        if (origin == null) {
+        if (origin == null || origin.getBytes() == null) {
             throw new IllegalArgumentException("Not your expect type : it is NULL");
         }
         return this;
@@ -112,9 +92,9 @@ public class RequestParams {
             }
             return res;
         } else if (o instanceof byte[]) {
-            res[0] = new RequestParams((byte[]) o);
+            res[0] = new RequestParams(new BytesMessage(Type.MULTI, (byte[]) o));
         } else if (o instanceof Long) {
-            res[0] = new RequestParams(new NetPacket.BigInt((Long) o));
+            res[0] = new RequestParams(new BigIntMessage(Type.BigInt, SafeEncoder.encode(o.toString())));
         } else {
             throw new IllegalArgumentException("Not support Expect type : " + o);
         }
@@ -123,10 +103,10 @@ public class RequestParams {
 
     @Override
     public String toString() {
-        Object origin = this.origin.getData();
-        if (origin instanceof byte[]) {
-            return SafeEncoder.encode((byte[]) origin);
+        byte[] bts = this.origin.getBytes();
+        if (bts != null) {
+            return SafeEncoder.encode(bts);
         }
-        return "origin:" + origin;
+        return "origin:" + this.origin;
     }
 }

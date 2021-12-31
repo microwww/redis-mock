@@ -4,8 +4,10 @@ import com.github.microwww.redis.database.Schema;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.NetPacket;
+import com.github.microwww.redis.protocal.HalfPackException;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.message.RedisMessage;
+import com.github.microwww.redis.protocal.message.Type;
 import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
@@ -14,7 +16,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -87,16 +88,20 @@ public class RedisServer implements Closeable {
                 log.debug("Get a request: {}", context.getRemoteHost());
                 StringUtil.loggerBuffer(log, buffer.asReadOnlyBuffer());
             }
-            while (true) {
-                Optional<? extends NetPacket> parse = NetPacket.parse(buffer);
-                if (parse.isPresent()) {
-                    this.readableHandler(context, parse.get());
-                } else break;
+            while (buffer.remaining() > 0) {
+                int start = buffer.position();
+                try {
+                    RedisMessage redisMessage = Type.parseOne(buffer);
+                    this.readableHandler(context, redisMessage);
+                } catch (HalfPackException ex) {
+                    buffer.position(start);
+                    break;
+                }
             }
         }
 
-        private void readableHandler(ChannelContext context, NetPacket netPacket) throws IOException {
-            RequestParams[] req = RequestParams.convert(netPacket);
+        private void readableHandler(ChannelContext context, RedisMessage message) throws IOException {
+            RequestParams[] req = RequestParams.convert(message);
             RedisRequest redisRequest = new RedisRequest(RedisServer.this, context, req);
             log.debug("Ready [{}], request: {}", redisRequest.getCommand(), context.getRemoteHost());
             //Object o = context.getSessions().get(Transaction.class.getName());

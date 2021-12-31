@@ -7,7 +7,7 @@ import java.util.Objects;
 
 public abstract class RedisMessage {
     public final Type type;
-    private final byte[] bytes;
+    protected final byte[] bytes;
 
     private AttrMessage attr;
 
@@ -17,7 +17,7 @@ public abstract class RedisMessage {
     }
 
     public byte[] getBytes() {
-        return bytes;
+        return Arrays.copyOf(bytes, bytes.length);
     }
 
     public boolean isEmpty() {

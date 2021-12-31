@@ -189,7 +189,7 @@ public enum Type {
         }
     }
 
-    public static RedisMessage parseOne(ByteBuffer bytes) {
+    public static RedisMessage parseOne(ByteBuffer bytes) throws HalfPackException {
         assertNotHalf(bytes, "No data to parse");
         byte bt = bytes.get();
         for (Type parse : Type.values()) {
