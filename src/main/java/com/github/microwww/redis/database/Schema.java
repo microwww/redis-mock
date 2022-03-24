@@ -23,9 +23,10 @@ public class Schema implements Closeable {
     private static final ExecutorService pool = Executors.newFixedThreadPool(1);
 
     public static final int DEFAULT_SCHEMA_SIZE = 16;
-    private static final AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[]{
+    private static final AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[] {
             new ConnectionOperation(),
             new HashOperation(),
+            new HyperLogLog(),
             new KeyOperation(),
             new ListOperation(),
             new PubSubOperation(),
@@ -50,7 +51,6 @@ public class Schema implements Closeable {
         this.operations = ops(operations);
         init();
     }
-
 
     private List<AbstractOperation> ops(AbstractOperation[] operations) {
         List<AbstractOperation> list = new ArrayList<>();
@@ -147,7 +147,8 @@ public class Schema implements Closeable {
                 invokers.put(cmd, new Invoker(protocol, method));
                 return;
             } catch (NoSuchMethodException e) {
-                //throw new UnsupportedOperationException("Not support this command : " + cmd, e);
+                // throw new UnsupportedOperationException(
+                // "Not support this command : " + cmd, e);
             }
         }
         try {
@@ -159,7 +160,9 @@ public class Schema implements Closeable {
     }
 
     public void unsupportedOperation(RedisRequest request) throws IOException {
-        request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "unknown command '" + request.getCommand() + "'");
+        request.getOutputProtocol().writerError(
+                RedisOutputProtocol.Level.ERR,
+                "unknown command '" + request.getCommand() + "'");
     }
 
     public synchronized void clearDatabase() {
