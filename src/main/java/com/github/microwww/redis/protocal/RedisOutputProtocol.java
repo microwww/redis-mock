@@ -65,7 +65,7 @@ public class RedisOutputProtocol {
     }
 
     public void writerMulti(byte[]... args) throws IOException {
-        writerComplex(args);
+        writerComplexData(Protocol.ASTERISK_BYTE, args);
     }
 
     public void sendToSubscribe(Object... args) throws IOException {
@@ -76,7 +76,7 @@ public class RedisOutputProtocol {
         writerComplexData(Protocol.ASTERISK_BYTE, args);
     }
 
-    protected void writerComplexData(byte prefix, Object... args) throws IOException {
+    protected void writerComplexData(byte prefix, Object[] args) throws IOException {
         if (args == null) {
             writerNull();
             return;
