@@ -59,7 +59,7 @@ ConnectionOperation
 HashOperation
 >  HDEL, HEXISTS, HGET, HGETALL, HINCRBY, HINCRBYFLOAT, HKEYS, HLEN, HMGET, HMSET, HSCAN, HSET, HSETNX, HVALS, 
 
-HyperLogLog `<3.0.1+>`
+HyperLogLog `<0.3.1+>`
 >  PFADD, PFCOUNT, PFMERGE, 
 
 KeyOperation

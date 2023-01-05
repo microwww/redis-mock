@@ -40,8 +40,8 @@ public abstract class StringUtil {
     }
 
     /**
-     * @param format
-     * @return
+     * @param format apache-ant
+     * @return Pattern
      */
     public static Pattern antPattern(String format) {
         String que = format.replaceAll(Pattern.quote("."), "\\\\Q.\\\\E");
