@@ -12,7 +12,7 @@
     </parent>
 
     <name>spring-boot-mocker-redis</name>
-    <url>https://github.com/microwww/jedis-mock</url>
+    <url>https://github.com/microwww/redis-mock</url>
     <description>This is a redis server mock for spring-boot</description>
 
     <licenses>
@@ -23,9 +23,9 @@
         </license>
     </licenses>
     <scm>
-        <connection>scm:git:git@github.com:microwww/jedis-mock.git</connection>
-        <developerConnection>scm:git:git@github.com:microwww/jedis-mock.git</developerConnection>
-        <url>https://github.com/microwww/jedis-mock</url>
+        <connection>scm:git:git@github.com:microwww/redis-mock.git</connection>
+        <developerConnection>scm:git:git@github.com:microwww/redis-mock.git</developerConnection>
+        <url>https://github.com/microwww/redis-mock</url>
     </scm>
     <distributionManagement>
         <snapshotRepository>
@@ -48,7 +48,7 @@
 
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.3.0</version>
+    <version>5.3.1</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -58,7 +58,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>2.2.9.RELEASE</spring-boot.version>
-        <redis-serve.version>0.3.0</redis-serve.version>
+        <redis-serve.version>0.3.1</redis-serve.version>
     </properties>
 
     <dependencies>
