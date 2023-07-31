@@ -6,7 +6,8 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 3. version 0.2.0 remove jedis dependence, There is no need for any external dependencies.
 4. version 0.2.2 support `PubSubOperation` 
 5. version 0.2.3 ChannelInputStream to `ByteBuffer`, it is non blocking.
-6. support RESP-3, to connect by `HELLO`
+6. support RESP-3, to connect by `HELLO`, from release 0.3.0
+7. support HyperLogLog from <0.3.1+>
 
 ## maven dependency
 
@@ -14,7 +15,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -46,7 +47,7 @@ A better option is to add dependencies:
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.3.0</version>
+    <version>5.3.1</version>
 </dependency>
 ```
 
