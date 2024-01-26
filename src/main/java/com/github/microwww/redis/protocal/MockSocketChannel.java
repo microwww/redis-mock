@@ -136,6 +136,10 @@ public class MockSocketChannel extends SocketChannel {
         return remoteAddress;
     }
 
+    public void setRemoteAddress(SocketAddress remoteAddress) {
+        this.remoteAddress = remoteAddress;
+    }
+
     @Override
     public int read(ByteBuffer dst) throws IOException {
         int read=0;

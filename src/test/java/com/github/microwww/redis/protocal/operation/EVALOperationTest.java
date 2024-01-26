@@ -6,42 +6,80 @@ import redis.clients.jedis.Jedis;
 
 import java.util.Arrays;
 
+import static org.junit.Assert.*;
+
 public class EVALOperationTest extends AbstractRedisTest {
+
+    @Test
+    public void evalString() {
+        Jedis jd = jedis;
+
+        String[] key = Server.random(1);
+        String[] val = Server.random(1);
+        Object a = jedis.eval(
+                "redis.call('SET',KEYS[1],ARGV[1]);" +
+                        "return redis.call('GET',KEYS[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+
+        assertEquals(val[0], a);
+    }
+
     @Test
     public void eval() {
-        Jedis jd = jedis;
-        Object a = jedis.eval("local a = KEYS[3];local b = ARGV[4];redis.call('RPUSH',ARGV[1],'123','233');return redis.call('LPOP',ARGV[1]);", Arrays.asList("kk","k2","k3"), Arrays.asList("v1","v2","v3","v4"));
-        Object aa = jedis.eval("local a = KEYS[3];local b = ARGV[4];return redis.call('LPOP',ARGV[1]);", Arrays.asList("kk","k2","k3"), Arrays.asList("v1","v2","v3","v4"));
 
-        System.out.println("::::::::::"+a);
-        System.out.println("::::::::::"+aa);
+        String[] key = Server.random(3);
+        String[] val = Server.random(4);
+        Object a = jedis.eval("local a = KEYS[3];" +
+                        "redis.call('RPUSH',ARGV[1],a);" +
+                        "return redis.call('RPOP',ARGV[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+
+        assertEquals(key[2], a);
     }
 
     @Test
-    public void evalList() {
-        Jedis jd = jedis;
-        Object a = jedis.eval("local key = KEYS[3];" +
-                "local field = ARGV[4];" +
-                "local value = ARGV[1];" +
-                "redis.call('HSET',key,field,value);" +
-                "redis.call('HSET',key,field..1,value);" +
-                "redis.call('HSET',key..1,field,value);" +
-                "local keys = redis.call('HKEYS',key);return #keys", Arrays.asList("kk","k2","k3"), Arrays.asList("v1","v2","v3","v4"));
+    public void evalListSize() {
 
-        System.out.println("::::::::::"+a);
+        String[] key = Server.random(3);
+        String[] val = Server.random(4);
+        Object a = jedis.eval("local a = KEYS[3];" +
+                        "redis.call('RPUSH',ARGV[1],a);" +
+                        "redis.call('RPUSH',ARGV[1],KEYS[1]);" +
+                        "return redis.call('LLEN',ARGV[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+
+        assertEquals("2", a);
     }
 
     @Test
-    public void evalList2() {
-        Jedis jd = jedis;
-        Object a = jedis.eval("local key = KEYS[3];" +
-                "local field = ARGV[4];" +
-                "local value = ARGV[1];" +
-                "redis.call('HSET',key,field,value);" +
-                "redis.call('HSET',key,field..1,value);" +
-                "redis.call('HSET',key..1,field,value);" +
-                "local keys = redis.call('HGETALL',key);print(keys[1]..'|'..keys[2]..'|'..keys[3]..'|'..keys[4]);print(#keys)", Arrays.asList("kk","k2","k3"), Arrays.asList("v1","v2","v3","v4"));
+    public void evalHashSize() {
 
-        System.out.println("::::::::::"+a);
+        String[] key = Server.random(3);
+        String[] val = Server.random(4);
+        Object a = jedis.eval("local a = KEYS[3];" +
+                        "redis.call('HSET',ARGV[1],a,KEYS[1]);" +
+                        "redis.call('HSET',ARGV[1],KEYS[1],a);" +
+                        "return redis.call('HLEN',ARGV[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+
+        assertEquals("2", a);
+    }
+
+    @Test
+    public void evalHashGet() {
+
+        String[] key = Server.random(3);
+        String[] val = Server.random(4);
+        Object a = jedis.eval(
+                        "redis.call('HSET',ARGV[1],KEYS[1],KEYS[2]);" +
+                        "return redis.call('HGET',ARGV[1],KEYS[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+
+        assertEquals(key[1], a);
     }
 }

@@ -41,6 +41,7 @@ public class ScriptOperation extends AbstractOperation {
 
     public void eval(RedisRequest request) throws IOException {
         try {
+            mockSocketChannel.setRemoteAddress(request.getContext().getRemoteAddress());
             LuaTable t = new LuaTable();
             MockRedis.Call call = new MockRedis.Call(request.getServer(), request.getContext(), mockSocketChannel);
             t.set("call", call);
