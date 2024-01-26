@@ -25,7 +25,7 @@ public abstract class AbstractRedisTest {
     protected Jedis jedis;
 
     public Jedis connection() throws IOException {
-        return new Jedis(address.getHostName(), address.getPort(), 60_000);
+        return new Jedis(address.getHostName(), address.getPort(), 60_00000);
         // return new Jedis("192.168.1.246", 6379, 60_000);
     }
 

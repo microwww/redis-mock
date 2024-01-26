@@ -92,6 +92,15 @@ public class ChannelContext {
         return buffer.asReadOnlyBuffer();
     }
 
+    public ByteBuffer channel() throws IOException {
+        int read = channel.read(buffer);
+        if (read < 0) {
+            throw new IOException("EOF");
+        }
+        buffer.flip();
+        return buffer;
+    }
+
     void readOver(ByteBuffer residue) throws IOException {
         if (residue.remaining() > 0) {
             if (residue.remaining() >= buffer.capacity()) {
