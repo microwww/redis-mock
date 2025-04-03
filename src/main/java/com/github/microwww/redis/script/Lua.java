@@ -1,4 +1,4 @@
-package com.github.microwww.redis.protocal.operation;
+package com.github.microwww.redis.script;
 
 import com.github.microwww.redis.ChannelContext;
 import com.github.microwww.redis.RedisServer;
@@ -24,8 +24,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ScriptOperation extends AbstractOperation {
-    public static final Logger log = LogFactory.getLogger(ScriptOperation.class);
+public class Lua {
+    public static final Logger log = LogFactory.getLogger(Lua.class);
 
     Globals globals = JsePlatform.standardGlobals();
     LuaValue coerce = CoerceJavaToLua.coerce(new MockRedis());
