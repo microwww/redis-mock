@@ -3,12 +3,16 @@ package com.github.microwww.redis.protocal.operation;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.script.Lua;
 
 import java.io.IOException;
 
 public class ScriptOperation extends AbstractOperation {
+    Lua lua = new Lua();
+
     // EVAL
     public void eval(RedisRequest request) throws IOException {
+        lua.eval(request);
     }
     // EVALSHA
     public void evalsha(RedisRequest request) throws IOException {
