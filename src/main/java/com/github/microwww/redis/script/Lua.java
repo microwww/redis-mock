@@ -152,6 +152,9 @@ public class Lua {
     }
 
     public static LuaValue encodeObject(Object dataToEncode) {
+        if(Objects.isNull(dataToEncode)){
+            return LuaValue.NIL;
+        }
         if (dataToEncode instanceof byte[]) {
             return encode((byte[]) dataToEncode);
         }
