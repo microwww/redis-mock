@@ -92,10 +92,6 @@ public class Schema implements Closeable {
         execute0(request,pool);
     }
 
-    public void executeEval(RedisRequest request) throws IOException {
-        execute0(request,evalPool);
-    }
-
     public void execute0(RedisRequest request,ExecutorService executorService) throws IOException {
         log.debug("Wait thread to run {}, {}", request.getCommand(), request.getContext().getRemoteHost());
         Future<String> submit = executorService.submit(() -> {
@@ -158,8 +154,7 @@ public class Schema implements Closeable {
                 invokers.put(cmd, new Invoker(protocol, method));
                 return;
             } catch (NoSuchMethodException e) {
-                // throw new UnsupportedOperationException(
-                // "Not support this command : " + cmd, e);
+                // throw new UnsupportedOperationException("Not support this command : " + cmd, e);
             }
         }
         try {

@@ -138,7 +138,8 @@ public class Lua {
                 ChannelContext channelContext = new ChannelContext(socketChannel);
                 RedisRequest redisRequest = new RedisRequest(redisServer, channelContext, req);
                 try {
-                    redisServer.getSchema().executeEval(redisRequest);
+                    // 不能用新的线程池
+                    redisServer.getSchema().run(redisRequest);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
