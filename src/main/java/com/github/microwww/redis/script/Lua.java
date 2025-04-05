@@ -5,10 +5,8 @@ import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.AbstractOperation;
-import com.github.microwww.redis.protocal.MockSocketChannel;
-import com.github.microwww.redis.protocal.RedisOutputProtocol;
-import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.protocal.jedis.RedisInputStream;
 import com.github.microwww.redis.protocal.message.MultiMessage;
@@ -20,7 +18,6 @@ import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,20 +27,16 @@ public class Lua {
     Globals globals = JsePlatform.standardGlobals();
     LuaValue coerce = CoerceJavaToLua.coerce(new MockRedis());
 
-    MockSocketChannel mockSocketChannel;
 
     {
         globals.set("redis",coerce);
-        mockSocketChannel = new MockSocketChannel().recorder(ByteBuffer.allocate(1 * 1024));
-
     }
 
 
     public void eval(RedisRequest request) throws IOException {
         try {
-            mockSocketChannel.setRemoteAddress(request.getContext().getRemoteAddress());
             LuaTable t = new LuaTable();
-            MockRedis.Call call = new MockRedis.Call(request.getServer(), request.getContext(), mockSocketChannel);
+            MockRedis.Call call = new MockRedis.Call(request.getServer(), request.getContext());
             t.set("call", call);
             t.set("pcall", call);
             t.set("__index", t);
@@ -69,7 +62,7 @@ public class Lua {
             LuaValue result = load.call();
             evalOut(request.getOutputProtocol(), result);
         }finally {
-            mockSocketChannel.clearRecorder();
+            //mockSocketChannel.clearRecorder();
         }
     }
 
@@ -109,23 +102,20 @@ public class Lua {
         static public class Call extends VarArgFunction {
 
             RedisServer redisServer;
-
             ChannelContext channelContext;
 
-            MockSocketChannel socketChannel;
-            public Call(RedisServer redisServer, ChannelContext channelContext, MockSocketChannel socketChannel) {
+            public Call(RedisServer redisServer, ChannelContext channelContext) {
                 this.redisServer = redisServer;
                 this.channelContext = channelContext;
-                this.socketChannel = socketChannel;
             }
 
             @Override
-            public LuaValue invoke(Varargs varargs){
+            public LuaValue invoke(Varargs varargs) {
                 int narg = varargs.narg();
                 StringMessage[] args = new StringMessage[narg];
                 for (int i = 0; i < narg; i++) {
                     try {
-                        args[i] = new StringMessage(Type.ATTR,varargs.arg(i + 1).checkjstring().getBytes(Protocol.CHARSET));
+                        args[i] = new StringMessage(Type.ATTR, varargs.arg(i + 1).checkjstring().getBytes(Protocol.CHARSET));
                     } catch (UnsupportedEncodingException e) {
                         log.error("{}", e);
                         throw new RuntimeException(e);
@@ -135,21 +125,27 @@ public class Lua {
                 MultiMessage multiMessage = new MultiMessage(Type.MULTI, args);
                 RequestParams[] req = RequestParams.convert(multiMessage);
 
-                ChannelContext channelContext = new ChannelContext(socketChannel);
-                RedisRequest redisRequest = new RedisRequest(redisServer, channelContext, req);
+                // 替换掉输出流，最后再复原 !
+                RedisOutputProtocol origin = channelContext.getProtocol();
                 try {
-                    // 不能用新的线程池
-                    redisServer.getSchema().run(redisRequest);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    ByteArrayOutputStream arr = new ByteArrayOutputStream(1 * 1024);
+                    RedisOutputProtocol out = new RespV2(new JedisOutputStream(arr));
+                    channelContext.setProtocol(out);
+                    RedisRequest redisRequest = new RedisRequest(redisServer, channelContext, req);
+                    try {
+                        // 不能用新的线程池
+                        redisServer.getSchema().run(redisRequest);
+                        redisRequest.getContext().getProtocol().flush();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    ByteArrayInputStream in = new ByteArrayInputStream(arr.toByteArray());
+                    RedisInputStream redisInputStream = new RedisInputStream(in);
+                    LuaValue luaValue = encodeObject(Protocol.read(redisInputStream));
+                    return luaValue;
+                } finally {
+                    channelContext.setProtocol(origin);
                 }
-                ByteArrayInputStream byteIn = new ByteArrayInputStream(socketChannel.recorder().array());
-                RedisInputStream redisInputStream = new RedisInputStream(byteIn);
-                LuaValue luaValue = encodeObject(Protocol.read(redisInputStream));
-
-                socketChannel.clearRecorder();
-
-                return luaValue;
 
             }
         }
