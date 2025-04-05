@@ -5,43 +5,48 @@ import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
-import com.github.microwww.redis.protocal.*;
+import com.github.microwww.redis.protocal.RedisOutputProtocol;
+import com.github.microwww.redis.protocal.RedisRequest;
+import com.github.microwww.redis.protocal.RespV2;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.protocal.jedis.RedisInputStream;
 import com.github.microwww.redis.protocal.message.MultiMessage;
 import com.github.microwww.redis.protocal.message.StringMessage;
 import com.github.microwww.redis.protocal.message.Type;
-import org.luaj.vm2.*;
+import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaTable;
+import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.VarArgFunction;
-import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Lua {
     public static final Logger log = LogFactory.getLogger(Lua.class);
+    static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
 
     Globals globals = JsePlatform.standardGlobals();
-    LuaValue coerce = CoerceJavaToLua.coerce(new MockRedis());
+    LuaTable redis = new LuaTable();
 
-
-    {
-        globals.set("redis",coerce);
+    public Lua() {
+        MockRedis.Call call = new MockRedis.Call();
+        redis.set("call", call);
+        redis.set("pcall", call);
     }
 
 
     public void eval(RedisRequest request) throws IOException {
         try {
-            LuaTable t = new LuaTable();
-            MockRedis.Call call = new MockRedis.Call(request.getServer(), request.getContext());
-            t.set("call", call);
-            t.set("pcall", call);
-            t.set("__index", t);
-            coerce.setmetatable(t);
-
+            CONTEXT.set(request);
+            LuaTable env = new LuaTable();
             RequestParams[] params = request.getParams();
             String script = params[0].getByteArray2string();
             int keySize = params[1].byteArray2int();
@@ -49,20 +54,20 @@ public class Lua {
             for (int i = 0; i < keySize; i++) {
                 keys.add(LuaValue.valueOf(params[2 + i].getByteArray2string()));
             }
-            globals.set("KEYS", LuaValue.listOf(keys.toArray(new LuaValue[0])));
+            env.set("KEYS", LuaValue.listOf(keys.toArray(new LuaValue[0])));
 
             int argSize = params.length - 2 - keySize;
             ArrayList<LuaValue> args = new ArrayList<>(argSize);
             for (int i = 0; i < argSize; i++) {
                 args.add(LuaValue.valueOf(params[3 + keySize + i - 1].getByteArray2string()));
             }
-            globals.set("ARGV", LuaValue.listOf(args.toArray(new LuaValue[0])));
-
-            LuaValue load = globals.load(script);
+            env.set("ARGV", LuaValue.listOf(args.toArray(new LuaValue[0])));
+            env.set("redis", redis);
+            LuaValue load = globals.load(script, "\r\n" + script + "\r\n\t script.lua", env);
             LuaValue result = load.call();
             evalOut(request.getOutputProtocol(), result);
         }finally {
-            //mockSocketChannel.clearRecorder();
+            CONTEXT.remove();
         }
     }
 
@@ -101,16 +106,15 @@ public class Lua {
 
         static public class Call extends VarArgFunction {
 
-            RedisServer redisServer;
-            ChannelContext channelContext;
 
-            public Call(RedisServer redisServer, ChannelContext channelContext) {
-                this.redisServer = redisServer;
-                this.channelContext = channelContext;
+            public Call() {
             }
 
             @Override
             public LuaValue invoke(Varargs varargs) {
+                RedisServer redisServer = CONTEXT.get().getServer();
+                ChannelContext channelContext = CONTEXT.get().getContext();
+
                 int narg = varargs.narg();
                 StringMessage[] args = new StringMessage[narg];
                 for (int i = 0; i < narg; i++) {
