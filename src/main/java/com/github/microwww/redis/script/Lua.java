@@ -75,7 +75,7 @@ public class Lua {
 
     private void evalOut(RedisOutputProtocol outputProtocol, LuaValue res) throws IOException {
         if (res.isnil()) {
-            outputProtocol.writer("nil");
+            outputProtocol.writerNull();
         }else if (res instanceof LuaTable){ //list case
             LuaTable resTable = (LuaTable) res;
             LuaValue len = resTable.len();
