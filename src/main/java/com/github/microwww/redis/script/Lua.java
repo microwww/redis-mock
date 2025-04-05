@@ -14,10 +14,8 @@ import com.github.microwww.redis.protocal.jedis.RedisInputStream;
 import com.github.microwww.redis.protocal.message.MultiMessage;
 import com.github.microwww.redis.protocal.message.StringMessage;
 import com.github.microwww.redis.protocal.message.Type;
-import org.luaj.vm2.Globals;
-import org.luaj.vm2.LuaTable;
-import org.luaj.vm2.LuaValue;
-import org.luaj.vm2.Varargs;
+import org.luaj.vm2.*;
+import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
@@ -57,18 +55,37 @@ public class Lua {
             env.set("KEYS", LuaValue.listOf(keys.toArray(new LuaValue[0])));
 
             int argSize = params.length - 2 - keySize;
-            ArrayList<LuaValue> args = new ArrayList<>(argSize);
+            List<LuaValue> args = new ArrayList<>(argSize);
             for (int i = 0; i < argSize; i++) {
                 args.add(LuaValue.valueOf(params[3 + keySize + i - 1].getByteArray2string()));
             }
             env.set("ARGV", LuaValue.listOf(args.toArray(new LuaValue[0])));
+
             env.set("redis", redis);
+            env.setmetatable(createMetatable());
+
             LuaValue load = globals.load(script, "\r\n" + script + "\r\n\t script.lua", env);
             LuaValue result = load.call();
             evalOut(request.getOutputProtocol(), result);
         }finally {
             CONTEXT.remove();
         }
+    }
+
+    private LuaTable createMetatable(){
+        LuaTable env = new LuaTable();
+        LuaValue g = globals.get("_G");
+        env.set("__index", g);
+        env.set("__newindex", new ThreeArgFunction() {
+            @Override
+            public LuaValue call(LuaValue t, LuaValue key, LuaValue value) {
+                throw new LuaError(String.format(
+                        "Script attempted to create global variable '%s'",
+                        key.tojstring()
+                ));
+            }
+        });
+        return env;
     }
 
     private void evalOut(RedisOutputProtocol outputProtocol, LuaValue res) throws IOException {
