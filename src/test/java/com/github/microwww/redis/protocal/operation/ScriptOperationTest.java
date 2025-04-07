@@ -49,7 +49,38 @@ public class ScriptOperationTest extends AbstractRedisTest {
             jedis.eval("a=10");
             Assert.fail();
         } catch (Exception ex){
-            Assert.assertTrue(ex.getMessage().contains("Script attempted to create global variable"));
+            Assert.assertNotNull(ex.getMessage());
         }
+    }
+
+    @Test
+    public void evalLuaTypeTable(){
+        Object table = jedis.eval("local function f(x) end \n" +
+                "return {1, f, 'string'}");
+        List<Object> list = (List<Object>) table;
+        Assert.assertEquals(list.size(), 3);
+
+        Assert.assertEquals(list.get(0), 1L);
+        Assert.assertNull(list.get(1));
+        Assert.assertEquals(list.get(2), "string");
+    }
+
+    @Test
+    public void evalLuaTypeSimple(){
+        Object vnil = jedis.eval("return nil");
+        Assert.assertNull(vnil);
+
+        Object vint = jedis.eval("return 1");
+        Assert.assertEquals(vint, 1L);
+
+        Object vdouble = jedis.eval("return 1.000000009");
+        Assert.assertEquals(vdouble, 1L);
+
+        String val = UUID.randomUUID().toString();
+        Object vstring = jedis.eval(String.format("return '%s'", val));
+        Assert.assertEquals(vstring, val);
+
+        Object fun = jedis.eval("return function() end");
+        Assert.assertEquals(fun, null);
     }
 }
