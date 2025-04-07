@@ -4,15 +4,26 @@ import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.script.Lua;
+import com.github.microwww.redis.script.RespLua;
 
 import java.io.IOException;
 
 public class ScriptOperation extends AbstractOperation {
-    Lua lua = new Lua();
+    protected Lua lua = new Lua();
 
     // EVAL
     public void eval(RedisRequest request) throws IOException {
-        lua.eval(request);
+        RedisOutputProtocol origin = request.getContext().getProtocol();
+        RespLua resp = RespLua.create();
+        try {
+            request.getContext().setProtocol(resp);
+            lua.eval(request);
+            request.getOutputProtocol().flush();
+        } finally {
+            request.getContext().setProtocol(origin);
+        }
+        origin.getOut().write(resp.getData());
+        origin.flush();
     }
     // EVALSHA
     public void evalsha(RedisRequest request) throws IOException {

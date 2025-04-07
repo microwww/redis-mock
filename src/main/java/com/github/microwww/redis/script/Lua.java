@@ -1,13 +1,11 @@
 package com.github.microwww.redis.script;
 
-import com.github.microwww.redis.ChannelContext;
 import com.github.microwww.redis.RedisServer;
 import com.github.microwww.redis.RequestParams;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.protocal.jedis.RedisInputStream;
 import com.github.microwww.redis.protocal.message.MultiMessage;
@@ -19,7 +17,6 @@ import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -65,6 +62,8 @@ public class Lua {
 
             LuaValue load = globals.load(script, "\r\n" + script + "\r\n\t script.lua", env);
             LuaValue result = load.call();
+
+            ((RespLua) request.getOutputProtocol()).reset();
             writeOut(request.getOutputProtocol(), result);
         }finally {
             CONTEXT.remove();
@@ -149,9 +148,6 @@ public class Lua {
 
             @Override
             public LuaValue invoke(Varargs varargs) {
-                RedisServer redisServer = CONTEXT.get().getServer();
-                ChannelContext channelContext = CONTEXT.get().getContext();
-
                 int narg = varargs.narg();
                 StringMessage[] args = new StringMessage[narg];
                 for (int i = 0; i < narg; i++) {
@@ -164,32 +160,24 @@ public class Lua {
                 }
 
                 MultiMessage multiMessage = new MultiMessage(Type.MULTI, args);
-                RequestParams[] req = RequestParams.convert(multiMessage);
+                RequestParams[] params = RequestParams.convert(multiMessage);
 
-                // 替换掉输出流，最后再复原 !
-                RedisOutputProtocol origin = channelContext.getProtocol();
+                RedisRequest origin = CONTEXT.get();
+                RespLua out = (RespLua) origin.getOutputProtocol();
                 try {
+                    out.reset();
+                    RedisServer redisServer = origin.getServer();
+                    RedisRequest request = new RedisRequest(redisServer, origin.getContext(), params);
+                    // 当前线程池直接运行
+                    redisServer.getSchema().run(request);
 
-                    ByteArrayOutputStream arr = new ByteArrayOutputStream(1 * 1024);
-                    RedisOutputProtocol out = new RespLua(new JedisOutputStream(arr));
-
-                    channelContext.setProtocol(out);
-                    RedisRequest redisRequest = new RedisRequest(redisServer, channelContext, req);
-                    try {
-                        // 当前线程池直接运行
-                        redisServer.getSchema().run(redisRequest);
-                        redisRequest.getContext().getProtocol().flush();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    ByteArrayInputStream in = new ByteArrayInputStream(arr.toByteArray());
+                    ByteArrayInputStream in = new ByteArrayInputStream(out.getData());
                     RedisInputStream redisInputStream = new RedisInputStream(in);
                     LuaValue luaValue = encodeObject(Protocol.read(redisInputStream));
 
                     return luaValue;
-                } finally {
-                    channelContext.setProtocol(origin);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
