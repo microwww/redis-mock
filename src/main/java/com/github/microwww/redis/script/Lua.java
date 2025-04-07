@@ -7,7 +7,6 @@ import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
-import com.github.microwww.redis.protocal.RespV2;
 import com.github.microwww.redis.protocal.jedis.JedisOutputStream;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.protocal.jedis.RedisInputStream;
@@ -66,7 +65,7 @@ public class Lua {
 
             LuaValue load = globals.load(script, "\r\n" + script + "\r\n\t script.lua", env);
             LuaValue result = load.call();
-            evalOut(request.getOutputProtocol(), result);
+            writeOut(request.getOutputProtocol(), result);
         }finally {
             CONTEXT.remove();
         }
@@ -91,7 +90,7 @@ public class Lua {
     private void evalOut(RedisOutputProtocol outputProtocol, LuaValue res) throws IOException {
         if (res.isnil()) {
             outputProtocol.writerNull();
-        }else if (res instanceof LuaTable){ //list case
+        } else if (res instanceof LuaTable){ //list case
             LuaTable resTable = (LuaTable) res;
             LuaValue len = resTable.len();
             if (len.isint()) {
@@ -112,6 +111,27 @@ public class Lua {
             outputProtocol.writer(res.tolong());
         }else {
             outputProtocol.writer(res.tojstring());
+        }
+    }
+
+    public static void writeOut(RedisOutputProtocol out, LuaValue val) throws IOException {
+        if (val.isnil()) {
+            out.writerNull();
+        } else if (val.isstring()) {
+            out.writer(val.tojstring());
+        } else if (val.isint()) {
+            out.writer(val.toint());
+        } else if (val.isnumber()) { // Lua number -> Redis integer reply / Lua 数字转换成 Redis 整数
+            out.writer(val.tolong());
+        } else if (val.isboolean()) {
+            out.writer(val.checkboolean()?1:0);
+        } else if (val.istable()) {
+            List<?> list = LuaToJavaConverter.convertTable2list(val.checktable());
+            out.writerComplex(list.toArray());
+        } else {
+            //} else if (val.isfunction()) {
+            //} else if (val.isuserdata()) {
+            throw new IllegalArgumentException("Unsupported Lua type: " + val.typename());
         }
     }
 
@@ -149,25 +169,28 @@ public class Lua {
                 // 替换掉输出流，最后再复原 !
                 RedisOutputProtocol origin = channelContext.getProtocol();
                 try {
+
                     ByteArrayOutputStream arr = new ByteArrayOutputStream(1 * 1024);
-                    RedisOutputProtocol out = new RespV2(new JedisOutputStream(arr));
+                    RedisOutputProtocol out = new RespLua(new JedisOutputStream(arr));
+
                     channelContext.setProtocol(out);
                     RedisRequest redisRequest = new RedisRequest(redisServer, channelContext, req);
                     try {
-                        // 不能用新的线程池
+                        // 当前线程池直接运行
                         redisServer.getSchema().run(redisRequest);
                         redisRequest.getContext().getProtocol().flush();
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
+
                     ByteArrayInputStream in = new ByteArrayInputStream(arr.toByteArray());
                     RedisInputStream redisInputStream = new RedisInputStream(in);
                     LuaValue luaValue = encodeObject(Protocol.read(redisInputStream));
+
                     return luaValue;
                 } finally {
                     channelContext.setProtocol(origin);
                 }
-
             }
         }
     }
