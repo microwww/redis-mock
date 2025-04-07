@@ -117,20 +117,20 @@ public class Lua {
     public static void writeOut(RedisOutputProtocol out, LuaValue val) throws IOException {
         if (val.isnil()) {
             out.writerNull();
-        } else if (val.isstring()) {
-            out.writer(val.tojstring());
-        } else if (val.isint()) {
-            out.writer(val.toint());
+        } else if (val.isboolean()) {
+            out.writer(val.checkboolean() ? 1 : 0);
         } else if (val.isnumber()) { // Lua number -> Redis integer reply / Lua 数字转换成 Redis 整数
             out.writer(val.tolong());
-        } else if (val.isboolean()) {
-            out.writer(val.checkboolean()?1:0);
+        } else if (val.isstring()) {
+            out.writer(val.tojstring());
         } else if (val.istable()) {
             List<?> list = LuaToJavaConverter.convertTable2list(val.checktable());
             out.writerComplex(list.toArray());
+        } else if (val.isfunction()) {
+            out.writerNull();
+        } else if (val.isuserdata()) {
+            out.writerNull();
         } else {
-            //} else if (val.isfunction()) {
-            //} else if (val.isuserdata()) {
             throw new IllegalArgumentException("Unsupported Lua type: " + val.typename());
         }
     }

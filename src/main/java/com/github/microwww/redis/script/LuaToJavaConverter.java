@@ -9,25 +9,27 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class LuaToJavaConverter {
-    public static Object convert(LuaValue luaValue) {
-        if (luaValue.isnil()) {
+    public static Object convert(LuaValue val) {
+        if (val.isnil()) {
             return null;
-        } else if (luaValue.isstring()) {
-            return luaValue.toString();
-        } else if (luaValue.isint()) {
-            return luaValue.toint();
-        } else if (luaValue.isnumber()) {
-            return luaValue.todouble();
-        } else if (luaValue.isboolean()) {
-            return luaValue.toboolean();
-        } else if (luaValue.istable()) {
-            return convertTable2list(luaValue.checktable());
-        } else if (luaValue.isfunction()) {
-            return luaValue;  // 返回 LuaFunction，供后续调用
-        } else if (luaValue.isuserdata()) {
-            return luaValue.checkuserdata();  // 返回原始 Java 对象
+        } else if (val.isboolean()) {
+            return val.toboolean();
+        } else if (val.isint()) {
+            return val.toint();
+        } else if (val.islong()) {
+            return val.tolong();
+        } else if (val.isnumber()) {
+            return val.todouble();
+        } else if (val.isstring()) {
+            return val.toString();
+        } else if (val.istable()) {
+            return convertTable2list(val.checktable());
+        } else if (val.isfunction()) {
+            return val;  // 返回 LuaFunction，供后续调用
+        } else if (val.isuserdata()) {
+            return val.checkuserdata();  // 返回原始 Java 对象
         } else {
-            throw new IllegalArgumentException("Unsupported Lua type: " + luaValue.typename());
+            throw new IllegalArgumentException("Unsupported Lua type: " + val.typename());
         }
     }
 
