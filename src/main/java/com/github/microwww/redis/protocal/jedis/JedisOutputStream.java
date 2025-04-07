@@ -4,6 +4,7 @@ import com.github.microwww.redis.util.SafeEncoder;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 
 public final class JedisOutputStream extends OutputStream {
 
@@ -32,7 +33,7 @@ public final class JedisOutputStream extends OutputStream {
 
     @Override
     public void write(int b) throws IOException {
-        redisOutputStream.write(b);
+        throw new UnsupportedEncodingException("会同 RedisOutputStream 的 buf 缓存冲突");
     }
 
     @Override
