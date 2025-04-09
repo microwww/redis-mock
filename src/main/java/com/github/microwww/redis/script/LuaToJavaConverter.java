@@ -1,5 +1,6 @@
 package com.github.microwww.redis.script;
 
+import com.github.microwww.redis.util.SafeEncoder;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 
@@ -58,5 +59,47 @@ public abstract class LuaToJavaConverter {
             resultMap.put(convert(key), convert(value));
         }
         return resultMap;
+    }
+
+    public static LuaValue convert(Object obj) {
+        if (obj == null) {
+            return LuaValue.NIL;
+        } else if (obj instanceof byte[]) {
+            return LuaValue.valueOf(SafeEncoder.encode((byte[]) obj));
+        } else if (obj instanceof Integer) {
+            return LuaValue.valueOf((Integer) obj);
+        } else if (obj instanceof Long) {
+            return LuaValue.valueOf((Long) obj);
+        } else if (obj instanceof Double) {
+            return LuaValue.valueOf((Double) obj);
+        } else if (obj instanceof Boolean) {
+            return LuaValue.valueOf((Boolean) obj);
+        } else if (obj instanceof String) {
+            return LuaValue.valueOf((String) obj);
+        } else if (obj instanceof List<?>) {
+            return convertList((List<?>) obj);
+        } else if (obj instanceof Map<?, ?>) {
+            return convertMap((Map<?, ?>) obj);
+        } else {
+            return LuaValue.userdataOf(obj); // 默认转换为 Userdata
+        }
+    }
+
+    private static LuaValue convertList(List<?> list) {
+        LuaTable table = new LuaTable();
+        for (int i = 0; i < list.size(); i++) {
+            table.set(i + 1, convert(list.get(i)));
+        }
+        return table;
+    }
+
+    private static LuaValue convertMap(Map<?, ?> map) {
+        LuaTable table = new LuaTable();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            LuaValue key = LuaValue.valueOf(entry.getKey().toString());
+            LuaValue value = convert(entry.getValue());
+            table.set(key, value);
+        }
+        return table;
     }
 }
