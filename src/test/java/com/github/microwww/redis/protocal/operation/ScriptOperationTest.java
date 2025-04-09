@@ -14,11 +14,43 @@ public class ScriptOperationTest extends AbstractRedisTest {
     public void evalNil(){
         Object sv = jedis.eval("return nil", 0);
         Assert.assertNull(sv);
-        sv = jedis.eval(String.format("return redis.call('get', '%s')", UUID.randomUUID().toString()), 0);
+        sv = jedis.eval(String.format("return redis.call('get', '%s')", UUID.randomUUID()), 0);
         Assert.assertNull(sv);
 
         sv = jedis.eval("return 10", 0);
         Assert.assertEquals(sv, 10L);
+    }
+
+    @Test
+    public void nil(){
+        Object res;
+        // function (nil)
+        res = jedis.eval("" +
+                "local function direct(v) \n" +
+                "  return v               \n" +
+                "end                      \n" +
+                "return direct(nil)", 0);
+        Assert.assertNull(res);
+
+        // nil equal
+        res = jedis.eval("" +
+                "local function direct(v) \n" +
+                "  return v == nil        \n" +
+                "end                      \n" +
+                "return direct(nil)", 0);
+        Assert.assertEquals(res, 1L);
+
+        // talbe 多个 nil 会忽略
+        String k0 = UUID.randomUUID().toString();
+        String k1 = UUID.randomUUID().toString();
+        List list = (List) jedis.eval("return redis.call('mget', KEYS[1], ARGV[1])", 1, k0, k1);
+        Assert.assertEquals(list.size(), 2);
+        Assert.assertNull(list.get(0));
+        Assert.assertNull(list.get(1));
+        list = (List) jedis.eval("" +
+                "local t = redis.call('mget', KEYS[1], ARGV[1]) \n" +
+                "return {0, t[0], nil, t[1], 1}", 1, k0, k1);
+        System.out.println(list);
     }
 
     @Test
@@ -64,6 +96,22 @@ public class ScriptOperationTest extends AbstractRedisTest {
         Assert.assertEquals(list.get(0), 1L);
         Assert.assertNull(list.get(1));
         Assert.assertEquals(list.get(2), "string");
+    }
+
+    @Test
+    public void evalLuaEval() {
+        String key = UUID.randomUUID().toString();
+        String val = UUID.randomUUID().toString();
+        jedis.set(key, val);
+        Object v = jedis.eval(String.format("return redis.call('get', '%s')", key));
+        Assert.assertEquals(v, val);
+        Object vnil = jedis.eval(String.format("return redis.call('get', '%s')", val));
+        Assert.assertNull(vnil);
+        List list = (List) jedis.eval("local v = redis.call('mget', KEYS[1], ARGV[1]) \n" +
+                "print(#v) \n" +
+                "return v", 1, key, val, key);
+        Assert.assertEquals(val, list.get(0));
+        Assert.assertNull(list.get(1));
     }
 
     @Test

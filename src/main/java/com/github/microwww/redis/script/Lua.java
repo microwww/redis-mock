@@ -23,11 +23,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Lua {
-    public static final Logger log = LogFactory.getLogger(Lua.class);
-    static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
+    private static final Logger log = LogFactory.getLogger(Lua.class);
 
-    Globals globals = JsePlatform.standardGlobals();
-    LuaTable redis = new LuaTable();
+    protected static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
+    protected Globals globals = JsePlatform.standardGlobals();
+    protected LuaTable redis = new LuaTable();
 
     public Lua() {
         LuaRedis call = new LuaRedis();
@@ -113,7 +113,9 @@ public class Lua {
     }
 
     public static void writeOut(RedisOutputProtocol out, LuaValue val) throws IOException {
-        if (val.isnil()) {
+        if (val == LuaNull.NULL) {
+            out.writerNull();
+        } else if (val.isnil()) {
             out.writerNull();
         } else if (val.isboolean()) {
             out.writer(val.checkboolean() ? 1 : 0);

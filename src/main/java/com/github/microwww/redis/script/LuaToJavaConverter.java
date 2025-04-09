@@ -10,8 +10,11 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class LuaToJavaConverter {
+
     public static Object convert(LuaValue val) {
-        if (val.isnil()) {
+        if (val == LuaNull.NULL) {
+            return null;
+        } else if (val.isnil()) {
             return null;
         } else if (val.isboolean()) {
             return val.toboolean();
@@ -35,7 +38,7 @@ public abstract class LuaToJavaConverter {
     }
 
     /**
-     * Redis 仅仅转换为数组，按照索引取得，对于混合的 table，找到第一个 nil 就结束
+     * Redis 仅仅转换为数组，按照索引取得，不支持混合的 table。
      * @param table
      * @return
      */
@@ -45,7 +48,7 @@ public abstract class LuaToJavaConverter {
         for(int i = 1; i <= l; i++){ // LUA 从 1 开始计数
             LuaValue v = table.get(i);
             if(v.isnil()){
-                break;
+                res.add(null);
             }
             res.add(convert(v));
         }
@@ -63,7 +66,7 @@ public abstract class LuaToJavaConverter {
 
     public static LuaValue convert(Object obj) {
         if (obj == null) {
-            return LuaValue.NIL;
+            return LuaNull.NULL;
         } else if (obj instanceof byte[]) {
             return LuaValue.valueOf(SafeEncoder.encode((byte[]) obj));
         } else if (obj instanceof Integer) {
