@@ -1,13 +1,17 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.redis.RequestParams;
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.jedis.Protocol;
 import com.github.microwww.redis.protocal.message.StringMessage;
 import com.github.microwww.redis.script.Lua;
+import com.github.microwww.redis.script.NoScript;
 import com.github.microwww.redis.script.RespLua;
+import com.github.microwww.redis.script.Script;
 import com.github.microwww.redis.util.SafeEncoder;
 
 import java.io.IOException;
@@ -23,7 +27,17 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Kill 总是返回 OK， 不做 kill 操作 ！
  */
 public class ScriptOperation extends AbstractOperation {
-    protected Lua lua = new Lua();
+    private static Logger log = LogFactory.getLogger(ScriptOperation.class);
+    protected Script lua;
+    {
+        try{
+            lua = new Lua();
+        } catch(NoClassDefFoundError ex){
+            log.warn("找不到 Lua 的脚本执行环境，如果不需要Lua支持，请忽略该提示，否则请添加依赖: org.luaj:luaj-jse:^3.0.1");
+            lua = new NoScript("Add dependency org.luaj:luaj-jse:^3.0.1");
+        }
+    }
+
     protected Map<String, String> scripts = new ConcurrentHashMap<>();
     private AtomicInteger running = new AtomicInteger(0);
 

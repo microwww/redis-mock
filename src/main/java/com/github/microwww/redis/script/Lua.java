@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Lua {
+public class Lua implements Script {
     private static final Logger log = LogFactory.getLogger(Lua.class);
 
     protected static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
@@ -35,7 +35,7 @@ public class Lua {
         redis.set("pcall", call);
     }
 
-
+    @Override
     public void eval(RedisRequest request) throws IOException {
         try {
             CONTEXT.set(request);
