@@ -12,7 +12,7 @@
 
     <name>redis-mock</name>
     <url>https://github.com/microwww/redis-mock/</url>
-    <description>A java redis server, mock redis for test</description>
+    <description>Mock redis for Java testing, in pure Java, embedded redis</description>
 
     <licenses>
         <license>
