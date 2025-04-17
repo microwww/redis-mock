@@ -8,6 +8,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 5. version 0.2.3 ChannelInputStream to `ByteBuffer`, it is non blocking.
 6. support RESP-3, to connect by `HELLO`, from release 0.3.0
 7. support HyperLogLog from <0.3.1+>
+8. support Lua-script from <0.3.2+>
 
 ## maven dependency
 
@@ -15,7 +16,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.3.1</version>
+    <version>0.3.2</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -47,7 +48,7 @@ A better option is to add dependencies:
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.3.1</version>
+    <version>5.3.2</version>
 </dependency>
 ```
 
@@ -72,7 +73,8 @@ ListOperation
 PubSubOperation `<0.2.2+>`
 >  PSUBSCRIBE, PUBLISH, PUBSUB, PUNSUBSCRIBE, SUBSCRIBE, UNSUBSCRIBE, 
 
-~~ScriptOperation~~
+ScriptOperation `<0.3.2+>`
+>  EVAL, EVALSHA, SCRIPT EXISTS, SCRIPT FLUSH, SCRIPT KILL, SCRIPT LOAD,
 
 ServerOperation
 >  DBSIZE, FLUSHALL<ASYNC, 4.0.0+>, FLUSHDB<ASYNC, 4.0.0+>, TIME, 0.0.2+, CLIENT GETNAME, CLIENT KILL, CLIENT LIST, CLIENT SETNAME,

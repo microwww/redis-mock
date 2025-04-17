@@ -6,6 +6,7 @@ import com.github.microwww.redis.protocal.jedis.Protocol;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collection;
 
 public class RedisOutputProtocol {
     protected final JedisOutputStream out;
@@ -96,10 +97,27 @@ public class RedisOutputProtocol {
                 writer(((Bytes) arg).getBytes());
             } else if (arg instanceof Number) {
                 writer(((Number) arg).longValue());
+            } else if (arg instanceof String) {
+                writer((String) arg);
+            } else if (arg instanceof Collection) {
+                Collection arr = (Collection) arg;
+                writerComplex(arr.toArray());
+            } else if (arg.getClass().isArray()) {
+                // TODO: 处理
+                writerUnsupportedEncodingComplexData(arg);
             } else {
-                throw new UnsupportedEncodingException("Not support type: " + arg.getClass().getName());
+                writerUnsupportedEncodingComplexData(arg);
             }
         }
+    }
+
+    /**
+     * 未来可以追加，主要 为LUA脚本提供
+     * @param arg
+     * @throws IOException
+     */
+    protected void writerUnsupportedEncodingComplexData(Object arg) throws IOException {
+        throw new UnsupportedEncodingException("Not support type: " + arg.getClass().getName());
     }
 
     public void flush() throws IOException {

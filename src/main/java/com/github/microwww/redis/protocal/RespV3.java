@@ -12,7 +12,7 @@ public class RespV3 extends RedisOutputProtocol {
 
     @Override
     public void writerNull() throws IOException {
-        out.write(Type.NULL.prefix);
+        out.write((byte) Type.NULL.prefix);
         out.writeCrLf();
     }
 
