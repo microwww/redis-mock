@@ -11,7 +11,7 @@ Using it, you can add the maven dependency :
 <dependency>
 	<groupId>com.github.microwww</groupId>
 	<artifactId>mocker-redis-spring-boot-starter</artifactId>
-	<version>5.3.2</version>
+	<version>5.3.3</version>
 </dependency>
 ```
 
