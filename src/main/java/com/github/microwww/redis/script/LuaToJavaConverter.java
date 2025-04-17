@@ -1,5 +1,6 @@
 package com.github.microwww.redis.script;
 
+import com.github.microwww.redis.util.SafeEncoder;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 
@@ -9,8 +10,11 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class LuaToJavaConverter {
+
     public static Object convert(LuaValue val) {
-        if (val.isnil()) {
+        if (val == LuaNull.NULL) {
+            return null;
+        } else if (val.isnil()) {
             return null;
         } else if (val.isboolean()) {
             return val.toboolean();
@@ -34,7 +38,7 @@ public abstract class LuaToJavaConverter {
     }
 
     /**
-     * Redis 仅仅转换为数组，按照索引取得，对于混合的 table，找到第一个 nil 就结束
+     * Redis 仅仅转换为数组，按照索引取得，不支持混合的 table。
      * @param table
      * @return
      */
@@ -44,7 +48,7 @@ public abstract class LuaToJavaConverter {
         for(int i = 1; i <= l; i++){ // LUA 从 1 开始计数
             LuaValue v = table.get(i);
             if(v.isnil()){
-                break;
+                res.add(null);
             }
             res.add(convert(v));
         }
@@ -58,5 +62,47 @@ public abstract class LuaToJavaConverter {
             resultMap.put(convert(key), convert(value));
         }
         return resultMap;
+    }
+
+    public static LuaValue convert(Object obj) {
+        if (obj == null) {
+            return LuaNull.NULL;
+        } else if (obj instanceof byte[]) {
+            return LuaValue.valueOf(SafeEncoder.encode((byte[]) obj));
+        } else if (obj instanceof Integer) {
+            return LuaValue.valueOf((Integer) obj);
+        } else if (obj instanceof Long) {
+            return LuaValue.valueOf((Long) obj);
+        } else if (obj instanceof Double) {
+            return LuaValue.valueOf((Double) obj);
+        } else if (obj instanceof Boolean) {
+            return LuaValue.valueOf((Boolean) obj);
+        } else if (obj instanceof String) {
+            return LuaValue.valueOf((String) obj);
+        } else if (obj instanceof List<?>) {
+            return convertList((List<?>) obj);
+        } else if (obj instanceof Map<?, ?>) {
+            return convertMap((Map<?, ?>) obj);
+        } else {
+            return LuaValue.userdataOf(obj); // 默认转换为 Userdata
+        }
+    }
+
+    private static LuaValue convertList(List<?> list) {
+        LuaTable table = new LuaTable();
+        for (int i = 0; i < list.size(); i++) {
+            table.set(i + 1, convert(list.get(i)));
+        }
+        return table;
+    }
+
+    private static LuaValue convertMap(Map<?, ?> map) {
+        LuaTable table = new LuaTable();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            LuaValue key = LuaValue.valueOf(entry.getKey().toString());
+            LuaValue value = convert(entry.getValue());
+            table.set(key, value);
+        }
+        return table;
     }
 }

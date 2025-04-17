@@ -72,7 +72,7 @@ public class RequestParams {
         return this;
     }
 
-    public Object getOrigin() {
+    public RedisMessage getOrigin() {
         return origin;
     }
 

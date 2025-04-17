@@ -11,6 +11,7 @@ import com.github.microwww.redis.protocal.jedis.RedisInputStream;
 import com.github.microwww.redis.protocal.message.MultiMessage;
 import com.github.microwww.redis.protocal.message.StringMessage;
 import com.github.microwww.redis.protocal.message.Type;
+import com.github.microwww.redis.util.SafeEncoder;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
@@ -18,25 +19,23 @@ import org.luaj.vm2.lib.jse.JsePlatform;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-public class Lua {
-    public static final Logger log = LogFactory.getLogger(Lua.class);
-    static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
+public class Lua implements Script {
+    private static final Logger log = LogFactory.getLogger(Lua.class);
 
-    Globals globals = JsePlatform.standardGlobals();
-    LuaTable redis = new LuaTable();
+    protected static ThreadLocal<RedisRequest> CONTEXT = new ThreadLocal<>();
+    protected Globals globals = JsePlatform.standardGlobals();
+    protected LuaTable redis = new LuaTable();
 
     public Lua() {
-        MockRedis.Call call = new MockRedis.Call();
+        LuaRedis call = new LuaRedis();
         redis.set("call", call);
         redis.set("pcall", call);
     }
 
-
+    @Override
     public void eval(RedisRequest request) throws IOException {
         try {
             CONTEXT.set(request);
@@ -114,7 +113,9 @@ public class Lua {
     }
 
     public static void writeOut(RedisOutputProtocol out, LuaValue val) throws IOException {
-        if (val.isnil()) {
+        if (val == LuaNull.NULL) {
+            out.writerNull();
+        } else if (val.isnil()) {
             out.writerNull();
         } else if (val.isboolean()) {
             out.writer(val.checkboolean() ? 1 : 0);
@@ -134,85 +135,35 @@ public class Lua {
         }
     }
 
-    public void evalsha(RedisRequest request) throws IOException {
-        eval(request);
-    }
+    static public class LuaRedis extends VarArgFunction {
 
-    static final public class MockRedis {
-
-        static public class Call extends VarArgFunction {
-
-
-            public Call() {
+        @Override
+        public LuaValue invoke(Varargs varargs) {
+            int narg = varargs.narg();
+            StringMessage[] args = new StringMessage[narg];
+            for (int i = 0; i < narg; i++) {
+                byte[] bts = SafeEncoder.encode(varargs.arg(i + 1).checkjstring());
+                args[i] = new StringMessage(Type.MULTI, bts);
             }
 
-            @Override
-            public LuaValue invoke(Varargs varargs) {
-                int narg = varargs.narg();
-                StringMessage[] args = new StringMessage[narg];
-                for (int i = 0; i < narg; i++) {
-                    try {
-                        args[i] = new StringMessage(Type.ATTR, varargs.arg(i + 1).checkjstring().getBytes(Protocol.CHARSET));
-                    } catch (UnsupportedEncodingException e) {
-                        log.error("{}", e);
-                        throw new RuntimeException(e);
-                    }
-                }
+            MultiMessage multiMessage = new MultiMessage(Type.MULTI, args);
+            RequestParams[] params = RequestParams.convert(multiMessage);
 
-                MultiMessage multiMessage = new MultiMessage(Type.MULTI, args);
-                RequestParams[] params = RequestParams.convert(multiMessage);
+            RedisRequest origin = CONTEXT.get();
+            RespLua out = (RespLua) origin.getOutputProtocol();
+            try {
+                out.reset();
+                RedisServer redisServer = origin.getServer();
+                RedisRequest request = new RedisRequest(redisServer, origin.getContext(), params);
+                // 当前线程池直接运行
+                redisServer.getSchema().run(request);
 
-                RedisRequest origin = CONTEXT.get();
-                RespLua out = (RespLua) origin.getOutputProtocol();
-                try {
-                    out.reset();
-                    RedisServer redisServer = origin.getServer();
-                    RedisRequest request = new RedisRequest(redisServer, origin.getContext(), params);
-                    // 当前线程池直接运行
-                    redisServer.getSchema().run(request);
-
-                    ByteArrayInputStream in = new ByteArrayInputStream(out.getData());
-                    RedisInputStream redisInputStream = new RedisInputStream(in);
-                    LuaValue luaValue = encodeObject(Protocol.read(redisInputStream));
-
-                    return luaValue;
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                ByteArrayInputStream in = new ByteArrayInputStream(out.getData());
+                RedisInputStream redisInputStream = new RedisInputStream(in);
+                return LuaToJavaConverter.convert(Protocol.read(redisInputStream));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-        }
-    }
-
-    public static LuaValue encodeObject(Object dataToEncode) {
-        if(Objects.isNull(dataToEncode)){
-            return LuaValue.NIL;
-        }
-        if (dataToEncode instanceof byte[]) {
-            return encode((byte[]) dataToEncode);
-        }
-
-        if (dataToEncode instanceof Long) {
-            return LuaValue.valueOf(((Long) dataToEncode).intValue());
-        }
-
-        if (dataToEncode instanceof List) {
-            List arrayToDecode = (List) dataToEncode;
-            List<LuaValue> returnValueArray = new ArrayList<>(arrayToDecode.size());
-            for (Object arrayEntry : arrayToDecode) {
-                // recursive call and add to list
-                returnValueArray.add(encodeObject(arrayEntry));
-            }
-            return LuaValue.listOf(returnValueArray.toArray(new LuaValue[arrayToDecode.size()]));
-        }
-
-        return LuaValue.valueOf(dataToEncode.toString());
-    }
-
-    public static LuaValue encode(final byte[] data) {
-        try {
-            return LuaValue.valueOf(new String(data, Protocol.CHARSET));
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e);
         }
     }
 }
