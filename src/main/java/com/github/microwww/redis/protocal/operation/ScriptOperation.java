@@ -57,32 +57,6 @@ public class ScriptOperation extends AbstractOperation {
         origin.getOut().write(resp.getData());
         origin.flush();
     }
-    private void evalOut(RedisOutputProtocol outputProtocol, LuaValue res) throws IOException {
-        if (res.isnil()) {
-            outputProtocol.writerNull();
-        }else if (res instanceof LuaTable){ //list case
-            LuaTable resTable = (LuaTable) res;
-            LuaValue len = resTable.len();
-            if (len.isint()) {
-                int dataLen = len.toint();
-                byte[][] bytes = new byte[dataLen][];
-
-                for (int j = 0; j < dataLen; j++) {
-                    LuaValue luaValue = resTable.get(j+1);
-                    if (luaValue.isstring()) {
-                        bytes[j] = luaValue.tojstring().getBytes(Protocol.CHARSET);
-                    } else {
-                        bytes[j] = new byte[0];
-                    }
-                }
-                outputProtocol.writerMulti(bytes);
-            }
-        }else if (res.islong()){
-            outputProtocol.writer(res.tolong());
-        }else {
-            outputProtocol.writer(res.tojstring());
-        }
-    }
     // EVALSHA
     public void evalsha(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(2);
