@@ -119,4 +119,25 @@ public class EVALOperationTest extends AbstractRedisTest {
 
         assertEquals(key[1], a);
     }
+
+    @Test
+    public void evalReturnNullTest() {
+        String[] key = new String[]{"JLF:INVOICE:227:com.jlf.invoice.service.impl.InvoiceInvoicingServiceImpl:red;"};
+        String[] val = new String[]{"30000", "e2e6465d-c943-4787-a2d7-93877786687e:1"};
+        Object a = jedis.eval(
+                "if (redis.call('exists', KEYS[1]) == 0) then " +
+                        "redis.call('hincrby', KEYS[1], ARGV[2], 1); " +
+                        "redis.call('pexpire', KEYS[1], ARGV[1]); " +
+                        "return nil; " +
+                        "end; " +
+                        "if (redis.call('hexists', KEYS[1], ARGV[2]) == 1) then " +
+                        "redis.call('hincrby', KEYS[1], ARGV[2], 1); " +
+                        "redis.call('pexpire', KEYS[1], ARGV[1]); " +
+                        "return nil; " +
+                        "end; " +
+                        "return redis.call('pttl', KEYS[1]);",
+                Arrays.asList(key),
+                Arrays.asList(val));
+        System.out.println("a:" + a);
+    }
 }
