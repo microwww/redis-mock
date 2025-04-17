@@ -34,21 +34,14 @@ public class ConnectionOperation extends AbstractOperation {
         request.getOutputProtocol().writer(echo);
     }
 
-    public static byte[][] SERVER_META_INFO = new byte[][]{
-            "server".getBytes(StandardCharsets.UTF_8),
-            "redis".getBytes(StandardCharsets.UTF_8),
-            "version".getBytes(StandardCharsets.UTF_8),
-            "6.0.0".getBytes(StandardCharsets.UTF_8),
-            "proto".getBytes(StandardCharsets.UTF_8),
-            "2".getBytes(StandardCharsets.UTF_8),
-            "id".getBytes(StandardCharsets.UTF_8),
-            "3".getBytes(StandardCharsets.UTF_8),
-            "mode".getBytes(StandardCharsets.UTF_8),
-            "standalone".getBytes(StandardCharsets.UTF_8),
-            "role".getBytes(StandardCharsets.UTF_8),
-            "master".getBytes(StandardCharsets.UTF_8),
-            "modules".getBytes(StandardCharsets.UTF_8),
-            new byte[0],
+    public static Object[] SERVER_META_INFO = new Object[]{
+            "server", "redis",  //
+            "version", "6.0.0", //
+            "proto", 2,         //
+            "id", 3,            //
+            "mode", "standalone", //
+            "role", "master",   //
+            "modules", ""       //
     };
 
     //HELLO
@@ -87,7 +80,7 @@ public class ConnectionOperation extends AbstractOperation {
                 throw new IllegalArgumentException("Arguments error");
             }
         }
-        request.getOutputProtocol().writerMulti(SERVER_META_INFO);
+        request.getOutputProtocol().writerComplex(SERVER_META_INFO);
     }
 
     //PING
