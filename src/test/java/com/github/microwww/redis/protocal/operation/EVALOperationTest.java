@@ -1,8 +1,8 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
+
 import org.junit.Test;
-import redis.clients.jedis.Jedis;
 
 import java.util.Arrays;
 import java.util.List;
@@ -138,6 +138,6 @@ public class EVALOperationTest extends AbstractRedisTest {
                         "return redis.call('pttl', KEYS[1]);",
                 Arrays.asList(key),
                 Arrays.asList(val));
-        System.out.println("a:" + a);
+        assertNull(a);
     }
 }
