@@ -4,7 +4,7 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <name>redis-mock</name>
+    <name>redis-server</name>
     <url>https://github.com/microwww/redis-mock/</url>
     <description>Mock redis for Java testing, in pure Java, embedded redis</description>
 
