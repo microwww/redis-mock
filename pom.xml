@@ -10,7 +10,7 @@
 
     <groupId>com.github.microwww</groupId>
     <artifactId>mock-redis</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.1-SNAPSHOTS</version>
 	<packaging>pom</packaging>
 
     <modules>
