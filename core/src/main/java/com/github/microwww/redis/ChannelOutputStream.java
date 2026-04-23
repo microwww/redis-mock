@@ -1,5 +1,7 @@
 package com.github.microwww.redis;
 
+import com.github.microwww.redis.logger.LogFactory;
+import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.util.Assert;
 
 import java.io.IOException;
@@ -8,6 +10,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
 public class ChannelOutputStream extends OutputStream {
+    protected static Logger log = LogFactory.getLogger(ChannelOutputStream.class);
     private final ByteBuffer buffer;
     private final SocketChannel channel;
 
@@ -23,7 +26,7 @@ public class ChannelOutputStream extends OutputStream {
 
     @Override
     public void write(int b) throws IOException {
-        if (buffer.remaining() == 0) {
+        if (!buffer.hasRemaining()) {
             this.flush();
         }
         buffer.put((byte) b);
@@ -31,10 +34,13 @@ public class ChannelOutputStream extends OutputStream {
 
     @Override
     public void flush() throws IOException {
-        // Use Buffer.flip() for Java 8 compatibility
-        ((java.nio.Buffer) buffer).flip();
+        buffer.flip();
         channel.write(buffer);
-        Assert.isTrue(!buffer.hasRemaining(), "Buffer not write ALL");
+        while (buffer.hasRemaining()){
+            log.warn("Buffer not write ALL, Try to flush the socket and write again !");
+            channel.socket().getOutputStream().flush();
+            channel.write(buffer);
+        }
         buffer.clear();
     }
 
