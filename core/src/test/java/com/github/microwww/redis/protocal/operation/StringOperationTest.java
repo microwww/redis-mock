@@ -347,4 +347,58 @@ public class StringOperationTest extends AbstractRedisTest {
             assertEquals(v.length(), nx);
         }
     }
+
+    /**
+     * Test that GET command returns WRONGTYPE error when executed on a non-String type key
+     */
+    @Test
+    public void testGetOnWrongType() {
+        String key = UUID.randomUUID().toString();
+        // First set a SortedSet type key
+        jedis.zadd(key, 1.0, "member1");
+        // Try to read with GET command, should return WRONGTYPE error
+        try {
+            jedis.get(key);
+            fail("Should throw JedisDataException for WRONGTYPE");
+        } catch (redis.clients.jedis.exceptions.JedisDataException e) {
+            assertTrue("Error message should contain WRONGTYPE",
+                e.getMessage().contains("WRONGTYPE"));
+        }
+    }
+
+    /**
+     * Test that STRLEN command returns WRONGTYPE error when executed on a non-String type key
+     */
+    @Test
+    public void testStrlenOnWrongType() {
+        String key = UUID.randomUUID().toString();
+        // First set a List type key
+        jedis.lpush(key, "item1");
+        // Try to read with STRLEN command, should return WRONGTYPE error
+        try {
+            jedis.strlen(key);
+            fail("Should throw JedisDataException for WRONGTYPE");
+        } catch (redis.clients.jedis.exceptions.JedisDataException e) {
+            assertTrue("Error message should contain WRONGTYPE",
+                e.getMessage().contains("WRONGTYPE"));
+        }
+    }
+
+    /**
+     * Test that GETDEL command returns WRONGTYPE error when executed on a non-String type key
+     */
+    @Test
+    public void testGetdelOnWrongType() {
+        String key = UUID.randomUUID().toString();
+        // First set a Hash type key
+        jedis.hset(key, "field1", "value1");
+        // Try to read with GETDEL command, should return WRONGTYPE error
+        try {
+            jedis.getDel(key);
+            fail("Should throw JedisDataException for WRONGTYPE");
+        } catch (redis.clients.jedis.exceptions.JedisDataException e) {
+            assertTrue("Error message should contain WRONGTYPE",
+                e.getMessage().contains("WRONGTYPE"));
+        }
+    }
 }

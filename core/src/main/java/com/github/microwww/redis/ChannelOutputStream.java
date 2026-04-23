@@ -31,7 +31,8 @@ public class ChannelOutputStream extends OutputStream {
 
     @Override
     public void flush() throws IOException {
-        buffer.flip();
+        // Use Buffer.flip() for Java 8 compatibility
+        ((java.nio.Buffer) buffer).flip();
         channel.write(buffer);
         Assert.isTrue(!buffer.hasRemaining(), "Buffer not write ALL");
         buffer.clear();

@@ -1,5 +1,6 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.exception.WrongTypeException;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
@@ -123,6 +124,9 @@ public class Schema implements Closeable {
         String cmd = request.getCommand();
         try {
             this.execute(cmd, request);
+        } catch (WrongTypeException e) {
+            // Return Redis standard WRONGTYPE error
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, e.getMessage());
         } catch (RedisArgumentsException error) {
             request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, error.getMessage());
         } catch (RuntimeException e) {

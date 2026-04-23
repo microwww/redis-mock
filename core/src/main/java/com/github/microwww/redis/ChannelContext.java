@@ -29,7 +29,7 @@ public class ChannelContext {
     private final CloseObservable listeners = new CloseObservable();
 
     /**
-     * channel.close 可能无法获取关闭事件, 从而导致 ChannelContext 无法正确的回收 切忌!切忌!切忌!
+     * channel.close may not receive close event, causing ChannelContext to not be properly recycled. IMPORTANT!
      * <br />
      * invoke Channel.close will make some out of memory, so not any one can get it.
      */
@@ -88,7 +88,8 @@ public class ChannelContext {
         if (read < 0) {
             throw new IOException("EOF");
         }
-        buffer.flip();
+        // Use Buffer.flip() for Java 8 compatibility
+        ((java.nio.Buffer) buffer).flip();
         return buffer.asReadOnlyBuffer();
     }
 
@@ -159,7 +160,7 @@ public class ChannelContext {
         Run.ignoreException(log, () -> {
             subscribe.removeSubscribe();
             Map<Bytes, Observer> subscribes = subscribe.subscribes();
-            if (subscribes != null) subscribes.clear(); // 多次 close 可能 NullPointerException
+            if (subscribes != null) subscribes.clear(); // Multiple close may cause NullPointerException
         });
         this.sessions.close();
     }

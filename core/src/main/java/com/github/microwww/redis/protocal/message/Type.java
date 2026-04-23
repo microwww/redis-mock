@@ -245,7 +245,7 @@ public enum Type {
 
         int pt = bytes.position();
         byte[] data = getData(bytes, pt, pt + length);
-        bytes.position(pt + length);
+        ((java.nio.Buffer) bytes).position(pt + length);
 
         Assert.isTrue(CR == bytes.get(), "end with CR LF");
         Assert.isTrue(LF == bytes.get(), "end with CR LF");

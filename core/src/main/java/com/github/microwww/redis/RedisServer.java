@@ -94,7 +94,7 @@ public class RedisServer implements Closeable {
                     RedisMessage redisMessage = Type.parseOne(buffer);
                     this.readableHandler(context, redisMessage);
                 } catch (HalfPackException ex) {
-                    buffer.position(start);
+                    ((java.nio.Buffer) buffer).position(start);
                     break;
                 }
             }

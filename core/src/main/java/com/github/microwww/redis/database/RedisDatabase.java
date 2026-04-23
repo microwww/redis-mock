@@ -1,5 +1,6 @@
 package com.github.microwww.redis.database;
 
+import com.github.microwww.redis.exception.WrongTypeException;
 import com.github.microwww.redis.util.Assert;
 
 import java.io.Closeable;
@@ -35,8 +36,25 @@ public class RedisDatabase implements DataLock, Closeable {
         return this.get(key, ByteData.class);
     }
 
+    /**
+     * Gets the value of the specified type. Returns Optional.empty() if the key does not exist,
+     * throws WrongTypeException if the key exists but the type does not match.
+     *
+     * @param key the key to look up
+     * @param clazz the expected type
+     * @return Optional wrapping the value
+     * @throws WrongTypeException if the key exists but the type does not match
+     */
     public <U, T extends AbstractValueData<U>> Optional<T> get(HashKey key, Class<T> clazz) {
-        return this.get(key).map(e -> (T) e);
+        Optional<AbstractValueData<?>> opt = this.get(key);
+        if (!opt.isPresent()) {
+            return Optional.empty();
+        }
+        AbstractValueData<?> data = opt.get();
+        if (!clazz.isInstance(data)) {
+            throw new WrongTypeException();
+        }
+        return Optional.of((T) data);
     }
 
     public synchronized <U, T extends AbstractValueData<U>> T getOrCreate(HashKey key, Supplier<T> fun) {

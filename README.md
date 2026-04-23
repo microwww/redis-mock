@@ -18,7 +18,7 @@ Pure Java implementation redis-server. Embedded redis service when unit testing.
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.3.5</version>
+    <version>0.3.6</version>
     <scope>test</scope>
 </dependency>
 ```
@@ -50,7 +50,7 @@ A better option is to add dependencies:
 <dependency>
     <groupId>com.github.microwww</groupId>
     <artifactId>mocker-redis-spring-boot-starter</artifactId>
-    <version>5.3.3</version>
+    <version>5.3.6</version>
 </dependency>
 ```
 

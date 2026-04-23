@@ -41,7 +41,7 @@
 
     <groupId>com.github.microwww</groupId>
     <artifactId>redis-server</artifactId>
-    <version>0.3.5</version>
+    <version>0.3.6</version>
 
     <properties>
         <java.version>1.8</java.version>
