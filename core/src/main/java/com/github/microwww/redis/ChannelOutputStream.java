@@ -38,7 +38,7 @@ public class ChannelOutputStream extends OutputStream {
         channel.write(buffer);
         while (buffer.hasRemaining()){
             log.warn("Buffer not write ALL, Try to flush the socket and write again !");
-            channel.socket().getOutputStream().flush();
+            //channel.socket().getOutputStream().flush();
             channel.write(buffer);
         }
         buffer.clear();
