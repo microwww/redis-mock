@@ -3,6 +3,8 @@ package com.github.microwww.redis;
 import com.github.microwww.redis.database.Schema;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
+import com.github.microwww.redis.persistence.PersistenceConfig;
+import com.github.microwww.redis.persistence.SnapshotPersistence;
 import com.github.microwww.redis.protocal.AbstractOperation;
 import com.github.microwww.redis.protocal.HalfPackException;
 import com.github.microwww.redis.protocal.RedisRequest;
@@ -12,6 +14,7 @@ import com.github.microwww.redis.util.Assert;
 import com.github.microwww.redis.util.StringUtil;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -25,6 +28,7 @@ public class RedisServer implements Closeable {
     private final ExecutorService pool;
     private final SelectSockets sockets = new SelectSockets(this::handler);
     private Schema schema;
+    private SnapshotPersistence persistence;
 
     public RedisServer() {
         this(5);
@@ -45,6 +49,13 @@ public class RedisServer implements Closeable {
     }
 
     public void listener(String host, int port) throws IOException {
+        if (persistence != null && persistence.getConfig().isEnabled() && persistence.getConfig().isAutoLoad()) {
+            try {
+                persistence.load();
+            } catch (Exception e) {
+                log.error("Redis persistence auto load error", e);
+            }
+        }
         sockets.bind(host, port);
         // Runnable config = this.bind(host, port);
 
@@ -80,6 +91,45 @@ public class RedisServer implements Closeable {
         return sockets;
     }
 
+    public SnapshotPersistence getPersistence() {
+        if (persistence == null) {
+            synchronized (this) {
+                if (persistence == null) {
+                    persistence = new SnapshotPersistence(this);
+                }
+            }
+        }
+        return persistence;
+    }
+
+    public RedisServer setPersistence(SnapshotPersistence persistence) {
+        this.persistence = persistence;
+        return this;
+    }
+
+    public SnapshotPersistence enablePersistence(File file) {
+        PersistenceConfig cfg = new PersistenceConfig(file).setEnabled(true);
+        this.persistence = new SnapshotPersistence(this, cfg);
+        return this.persistence;
+    }
+
+    public SnapshotPersistence enablePersistence(PersistenceConfig config) {
+        this.persistence = new SnapshotPersistence(this, config);
+        return this.persistence;
+    }
+
+    public void save() throws IOException {
+        getPersistence().save();
+    }
+
+    public boolean bgsave() throws IOException {
+        return getPersistence().bgsave();
+    }
+
+    public long getLastSaveTime() {
+        return getPersistence().getLastSaveTime();
+    }
+
     public class RedisHandler extends ChannelSessionHandler.Adaptor {
 
         @Override
@@ -113,12 +163,25 @@ public class RedisServer implements Closeable {
     @Override
     public void close() throws IOException {
         try {
-            this.sockets.close();
+            if (persistence != null && persistence.getConfig().isEnabled() && persistence.getConfig().isSaveOnClose()) {
+                try {
+                    persistence.save();
+                } catch (Exception e) {
+                    log.error("Failed to save snapshot on close", e);
+                }
+            }
         } finally {
+            if (persistence != null) {
+                persistence.close();
+            }
             try {
-                if (schema != null) schema.close();
+                this.sockets.close();
             } finally {
-                pool.shutdown();
+                try {
+                    if (schema != null) schema.close();
+                } finally {
+                    pool.shutdown();
+                }
             }
         }
     }

@@ -7,6 +7,7 @@ import com.github.microwww.redis.exception.Run;
 import com.github.microwww.redis.logger.LogFactory;
 import com.github.microwww.redis.logger.Logger;
 import com.github.microwww.redis.protocal.AbstractOperation;
+import com.github.microwww.redis.protocal.RedisOutputProtocol;
 import com.github.microwww.redis.protocal.RedisRequest;
 import com.github.microwww.redis.protocal.RequestSession;
 import com.github.microwww.redis.protocal.jedis.Protocol;
@@ -22,6 +23,16 @@ public class ServerOperation extends AbstractOperation {
 
     //BGREWRITEAOF
     //BGSAVE
+    public void bgsave(RedisRequest request) throws IOException {
+        request.expectArgumentsCountLE(1);
+        boolean started = request.getServer().bgsave();
+        if (started) {
+            request.getOutputProtocol().writer("Background saving started");
+        } else {
+            request.getOutputProtocol().writerError(RedisOutputProtocol.Level.ERR, "ERR Background save already in progress");
+        }
+    }
+
     //CLIENT GETNAME
     public void client(RedisRequest request) throws IOException {
         request.expectArgumentsCountGE(1);
@@ -64,10 +75,40 @@ public class ServerOperation extends AbstractOperation {
 
     //INFO
     //LASTSAVE
+    public void lastsave(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(0);
+        long lastSaveTime = request.getServer().getLastSaveTime();
+        request.getOutputProtocol().writer(lastSaveTime / 1000);
+    }
+
     //MONITOR
     //PSYNC
     //SAVE
+    public void save(RedisRequest request) throws IOException {
+        request.expectArgumentsCount(0);
+        request.getServer().save();
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
+    }
+
     //SHUTDOWN
+    public void shutdown(RedisRequest request) throws IOException {
+        request.expectArgumentsCountLE(1);
+        boolean doSave = true;
+        if (request.getParams().length > 0) {
+            String opt = request.getParams()[0].getByteArray2string();
+            if ("NOSAVE".equalsIgnoreCase(opt)) {
+                doSave = false;
+            } else if ("SAVE".equalsIgnoreCase(opt)) {
+                doSave = true;
+            }
+        }
+        if (doSave) {
+            request.getServer().save();
+        }
+        request.getOutputProtocol().writer(Protocol.Keyword.OK.name());
+        request.getOutputProtocol().flush();
+        request.getServer().close();
+    }
     //SLAVEOF
     //SLOWLOG
     //SYNC

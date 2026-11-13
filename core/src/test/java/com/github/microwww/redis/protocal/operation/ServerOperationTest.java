@@ -1,12 +1,14 @@
 package com.github.microwww.redis.protocal.operation;
 
 import com.github.microwww.AbstractRedisTest;
+import org.junit.AfterClass;
 import org.junit.Test;
 import redis.clients.jedis.Connection;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.args.FlushMode;
 import redis.clients.jedis.exceptions.JedisConnectionException;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -121,5 +123,29 @@ public class ServerOperationTest extends AbstractRedisTest {
         Jedis j2 = connection();
         clients = j2.clientList();
         assertFalse(clients.contains(ip));
+    }
+
+    @Test
+    public void testSaveAndLastsave() {
+        long origin = jedis.lastsave();
+        jedis.set("test-save-key", "test-val");
+        String res = jedis.save();
+        assertEquals("OK", res);
+        long after = jedis.lastsave();
+        assertTrue(after >= origin);
+    }
+
+    @Test
+    public void testBgsave() {
+        String res = jedis.bgsave();
+        assertTrue(res.contains("Background saving started"));
+    }
+
+    @AfterClass
+    public static void cleanDump() {
+        File f = new File("dump.rdb");
+        if (f.exists()) {
+            f.delete();
+        }
     }
 }
