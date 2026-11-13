@@ -21,7 +21,7 @@ import java.util.concurrent.*;
 public class Schema implements Closeable {
     private static final Logger log = LogFactory.getLogger(Schema.class);
 
-    private static final ExecutorService pool = Executors.newFixedThreadPool(1);
+    private final ExecutorService pool = Executors.newFixedThreadPool(1);
 
     public static final int DEFAULT_SCHEMA_SIZE = 16;
     private static final AbstractOperation[] SUPPORT_OPERATION = new AbstractOperation[] {

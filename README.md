@@ -54,6 +54,32 @@ A better option is to add dependencies:
 </dependency>
 ```
 
+### Persistence
+Supports RDB snapshot persistence, automatic loading on startup, saving on close, and standard Redis commands `SAVE`, `BGSAVE`, `LASTSAVE`, `SHUTDOWN [SAVE|NOSAVE]`:
+
+```java
+// Enable persistence (specify snapshot file)
+RedisServer server = new RedisServer();
+server.enablePersistence(new File("dump.rdb"));
+server.listener("127.0.0.1", 6379);
+
+// Trigger synchronous / asynchronous save manually
+server.save();
+server.bgsave();
+```
+
+Spring Boot `application.yml` configuration:
+```yaml
+mocker:
+  redis:
+    persistence:
+      enable: true
+      file: ./dump.rdb
+      auto-load: true
+      save-on-close: true
+      auto-save-interval-ms: 0 # Auto-save interval in ms (0 disables scheduled auto-save)
+```
+
 ### Supported commands
 Supported redis commands :
 
@@ -82,7 +108,7 @@ ScriptOperation `<0.3.3+>`
 >  EVAL, EVALSHA, SCRIPT EXISTS, SCRIPT FLUSH, SCRIPT KILL, SCRIPT LOAD,
 
 ServerOperation
->  DBSIZE, FLUSHALL<ASYNC, 4.0.0+>, FLUSHDB<ASYNC, 4.0.0+>, TIME, 0.0.2+, CLIENT GETNAME, CLIENT ID<0.3.4+>, CLIENT KILL, CLIENT LIST, CLIENT SETNAME,CLIENT SETINFO<0.3.4+>, CLIENT INFO<0.3.4+>,
+>  DBSIZE, FLUSHALL<ASYNC, 4.0.0+>, FLUSHDB<ASYNC, 4.0.0+>, TIME, 0.0.2+, CLIENT GETNAME, CLIENT ID<0.3.4+>, CLIENT KILL, CLIENT LIST, CLIENT SETNAME,CLIENT SETINFO<0.3.4+>, CLIENT INFO<0.3.4+>, SAVE, BGSAVE, LASTSAVE, SHUTDOWN,
 
 SetOperation
 >  SADD, SCARD, SDIFF, SDIFFSTORE, SINTER, SINTERCARD<0.3.5+>, SINTERSTORE, SISMEMBER, SMEMBERS, SMISMEMBER<0.3.5+>, SMOVE, SPOP, SRANDMEMBER, SREM, SSCAN, SUNION, SUNIONSTORE, 
